@@ -273,3 +273,17 @@
 .wake-hint, .voice-status { color:#b9dde0; font-size:11px; }
 @media (max-width:767px){ .stage .face, .stage .face.face { left:16px; right:16px; top:calc(72px + env(safe-area-inset-top)); height:auto; }
   .stage .wave { left:6%; width:88%; top:auto; } }
+
+/* Microfone pelo servidor: pulsa enquanto grava a fala. */
+.stage .mic[data-recording] {
+  box-shadow: 0 0 0 0 rgba(255, 90, 90, .7);
+  animation: mic-rec 1.1s ease-out infinite;
+  border-color: #ff6b6b;
+}
+@keyframes mic-rec {
+  0% { box-shadow: 0 0 0 0 rgba(255, 90, 90, .7); }
+  100% { box-shadow: 0 0 0 22px rgba(255, 90, 90, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage .mic[data-recording] { animation: none; box-shadow: 0 0 0 4px rgba(255, 90, 90, .6); }
+}
