@@ -124,6 +124,7 @@ const micPage = readFileSync(root + 'artifacts/icaro/src/pages/mic-test.tsx', 'u
 const appRoutes = readFileSync(root + 'artifacts/icaro/src/App.tsx', 'utf8');
 const apiRoutes = readFileSync(root + 'artifacts/api-server/src/routes/index.ts', 'utf8');
 const apiMicTest = readFileSync(root + 'artifacts/api-server/src/routes/mic-test.ts', 'utf8');
+const apiAi = readFileSync(root + 'artifacts/api-server/src/routes/ai.ts', 'utf8');
 checks.push(
   ['Página /mic-test existe e está registrada no roteador', () => {
     assert.match(appRoutes, /path="\/mic-test" component=\{MicTest\}/);
@@ -134,6 +135,15 @@ checks.push(
     assert.match(apiRoutes, /"\/mic-test"\], requireAuth\(\)/);
     assert.match(apiMicTest, /router\.post\("\/mic-test"/);
     assert.match(apiMicTest, /router\.get\("\/mic-test"/);
+  }],
+  ['Modo direto tem controle explícito e é ligado ao filtro de ativação', () => {
+    assert.match(stage, /directMode:\s*directVoiceMode/);
+    assert.match(stage, /data-testid="toggle-direct-voice-mode"/);
+    assert.match(stage, /Modo direto — sem “Ok, Ícaro”/);
+  }],
+  ['Persona do Ícaro não inventa proibição de microfone ou voz', () => {
+    assert.match(apiAi, /Não afirme que o microfone está bloqueado por uma regra da aula/);
+    assert.match(apiAi, /botão “Ativar áudio”/);
   }],
   ['Página de teste encaminha uma pergunta autorizada à API real do Ícaro', () => {
     assert.match(micPage, /gateRef\.current\.receive\(/);

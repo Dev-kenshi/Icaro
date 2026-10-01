@@ -60,7 +60,7 @@ export class WakeTurnGate {
     return [{ type: 'question', text: question }];
   }
 
-  receive(text: string, final: boolean, index: number, now: number, busy: boolean, echo = false, interruptibleWait = false): WakeEvent[] {
+  receive(text: string, final: boolean, index: number, now: number, busy: boolean, echo = false, interruptibleWait = false, directMode = false): WakeEvent[] {
     if (this.completed.has(index)) return [];
     const command = parseWakeCommand(text, this.active);
     // A suppressed result never becomes a wake or question. A fragment dropped
@@ -82,6 +82,13 @@ export class WakeTurnGate {
     // An explicit wake may cancel a pending answer/voice preparation, but never
     // playback or its delayed echoes. Ambient speech cannot clear the pending turn.
     if (interruptibleWait && command.wake && !echo && now >= this.quietUntil && this.pending) this.stop();
+    const events: WakeEvent[] = [];
+    // Direct mode is an explicit user opt-in: each recognized utterance can
+    // start one turn without the wake phrase, but never while busy or echoing.
+    if (directMode && !this.active && !this.pending && !busy && !echo && now >= this.quietUntil && !command.wake) {
+      this.arm(now);
+      events.push({ type: 'wake' });
+    }
     if ((busy && !interruptibleWait) || this.pending || now < this.quietUntil || echo) {
       // While merely waiting, "Ok" can be the first interim fragment of a new
       // wake. Do not permanently suppress it before the full phrase arrives.
@@ -93,7 +100,6 @@ export class WakeTurnGate {
       if (final) this.completed.add(index);
       return [];
     }
-    const events: WakeEvent[] = [];
     if (this.expire(now)) events.push({ type: 'expired' });
     if (command.wake && !this.woken.has(index)) {
       this.woken.add(index); this.arm(now);

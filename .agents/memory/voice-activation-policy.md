@@ -3,11 +3,15 @@ name: Voice activation policy
 description: Deliberate wake activation is permission for one question, not an indefinitely open conversation.
 ---
 
-Each “Ok, Ícaro” authorizes one question. After receiving that question, disarm immediately and return to standby after the reply. Empty activations must expire without speaking.
+In the default mode, each “Ok, Ícaro” authorizes one question. After receiving that question, disarm immediately and return to standby after the reply. Empty activations must expire without speaking. An explicit, user-enabled direct mode is an exception: while enabled, each non-echo utterance can authorize one question without the wake phrase.
 
 **Why:** Indefinite activation let ambient conversations and the assistant's delayed self-transcription trigger unsolicited replies. The user explicitly reported Ícaro speaking when no question had been asked.
 
 **How to apply:** Keep Stop available during playback, but ignore other playback results, including final transcripts delivered after playback ends. If an interim result is suppressed as echo, keep its recognition index suppressed through the final revision; browser speech recognition can revise the same index after the echo guard expires. A wake phrase mentioned inside another sentence is not addressing the assistant. Tests must cover an empty wake, ambient speech after completion and interim/final playback echoes.
+
+**Why:** Some users need direct speech without a wake phrase, but that must remain a deliberate choice rather than silently changing the default ambient-listening policy.
+
+**How to apply:** Keep direct mode off by default, expose a clear user control and status, and allow turning it off or pausing the microphone. Do not relax browser permission checks, busy suppression, or playback-echo protection.
 
 Use explicit command completion, not an arbitrary minimum command lock. A brief output-echo guard may follow actual audio playback; text-only responses must not incur that guard.
 

@@ -44,6 +44,26 @@ const checks: Array<[string, () => void]> = [
     gate.complete(1);
     assert.deepEqual(gate.receive('conversa ao fundo', true, 1, 2, false), []);
   }],
+  ['Modo direto envia uma pergunta sem palavra de ativação após opt-in', () => {
+    const gate = new WakeTurnGate();
+    const events = gate.receive('Qual é a hora?', true, 0, 100, false, false, false, true);
+    assert.equal(events.filter((event) => event.type === 'question').length, 1);
+    assert.equal(gate.pending, true);
+  }],
+  ['Modo direto aceita a próxima fala após a resposta', () => {
+    const gate = new WakeTurnGate();
+    gate.receive('Explique o ativo circulante.', true, 0, 100, false, false, false, true);
+    gate.complete(1_000);
+    const next = gate.receive('Dê um exemplo.', true, 1, 1_500, false, false, false, true);
+    assert.equal(next.filter((event) => event.type === 'question').length, 1);
+  }],
+  ['Modo direto não envia eco durante resposta ou período de silêncio', () => {
+    const gate = new WakeTurnGate();
+    gate.receive('Explique o ativo circulante.', true, 0, 100, false, false, false, true);
+    gate.complete(1_000, true);
+    assert.deepEqual(gate.receive('Explique o ativo circulante.', true, 1, 1_100, true, false, false, true), []);
+    assert.deepEqual(gate.receive('Explique o ativo circulante.', true, 2, 1_200, false, true, false, true), []);
+  }],
   ['Eco final após terminar o áudio é ignorado', () => {
     const gate = new WakeTurnGate();
     assert.deepEqual(gate.receive('Ok Ícaro o ativo representa bens', false, 0, 0, true), []);

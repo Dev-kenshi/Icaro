@@ -45,6 +45,7 @@ export default function Stage() {
   const [captionsVisible, setCaptionsVisible] = useState(false);
   const [audioActivated, setAudioActivated] = useState(false);
   const [speechError, setSpeechError] = useState('');
+  const [directVoiceMode, setDirectVoiceMode] = useState(false);
   const [panel, setPanel] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const helpRef = useRef(false); helpRef.current = helpOpen;
@@ -330,6 +331,7 @@ export default function Stage() {
   const listener = useWakeListener({
     busy: state === 'talking' || state === 'thinking' || state === 'intro',
     allowWakeDuringWait: state === 'thinking',
+    directMode: directVoiceMode,
     onQuestion: (question) => handleRef.current(question),
     isEcho: (transcript) => resemblesPlayback(transcript, lastAnswerRef.current),
     onTranscript: (t) => { window.clearTimeout(captionTimerRef.current); setCaptionWords(null); setCaption(t); },
@@ -365,7 +367,10 @@ export default function Stage() {
   const toggleMic = () => {
     prime();
     if (!listener.supported) { setTyping(true); return; }
-    if (listener.active) listener.standby(); else listener.activate();
+    if (directVoiceMode) {
+      setDirectVoiceMode(false);
+      listener.complete();
+    } else if (listener.active) listener.standby(); else listener.activate();
   };
   const toggleVoice = () => {
     const enabled = !voiceOnRef.current;
@@ -390,7 +395,7 @@ export default function Stage() {
     sayRef.current('Olá, o áudio do Ícaro está ativado.');
   };
   const listenLabel = {
-    starting: 'Conectando microfone…', listening: listener.active ? 'Escuta ativa' : 'Em espera · palavra de ativação',
+    starting: 'Conectando microfone…', listening: listener.active ? 'Escuta ativa' : directVoiceMode ? 'Modo direto ligado · aguardando fala' : 'Em espera · palavra de ativação',
     blocked: 'Escuta indisponível', unsupported: 'Voz não suportada',
     error: 'Reconectando reconhecimento…', paused: 'Microfone pausado',
   }[listener.status];
@@ -467,7 +472,7 @@ export default function Stage() {
             {captionsVisible ? <EyeOff size={16} /> : <Eye size={16} />} Legendas {captionsVisible ? 'ligadas' : 'desligadas'}
           </button>
         </div>
-        <button className="mic" onClick={toggleMic} aria-label={listener.active ? 'Voltar ao modo de espera' : 'Ativar Ícaro manualmente'} aria-pressed={listener.active} data-testid="button-mic"><Mic size={34} /></button>
+        <button className="mic" onClick={toggleMic} aria-label={directVoiceMode ? 'Desativar modo direto' : listener.active ? 'Voltar ao modo de espera' : 'Ativar Ícaro manualmente'} aria-pressed={listener.active || directVoiceMode} data-testid="button-mic"><Mic size={34} /></button>
         <button onClick={() => setTyping((v) => !v)} className="hbtn" aria-label="Digitar pergunta" aria-expanded={typing} data-testid="button-toggle-typing"><Keyboard size={18} /></button>
       </div>
 
@@ -516,10 +521,35 @@ export default function Stage() {
           {tab === 'voz' && (
             <div className="space-y-5">
               <div className="card space-y-2">
-                <div className="mono text-[10px] uppercase tracking-widest text-[color:var(--ok)]">Ativação por voz</div>
-                <p>Diga <strong>“Ok, Ícaro”</strong>, seguido da pergunta, ou espere a indicação “Escuta ativa”. Cada ativação autoriza uma pergunta; após responder, o ÍCARO volta à espera. Sem pergunta em 12 segundos, a ativação expira em silêncio. Diga <strong>“Stop, Ícaro”</strong> para interromper.</p>
-                <p className="privacy-note text-xs text-[color:var(--dim)]">O microfone fica aberto enquanto a escuta está ligada. A fala é transcrita pelo serviço do navegador; só perguntas após a ativação são enviadas ao ÍCARO. Use “Pausar microfone” para desligar totalmente.</p>
+                <div className="mono text-[10px] uppercase tracking-widest text-[color:var(--ok)]">Entrada por voz</div>
+                <p>No modo padrão, diga <strong>“Ok, Ícaro”</strong> seguido da pergunta. Também é possível ligar o modo direto abaixo e falar sem a palavra de ativação. Diga <strong>“Stop, Ícaro”</strong> para interromper.</p>
+                <p className="privacy-note text-xs text-[color:var(--dim)]">O microfone fica aberto enquanto a escuta está ligada. A fala é transcrita pelo serviço do navegador. Use “Pausar microfone” para desligar totalmente.</p>
                 <p className="text-xs text-[color:var(--warn)]">Requer permissão do navegador e a página aberta. Chrome ou Edge são recomendados; outros navegadores podem não oferecer escuta contínua.</p>
+              </div>
+              <div className="card space-y-3">
+                <div className="mono text-[10px] uppercase tracking-widest text-[color:var(--dim)]">Modo de escuta</div>
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={directVoiceMode}
+                    disabled={!listener.supported}
+                    onChange={(event) => {
+                      const enabled = event.currentTarget.checked;
+                      setDirectVoiceMode(enabled);
+                      prime();
+                      if (enabled && (listener.status === 'paused' || listener.status === 'blocked')) listener.enable();
+                      else if (!enabled) listener.complete();
+                    }}
+                    data-testid="toggle-direct-voice-mode"
+                    className="mt-1 accent-cyan-400"
+                  />
+                  <span>
+                    <strong>Modo direto — sem “Ok, Ícaro”</strong>
+                    <span className="mt-1 block text-xs text-[color:var(--dim)]">
+                      Ligado: cada fala reconhecida pode ser enviada como uma pergunta. Desligue o modo ou pause o microfone para parar.
+                    </span>
+                  </span>
+                </label>
               </div>
               <div className="card space-y-3">
                 <div className="mono text-[10px] uppercase tracking-widest text-[color:var(--dim)]">Motor de voz</div>

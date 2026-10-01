@@ -23,6 +23,7 @@ export type ListeningStatus = 'starting' | 'listening' | 'blocked' | 'unsupporte
 type Options = {
   busy: boolean;
   allowWakeDuringWait?: boolean;
+  directMode?: boolean;
   onWake: () => void;
   onStop: () => void;
   onQuestion: (text: string) => void;
@@ -118,6 +119,7 @@ export function useWakeListener(options: Options) {
             latest.current.busy,
             latest.current.isEcho?.(transcript),
             latest.current.allowWakeDuringWait,
+            latest.current.directMode,
           );
           if (result.isFinal) clearInterimCommit();
           dispatch(events);

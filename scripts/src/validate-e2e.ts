@@ -1,7 +1,7 @@
 /**
- * Validação de ponta a ponta do Ícaro: 10 checagens reais da API + 40 cenários
+ * Validação de ponta a ponta do Ícaro: 10 checagens reais da API + 41 cenários
  * em Chromium headless com microfone (SpeechRecognition) simulado.
- * Total: exatamente 50 testes. Uso: pnpm --filter @workspace/scripts run validate:e2e
+ * Total: exatamente 51 testes. Uso: pnpm --filter @workspace/scripts run validate:e2e
  */
 import { chromium, type Page, type Route } from 'playwright-core';
 
@@ -99,7 +99,9 @@ async function fullTurn(p: Page, question: string, timeout = 15000) {
 }
 
 const results: { n: number; name: string; ok: boolean; info: string }[] = [];
+const onlyTest = process.env.ICARO_E2E_ONLY?.trim().toLocaleLowerCase();
 async function test(name: string, fn: () => Promise<string | void>) {
+  if (onlyTest && !name.toLocaleLowerCase().includes(onlyTest)) return;
   const n = results.length + 1;
   const t0 = Date.now();
   try {
@@ -191,13 +193,23 @@ async function main() {
     await sleep(120);
     return route.fulfill({ status: 200, contentType: 'audio/wav', body: wav(Math.min(2.2, Math.max(0.6, text.length * 0.03))) });
   });
-  await ctx.route('**/api/ai/chat', async (route: Route) => {
+  // O palco usa /api/ai/chat/stream (SSE); também cobre /api/ai/chat no fallback.
+  await ctx.route('**/api/ai/chat**', async (route: Route) => {
     const q = String(route.request().postDataJSON()?.question ?? '');
     chatCalls.push(q); const n = chatCalls.length;
     if (mode.chat === 'real') return route.continue();
     await sleep(mode.chatDelay);
     if (mode.chat === 'fail') return route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"Falha simulada do provedor."}' });
-    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ answer: `${ANSWER} Resposta número ${n}.`, provider: 'groq', model: 'mock' }) });
+    const answer = `${ANSWER} Resposta número ${n}.`;
+    if (!route.request().url().includes('/chat/stream')) {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ answer, provider: 'groq', model: 'mock' }) });
+    }
+    const body = [
+      'event: meta', `data: ${JSON.stringify({ fonte: 'ia', thoughts: [] })}`, '',
+      'event: delta', `data: ${JSON.stringify({ t: answer })}`, '',
+      'event: done', `data: ${JSON.stringify({ answer, provider: 'groq', model: 'mock' })}`, '',
+    ].join('\n');
+    return route.fulfill({ status: 200, contentType: 'text/event-stream; charset=utf-8', headers: { 'Cache-Control': 'no-cache' }, body });
   });
 
   let page!: Page;
@@ -234,6 +246,22 @@ async function main() {
     assert(chatCalls.at(-1)?.includes('ITCONT'), 'pergunta não enviada');
     assert(/ITCONT|Imersão/i.test(cap), `legenda: ${cap}`);
     return `começou a falar em ${talkAt} ms`;
+  });
+  await test('Modo direto envia fala sem “Ok, Ícaro” e para ao ser desligado', async () => {
+    await fresh();
+    await page.click('[data-testid="button-open-panel"]');
+    await page.click('[data-testid="tab-voz"]');
+    const directMode = page.locator('[data-testid="toggle-direct-voice-mode"]');
+    await directMode.check();
+    const before = chatCalls.length;
+    await speakLike(page, 'o que é ativo circulante');
+    await waitState(page, 'talking', 10000); await waitState(page, 'idle', 15000);
+    assert(chatCalls.length === before + 1 && /ativo circulante/i.test(chatCalls.at(-1) ?? ''), 'pergunta direta não foi enviada');
+    await directMode.uncheck();
+    const after = chatCalls.length;
+    await speakLike(page, 'explique os passivos da empresa');
+    await sleep(700);
+    assert(chatCalls.length === after && (await state(page)) === 'idle', 'fala foi enviada depois de desligar o modo direto');
   });
   await test('Legenda mostra só a resposta, nunca a transcrição', async () => {
     await fresh(); const q = 'qual a diferença entre ativo e passivo';
@@ -485,7 +513,8 @@ async function main() {
   const failed = results.filter((r) => !r.ok);
   if (pageErrors.length) failed.push({ n: 0, name: 'erros de página', ok: false, info: pageErrors.join('; ') });
   console.log(`\n${results.filter((r) => r.ok).length}/${results.length} testes aprovados. Erros de página: ${pageErrors.length}${pageErrors.length ? ` (${[...new Set(pageErrors)].join('; ')})` : ''}`);
-  if (results.length !== 50) { console.log(`ERRO: esperados 50 testes, executados ${results.length}`); process.exit(1); }
+  if (!onlyTest && results.length !== 51) { console.log(`ERRO: esperados 51 testes, executados ${results.length}`); process.exit(1); }
+  if (onlyTest && !results.length) { console.log(`ERRO: nenhum teste corresponde a "${onlyTest}"`); process.exit(1); }
   process.exit(failed.length ? 1 : 0);
 }
 
