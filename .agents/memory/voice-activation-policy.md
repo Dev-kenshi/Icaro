@@ -3,7 +3,13 @@ name: Voice activation policy
 description: Deliberate wake activation is permission for one question, not an indefinitely open conversation.
 ---
 
-Each “Ok, Ícaro” authorizes one question. After receiving that question, disarm immediately and return to standby after the reply. Empty activations must expire without speaking.
+Each “Ok, Ícaro” or “Let’s go, Ícaro” authorizes one question. After receiving that question, disarm immediately and return to standby after the reply. Empty activations must expire without speaking.
+
+Treat wake phrases as commands only at the beginning of an utterance; ambient mentions must not activate the assistant or send audio to the AI.
+
+**Why:** The user clarified the expected hands-free flow and asked for “Let’s go, Ícaro” as an activation phrase, while retaining the existing privacy boundary.
+
+**How to apply:** Add wake aliases to the same one-question turn gate, update the spoken instructions, and test that the phrase activates the listening state before a separate question is submitted.
 
 **Why:** Indefinite activation let ambient conversations and the assistant's delayed self-transcription trigger unsolicited replies. The user explicitly reported Ícaro speaking when no question had been asked.
 

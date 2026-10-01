@@ -6,6 +6,16 @@ import { wakeAccessBlockReason, wakeAccessErrorMessage } from '../../artifacts/i
 const checks: Array<[string, () => void]> = [
   ['Conversa ambiente não ativa nem envia perguntas', () => assert.equal(parseWakeCommand('qual é a hora?', false).question, '')],
   ['Ok, Ícaro ativa com acento', () => assert.equal(parseWakeCommand('Ok, Ícaro', false).wake, true)],
+  ['Let’s go, Ícaro ativa a escuta sem enviar pergunta', () => {
+    assert.deepEqual(parseWakeCommand('Let’s go, Ícaro', false), { stop: false, wake: true, question: '' });
+  }],
+  ['Let’s go sem pontuação e Ícaro sem acento também ativa', () => {
+    assert.equal(parseWakeCommand('lets go Icaro', false).wake, true);
+  }],
+  ['Pergunta após Let’s go, Ícaro é preservada', () => {
+    assert.deepEqual(parseWakeCommand('Let’s go, Ícaro, explique custos', false),
+      { stop: false, wake: true, question: 'explique custos' });
+  }],
   ['Aceita caixa alta e nome sem acento', () => assert.equal(parseWakeCommand('OK ICARO', false).wake, true)],
   ['Okay também é reconhecido', () => assert.equal(parseWakeCommand('Okay, Ícaro.', false).wake, true)],
   ['Extrai a pergunta junto à ativação', () => assert.equal(parseWakeCommand('Ok, Ícaro, o que é patrimônio?', false).question, 'o que é patrimônio?')],
@@ -186,7 +196,7 @@ checks.push(
     assert.equal(gate.active, true);
   }],
   ['Variantes dentro de conversa ambiente continuam sem autorizar perguntas', () => {
-    for (const text of ['ele disse O.K. Ícaro', 'o que aconteceu com Ícaro', 'O que Ícaro faz?', 'Om Ícaro', 'o que custa isso']) {
+    for (const text of ['ele disse O.K. Ícaro', 'ele disse Let’s go, Ícaro', 'o que aconteceu com Ícaro', 'O que Ícaro faz?', 'Om Ícaro', 'o que custa isso']) {
       assert.equal(parseWakeCommand(text, false).wake, false);
       assert.equal(parseWakeCommand(text, false).question, '');
     }

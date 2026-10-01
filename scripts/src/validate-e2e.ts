@@ -219,10 +219,26 @@ async function main() {
     assert(!(await caption(page)), 'legenda não deveria aparecer');
     assert(pageErrors.length === errs, `erros: ${pageErrors.slice(errs).join('; ')}`);
   });
-  await test('“Ok Ícaro” ativa a escuta (avatar acena)', async () => {
+  await test('“Ok, Ícaro” e “Let’s go, Ícaro” ativam; a pergunta chega à IA', async () => {
+    await fresh();
     await say(page, 'Ok Ícaro', true); await waitState(page, 'listening');
-    assert(await voiceActive(page), 'escuta não ficou ativa');
+    assert(await voiceActive(page), 'a ativação antiga não ficou ativa');
     assert((await page.evaluate(() => (window as any).__avatars.at(-1).state)) === 'listening', 'avatar não entrou em escuta');
+    await fresh();
+    const before = chatCalls.length;
+    await say(page, 'Let’s go, Ícaro', true); await waitState(page, 'listening');
+    assert(await voiceActive(page), 'Let’s go, Ícaro não ativou a escuta');
+    const micBackground = await page.locator('.stage[data-state="listening"] .mic')
+      .evaluate((el) => getComputedStyle(el).backgroundImage);
+    assert(micBackground.includes('255, 179, 71'), `estado amarelo ausente: ${micBackground}`);
+    const askedAt = Date.now();
+    await say(page, 'Por que o céu é azul?', true);
+    await waitState(page, 'talking', 2000);
+    const responseStart = Date.now() - askedAt;
+    assert(chatCalls.length === before + 1, `esperava uma pergunta para a IA; chamadas: ${chatCalls.length - before}`);
+    assert(chatCalls.at(-1)?.includes('céu é azul'), `pergunta enviada incorreta: ${chatCalls.at(-1)}`);
+    await waitState(page, 'idle');
+    return `resposta começou em ${responseStart} ms`;
   });
   await test('Pergunta real ponta a ponta (banco local + voz Gemini real)', async () => {
     await fresh(); mode.chat = 'real'; mode.tts = 'real';

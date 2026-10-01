@@ -11,7 +11,7 @@ import {
 
 const MODES: Array<[MicMode, string, string]> = [
   ['auto', 'Automático', 'Usa o navegador; no caso de falha compatível, oferece a transcrição pelo servidor.'],
-  ['browser', 'Navegador', 'Escuta contínua com “Ok, Ícaro”. Depende do serviço de voz do navegador.'],
+  ['browser', 'Navegador', 'Escuta contínua com “Ok, Ícaro” ou “Let’s go, Ícaro”. Depende do serviço de voz do navegador.'],
   ['server', 'Servidor (Whisper)', 'Toque no microfone, fale e pare: transcreve no servidor.'],
 ];
 
