@@ -119,6 +119,24 @@ const checks: Array<[string, () => void]> = [
   }],
 ];
 
+// --- Página de diagnóstico do microfone (/mic-test) ---
+const micPage = readFileSync(root + 'artifacts/icaro/src/pages/mic-test.tsx', 'utf8');
+const appRoutes = readFileSync(root + 'artifacts/icaro/src/App.tsx', 'utf8');
+const apiRoutes = readFileSync(root + 'artifacts/api-server/src/routes/index.ts', 'utf8');
+const apiMicTest = readFileSync(root + 'artifacts/api-server/src/routes/mic-test.ts', 'utf8');
+checks.push(
+  ['Página /mic-test existe e está registrada no roteador', () => {
+    assert.match(appRoutes, /path="\/mic-test" component=\{MicTest\}/);
+    assert.match(micPage, /rec\.lang = 'pt-BR'; rec\.interimResults = true; rec\.continuous = true/);
+  }],
+  ['Página /mic-test grava cada transcrição final no servidor', () => {
+    assert.match(micPage, /api\/mic-test[\s\S]{0,200}?credentials: 'include'/);
+    assert.match(apiRoutes, /"\/mic-test"\], requireAuth\(\)/);
+    assert.match(apiMicTest, /router\.post\("\/mic-test"/);
+    assert.match(apiMicTest, /router\.get\("\/mic-test"/);
+  }],
+);
+
 let failed = 0;
 for (const [name, fn] of checks) {
   try { fn(); console.log('  ok  ', name); }

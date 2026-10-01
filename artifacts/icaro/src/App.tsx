@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import Stage from '@/pages/stage';
+import MicTest from '@/pages/mic-test';
 import Analysis from '@/pages/analysis';
 import Assistant from '@/pages/assistant';
 import { LoginGate } from '@/components/login/login-gate';
@@ -20,6 +21,7 @@ function Router() {
     <ErrorBoundary resetKey={location}>
       <Switch>
         <Route path="/" component={Stage} />
+        <Route path="/mic-test" component={MicTest} />
         <Route>
           <Shelled />
         </Route>
