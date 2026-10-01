@@ -98,13 +98,58 @@ const checks: Array<[string, () => void]> = [
     assert.equal(gate.active, false);
   }],
 ];
-for (const phrase of ['O.K. Ícaro', 'O K Icaro', 'Okey, Ícaro', 'Ok I\u0301caro']) {
+for (const phrase of ['O.K. Ícaro', 'O K Icaro', 'Okey, Ícaro', 'Ok I\u0301caro',
+  // Como o reconhecimento do navegador realmente entrega "Ok, Ícaro":
+  'Ok e Caro', 'OK hicaro', 'Ok icaru', 'okei y caro', 'Ah, ok, Ícaro']) {
   checks.push([`Variação de transcrição "${phrase}" ativa sem enviar pergunta`, () => {
     const result = parseWakeCommand(phrase, false);
     assert.equal(result.wake, true);
     assert.equal(result.question, '');
   }]);
 }
+checks.push(
+  ['Variação "Ok e Caro" preserva a pergunta', () => {
+    assert.deepEqual(parseWakeCommand('Ok e Caro, o que é ativo?', false),
+      { stop: false, wake: true, question: 'o que é ativo?' });
+  }],
+  ['"e caro" sem ok não ativa', () => {
+    for (const text of ['e caro', 'é caro demais', 'um carro', 'ok carro']) {
+      assert.equal(parseWakeCommand(text, false).wake, false, text);
+    }
+  }],
+  ['Stop com nome transcrito separado também interrompe', () => {
+    assert.equal(parseWakeCommand('pare e caro', true).stop, true);
+    assert.equal(parseWakeCommand('Stop hicaro', false).stop, true);
+  }],
+);
+checks.push(
+  ['Frase sobre preço com "é caro" não ativa nem interrompe', () => {
+    assert.equal(parseWakeCommand('Ok, é caro demais', false).wake, false);
+    assert.equal(parseWakeCommand('Pare, é caro comprar isso', true).stop, false);
+    assert.equal(parseWakeCommand('Ok, é caro demais', false).question, '');
+  }],
+  ['Separadores antigos voltam a funcionar', () => {
+    assert.equal(parseWakeCommand('Ok-Ícaro', false).wake, true);
+    assert.equal(parseWakeCommand('Stop-Ícaro', true).stop, true);
+    assert.deepEqual(parseWakeCommand('Ok, Ícaro.qual é a hora?', false),
+      { stop: false, wake: true, question: 'qual é a hora?' });
+  }],
+  ['Wake interim revogado no final não autoriza pergunta', () => {
+    const gate = new WakeTurnGate();
+    const interim = gate.receive('Ok e caro', false, 0, 0, false);
+    assert.ok(interim.some((e) => e.type === 'wake'), 'interim deveria ativar');
+    const final = gate.receive('O que é caro demais', true, 0, 300, false);
+    assert.equal(final.some((e) => e.type === 'question'), false);
+    assert.equal(gate.active, false, 'ativação revogada deveria desarmar');
+    assert.equal(gate.pending, false);
+  }],
+  ['Wake interim confirmado no final continua valendo', () => {
+    const gate = new WakeTurnGate();
+    gate.receive('Ok Ícaro', false, 0, 0, false);
+    const final = gate.receive('Ok, Ícaro, qual é a hora?', true, 0, 300, false);
+    assert.ok(final.some((e) => e.type === 'question'));
+  }],
+);
 checks.push(
   ['Prefixo interim incompleto pode evoluir para uma ativação na espera', () => {
     const gate = new WakeTurnGate();

@@ -63,6 +63,18 @@ export class WakeTurnGate {
   receive(text: string, final: boolean, index: number, now: number, busy: boolean, echo = false, interruptibleWait = false): WakeEvent[] {
     if (this.completed.has(index)) return [];
     const command = parseWakeCommand(text, this.active);
+    // Um wake disparado por um interim vale só se a versão final do MESMO
+    // resultado ainda contém a ativação. Se o navegador corrigir "Ok e caro"
+    // para "o que é caro demais", a ativação é revogada e o texto não vira pergunta.
+    if (final && this.woken.has(index) && !command.wake && !command.stop) {
+      this.woken.delete(index);
+      this.completed.add(index);
+      if (this.active && !this.pending) {
+        this.stop();
+        return [{ type: 'expired' }];
+      }
+      return [];
+    }
     // A suppressed result never becomes a wake or question. A fragment dropped
     // only because Ícaro was busy ("pare") may still grow into an explicit Stop;
     // results identified as playback echo never can.
