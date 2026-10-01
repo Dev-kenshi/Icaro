@@ -226,13 +226,13 @@ async function main() {
     assert((await page.evaluate(() => (window as any).__avatars.at(-1).state)) === 'listening', 'avatar não entrou em escuta');
     await fresh();
     const before = chatCalls.length;
-    await say(page, 'Let’s go, Ícaro', true); await waitState(page, 'listening');
+    await speakLike(page, 'Let’s go, Ícaro'); await waitState(page, 'listening');
     assert(await voiceActive(page), 'Let’s go, Ícaro não ativou a escuta');
     const micBackground = await page.locator('.stage[data-state="listening"] .mic')
       .evaluate((el) => getComputedStyle(el).backgroundImage);
     assert(micBackground.includes('255, 179, 71'), `estado amarelo ausente: ${micBackground}`);
     const askedAt = Date.now();
-    await say(page, 'Por que o céu é azul?', true);
+    await speakLike(page, 'Por que o céu é azul?');
     await waitState(page, 'talking', 2000);
     const responseStart = Date.now() - askedAt;
     assert(chatCalls.length === before + 1, `esperava uma pergunta para a IA; chamadas: ${chatCalls.length - before}`);
