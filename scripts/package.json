@@ -18,7 +18,8 @@
     "validate:pipeline": "tsx ./src/validate-voice-pipeline.ts",
     "validate:conhecimento": "tsx ./src/validate-conhecimento.ts",
     "validate:stream": "tsx ./src/validate-stream.ts",
-    "validate:all": "pnpm run validate:auth && pnpm run validate:routing && pnpm run validate:stats && pnpm run validate:pipeline && pnpm run validate:conhecimento"
+    "validate:all": "pnpm run validate:auth && pnpm run validate:routing && pnpm run validate:stats && pnpm run validate:pipeline && pnpm run validate:conhecimento",
+    "validate:listen": "tsx ./src/validate-listen.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",
