@@ -6,7 +6,6 @@ import {
   type IcaroWord,
   loadIcaroAvatarLibrary,
 } from './icaro-avatar';
-import { getVoiceMode, synthLocal, type VoiceMode } from './local-voice';
 
 export const VOICE_RE = /antonio.*natural|donato|fabio|humberto|julio|nicolau|valerio|leandro|daniel|felipe|google.*portugu/i;
 
@@ -51,9 +50,6 @@ let token = 0;
 let currentRun: SpeechRun | null = null;
 let outputMeterRaf = 0;
 let outputMeterBuffer = new Uint8Array(1024);
-// Depois do 1º 503 do /api/tts-ts (ElevenLabs não configurado), não perguntamos de novo:
-// cada frase economiza uma ida ao servidor e a voz reserva passa a ser pré-buscada em paralelo.
-let ttsTimestampsUnavailable = false;
 
 interface SpeechRun {
   id: number;
@@ -63,8 +59,6 @@ interface SpeechRun {
   started: boolean;
   completed: boolean;
   usedFallback: boolean;
-  usedLocal: boolean;
-  voiceMode: VoiceMode;
   error: Error | null;
   pendingTimeline: IcaroTimeline | null;
   pendingClock: (() => number) | null;
@@ -72,10 +66,6 @@ interface SpeechRun {
   words: IcaroWord[];
   startWatchdog?: number;
   aborts: Set<AbortController>;
-  /** Streaming: o texto ainda está chegando; a fila pode esvaziar sem que a fala tenha acabado. */
-  streaming?: boolean;
-  streamEnded?: boolean;
-  drained?: boolean;
 }
 
 function asError(error: unknown, fallback: string): Error {
@@ -189,9 +179,8 @@ function revealAudioStart(run: SpeechRun) {
   if (!timeline) return;
   run.started = true;
   run.avatar.speak(timeline, clock);
-  const label = run.usedLocal ? 'Voz local (Piper)' : run.usedFallback ? 'Gemini Charon' : 'ElevenLabs';
-  run.options.onProvider?.(label);
-  lastProvider = label;
+  run.options.onProvider?.(run.usedFallback ? 'Gemini Charon' : 'ElevenLabs');
+  lastProvider = run.usedFallback ? 'Gemini Charon' : 'ElevenLabs';
   run.options.onStart();
 }
 
@@ -267,8 +256,6 @@ function createRunEngine(run: SpeechRun, Constructor: NonNullable<Window['IcaroS
     },
     onEnd() {
       if (!isCurrent(run)) return;
-      // A voz alcançou o texto, mas o LLM ainda está escrevendo: espera a próxima frase.
-      if (run.streaming && !run.streamEnded && !run.error) { run.drained = true; return; }
       const error = run.error ?? (!run.started ? new Error('Nenhum áudio foi iniciado.') : undefined);
       completeRun(run, error);
     },
@@ -295,25 +282,7 @@ function createRunEngine(run: SpeechRun, Constructor: NonNullable<Window['IcaroS
 
   const originalFetch = engine._fetch.bind(engine);
   engine._fetch = (item, generation) => {
-    const sentence = (item as { text: string }).text;
-    let source: Promise<unknown>;
-    if (run.voiceMode === 'local') {
-      // Voz local: sem rede e sem cota; cada frase é pedida ao Worker assim que entra na fila.
-      const controller = new AbortController();
-      run.aborts.add(controller);
-      source = synthLocal(sentence, controller.signal)
-        .then((wav) => decodeWithEstimatedTimeline(wav, sentence))
-        .then((data) => { if (isCurrent(run)) run.usedLocal = true; return data; })
-        .finally(() => run.aborts.delete(controller));
-    } else if (ttsTimestampsUnavailable) {
-      source = fetchGeminiAudio(run, sentence).then((wav) => decodeWithEstimatedTimeline(wav, sentence));
-    } else {
-      source = originalFetch(item, generation).catch((error: unknown) => {
-        if (error instanceof Error && /\btts 503\b/.test(error.message)) ttsTimestampsUnavailable = true;
-        throw error;
-      });
-    }
-    const request = source.then((data) => {
+    const request = originalFetch(item, generation).then((data) => {
       validateDecoded(data);
       return data;
     });
@@ -349,22 +318,6 @@ function createRunEngine(run: SpeechRun, Constructor: NonNullable<Window['IcaroS
     return pump;
   };
   return engine;
-}
-
-export function splitForFastStart(sentences: string[]): string[] {
-  const [first, ...rest] = sentences;
-  if (!first || first.length <= 50) return sentences;
-  const m = /^(.{15,45}?,)\s+(.{10,})$/s.exec(first);
-  return m ? [m[1], m[2], ...rest] : sentences;
-}
-
-async function decodeWithEstimatedTimeline(wav: ArrayBuffer, text: string): Promise<{ audio: AudioBuffer; tl: IcaroTimeline }> {
-  const visemes = window.IcaroVisemes;
-  if (!visemes) throw new Error('A biblioteca de visemas não foi carregada.');
-  const audio = await ensureSharedAudioContext().decodeAudioData(wav);
-  // Mesmo cálculo da voz reserva do pacote: alinhamento estimado pela duração real do áudio.
-  const alignment = visemes.synthAlignment(text, text.length / Math.max(audio.duration - 0.1, 0.3));
-  return { audio, tl: visemes.buildTimeline(alignment) };
 }
 
 async function fetchGeminiAudio(run: SpeechRun, text: string): Promise<ArrayBuffer> {
@@ -543,8 +496,6 @@ export function speak(text: string, options: SpeakOpts) {
         started: false,
         completed: false,
         usedFallback: false,
-        usedLocal: false,
-        voiceMode: getVoiceMode(),
         error: null,
         pendingTimeline: null,
         pendingClock: null,
@@ -557,16 +508,7 @@ export function speak(text: string, options: SpeakOpts) {
       currentRun = run;
       player = engine;
       try {
-        let done: Promise<unknown>;
-        if (run.voiceMode === 'local' && window.IcaroVisemes) {
-          // A 1ª frase longa é cortada na primeira vírgula: o primeiro trecho é sintetizado
-          // em uma fração do tempo e o restante é gerado enquanto ele já está tocando.
-          engine.unlock();
-          for (const chunk of splitForFastStart(window.IcaroVisemes.splitSentences(text))) engine._enqueue(chunk);
-          done = engine.flush();
-        } else {
-          done = engine.say(text);
-        }
+        const done = engine.say(text);
         void done.catch((error: unknown) => {
           if (!isCurrent(run)) return;
           run.error = asError(error, 'A reprodução da fala falhou.');
@@ -588,134 +530,6 @@ export function speak(text: string, options: SpeakOpts) {
     }
   };
   void begin();
-}
-
-export interface SpeechStream {
-  /** Pedaço de texto do LLM: cada frase que fecha já vai para a voz. */
-  feed(text: string): void;
-  /** O texto acabou: fala o resto e termina. */
-  end(): void;
-}
-
-/**
- * Fala em streaming: começa a sintetizar a 1ª frase enquanto o LLM ainda escreve as próximas.
- * `opener` é uma frase curta dita na hora (máscara de espera), antes da resposta.
- */
-export function speakStream(options: SpeakOpts, opener?: string): SpeechStream {
-  stopSpeaking();
-  const my = ++token;
-  const activeAvatar = avatar;
-  let buffered = '';
-  let ended = false;
-  let run: SpeechRun | null = null;
-
-  // Divisor próprio: libera cada trecho assim que fecha uma frase, juntando ganchos curtos
-  // ("Pensa comigo.") à frase seguinte em vez de travar a fila até o fim do texto.
-  let pending = '';
-  const BOUNDARY = /[.!?…]+(?=\s)/g;
-  const drainSentences = (r: SpeechRun) => {
-    while (true) {
-      BOUNDARY.lastIndex = 0;
-      let cut = -1;
-      for (let m = BOUNDARY.exec(pending); m; m = BOUNDARY.exec(pending)) {
-        const end = m.index + m[0].length;
-        if (pending.slice(0, end).trim().length >= 18) { cut = end; break; }
-      }
-      if (cut < 0) return;
-      const sentence = pending.slice(0, cut).trim();
-      pending = pending.slice(cut);
-      r.drained = false;
-      r.engine._enqueue(sentence);
-    }
-  };
-  const flushRest = (r: SpeechRun) => {
-    const rest = pending.trim();
-    pending = '';
-    if (!rest) return;
-    r.drained = false;
-    const split = window.IcaroVisemes?.splitSentences(rest) ?? [rest];
-    for (const sentence of split) r.engine._enqueue(sentence);
-  };
-
-  const finishWhenDrained = (r: SpeechRun) => {
-    r.streamEnded = true;
-    if (r.drained && isCurrent(r)) completeRun(r, r.error ?? (!r.started ? new Error('Nenhum áudio foi iniciado.') : undefined));
-  };
-  const watch = (r: SpeechRun, done: Promise<unknown>) => {
-    void done.catch((error: unknown) => {
-      if (!isCurrent(r)) return;
-      r.error = asError(error, 'A reprodução da fala falhou.');
-      completeRun(r, r.error, true);
-    });
-  };
-
-  void (async () => {
-    try {
-      await loadIcaroAvatarLibrary();
-      if (my !== token) return;
-      const Constructor = window.IcaroSpeech;
-      if (!Constructor) throw new Error('A biblioteca de voz do Ícaro não foi carregada.');
-      if (!activeAvatar || avatar !== activeAvatar) throw new Error('O rosto do Ícaro ainda não está pronto.');
-      ensureSharedAudioContext();
-      const r: SpeechRun = {
-        id: my,
-        engine: null as unknown as IcaroSpeechInstance,
-        avatar: activeAvatar,
-        options,
-        started: false,
-        completed: false,
-        usedFallback: false,
-        usedLocal: false,
-        voiceMode: getVoiceMode(),
-        error: null,
-        pendingTimeline: null,
-        pendingClock: null,
-        sentenceText: '',
-        words: [],
-        aborts: new Set<AbortController>(),
-        streaming: true,
-      };
-      const engine = createRunEngine(r, Constructor);
-      currentRun = r;
-      player = engine;
-      run = r;
-      engine.unlock();
-      if (opener?.trim()) engine._enqueue(opener.trim());
-      if (buffered) { pending += buffered; buffered = ''; drainSentences(r); }
-      if (ended) { flushRest(r); watch(r, engine.flush()); finishWhenDrained(r); }
-    } catch (error) {
-      if (my !== token) return;
-      if (run && isCurrent(run)) completeRun(run, asError(error, 'Não foi possível preparar a fala.'), true);
-      else {
-        console.error('Não foi possível preparar a fala do Ícaro.', error);
-        options.onError?.(`Não foi possível iniciar o áudio do Ícaro: ${asError(error, 'erro de áudio').message}`);
-        options.onEnd();
-      }
-    }
-  })();
-
-  return {
-    feed(text) {
-      if (my !== token || !text) return;
-      const r = run;
-      if (!r) { buffered += text; return; }
-      if (!isCurrent(r)) return;
-      pending += text;
-      drainSentences(r);
-    },
-    end() {
-      if (my !== token) return;
-      const r = run;
-      if (!r) { ended = true; return; }
-      if (!isCurrent(r)) return;
-      flushRest(r);
-      watch(r, r.engine.flush());
-      // flush() de uma fila vazia não dispara onEnd: se nada ficou pendente, encerra aqui.
-      const idle = !(r.engine as unknown as { queue?: unknown[] }).queue?.length && !(r.engine as unknown as { active?: number }).active;
-      if (idle) r.drained = true;
-      finishWhenDrained(r);
-    },
-  };
 }
 
 export function setSpeechAvatar(next: IcaroAvatarInstance | null) {

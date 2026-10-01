@@ -76,111 +76,41 @@ export class GroqServiceError extends Error {
   }
 }
 
-/** Modelos de raciocínio (gpt-oss, qwen3) pensam antes de responder; em voz ao vivo, pensar pouco. */
-export function groqReasoningParams(model: string): Record<string, unknown> {
-  if (/gpt-oss/i.test(model)) return { reasoning_effort: "low", include_reasoning: false };
-  if (/qwen3/i.test(model)) return { reasoning_effort: "none" };
-  return {};
-}
-
 export function createGroqTextService(options: GroqTextServiceOptions) {
   const fetchImpl = options.fetchImpl ?? fetch;
   const timeoutMs = options.timeoutMs ?? 60_000;
 
-  async function request(input: GroqTextInput, stream: boolean, signal?: AbortSignal): Promise<{ response: Response; model: string }> {
-    const apiKey = options.getApiKey();
-    if (!apiKey) {
-      throw new GroqServiceError("Groq API key is not configured.", "missing_key");
-    }
-    const model = options.getModel?.() ?? getGroqModel();
-    const base = {
-      model,
-      messages: [
-        { role: "system", content: input.systemPrompt },
-        ...input.history,
-        { role: "user", content: input.userMessage },
-      ],
-      max_tokens: input.maxTokens ?? 1536,
-      ...(stream ? { stream: true } : {}),
-    };
-    const timeout = AbortSignal.timeout(timeoutMs);
-    const send = (body: Record<string, unknown>) => fetchImpl("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(body),
-      signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
-    });
-    const extra = groqReasoningParams(model);
-    let response: Response;
-    try {
-      response = await send({ ...base, ...extra });
-      // Se a conta/modelo não aceitar os parâmetros de raciocínio, repete sem eles.
-      if (response.status === 400 && Object.keys(extra).length) {
-        await response.body?.cancel().catch(() => undefined);
-        response = await send(base);
-      }
-    } catch {
-      throw new GroqServiceError("Groq request failed.", "request_failed");
-    }
-    if (!response.ok) {
-      const errorCode = await getGroqProviderErrorCode(response);
-      throw new GroqServiceError(
-        response.status === 429 ? "Groq rate limit reached." : "Groq request failed.",
-        response.status === 429 ? "rate_limit" : "request_failed",
-        response.status,
-        errorCode,
-      );
-    }
-    return { response, model };
-  }
-
   return {
-    /** Streaming: devolve o texto aos pedaços, assim que a Groq gera (SSE do formato OpenAI). */
-    async *streamAnswer(input: GroqTextInput, signal?: AbortSignal): AsyncGenerator<string, { model: string }> {
-      const { response, model } = await request(input, true, signal);
-      if (!response.body) throw new GroqServiceError("Groq returned no stream.", "invalid_response");
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let finalModel = model;
-      try {
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          let nl: number;
-          while ((nl = buffer.indexOf("\n")) >= 0) {
-            const line = buffer.slice(0, nl).trim();
-            buffer = buffer.slice(nl + 1);
-            if (!line.startsWith("data:")) continue;
-            const data = line.slice(5).trim();
-            if (data === "[DONE]") return { model: finalModel };
-            let chunk: { model?: unknown; choices?: Array<{ delta?: { content?: unknown } }> };
-            try { chunk = JSON.parse(data); } catch { continue; }
-            if (typeof chunk.model === "string" && chunk.model) finalModel = chunk.model;
-            const text = chunk.choices?.[0]?.delta?.content;
-            if (typeof text === "string" && text) yield text;
-          }
-        }
-      } catch (error) {
-        if (signal?.aborted) return { model: finalModel };
-        throw error instanceof GroqServiceError ? error : new GroqServiceError("Groq stream failed.", "request_failed");
-      } finally {
-        reader.releaseLock();
-      }
-      return { model: finalModel };
-    },
-
     async generateAnswer(input: GroqTextInput): Promise<GroqTextResult> {
-      const { response, model } = await request(input, false);
-      return parseAnswer(response, model);
-    },
-  };
+      const apiKey = options.getApiKey();
+      if (!apiKey) {
+        throw new GroqServiceError("Groq API key is not configured.", "missing_key");
+      }
 
-  async function parseAnswer(response: Response, model: string): Promise<GroqTextResult> {
+      const model = options.getModel?.() ?? getGroqModel();
+      let response: Response;
+      try {
+        response = await fetchImpl("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: "system", content: input.systemPrompt },
+              ...input.history,
+              { role: "user", content: input.userMessage },
+            ],
+            max_tokens: input.maxTokens ?? 1536,
+          }),
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+      } catch {
+        throw new GroqServiceError("Groq request failed.", "request_failed");
+      }
+
       if (!response.ok) {
         const errorCode = await getGroqProviderErrorCode(response);
         if (response.status === 429) {
@@ -224,5 +154,6 @@ export function createGroqTextService(options: GroqTextServiceOptions) {
           ? payload.model
           : model,
       };
-  }
+    },
+  };
 }

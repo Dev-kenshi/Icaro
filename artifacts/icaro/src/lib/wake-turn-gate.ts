@@ -1,57 +1,15 @@
 import { parseWakeCommand } from './wake-commands';
 
-export const QUESTION_WINDOW_MS = 15_000;
+export const QUESTION_WINDOW_MS = 12_000;
 export const OUTPUT_ECHO_GUARD_MS = 450;
-export const UTTERANCE_SILENCE_MS = 1_200;
-export const UTTERANCE_MAX_MS = 15_000;
-export const UTTERANCE_DEADLINE_GRACE_MS = 1_700;
+const INTERIM_INCOMPLETE_ENDINGS = new Set([
+  'a', 'o', 'as', 'os', 'um', 'uma', 'de', 'da', 'do', 'das', 'dos', 'em', 'no', 'na',
+  'e', 'ou', 'que', 'qual', 'quais', 'como', 'quando', 'onde', 'sobre', 'para', 'por',
+  'é', 'sera', 'será', 'proximo', 'próximo', 'proxima', 'próxima',
+]);
 export type WakeEvent =
   | { type: 'wake' | 'stop' | 'expired' }
-  | { type: 'transcript'; text: string; index: number }
-  | { type: 'question'; text: string };
-
-/** Collect interim revisions and adjacent final segments into one spoken turn. */
-export class SpeechUtteranceBuffer {
-  private readonly segments = new Map<number, string>();
-  private startedAt: number | null = null;
-  private lastUpdateAt = 0;
-
-  get empty() { return this.startedAt === null; }
-
-  update(index: number, text: string, now: number) {
-    if (this.startedAt === null) this.startedAt = now;
-    this.segments.set(index, text.trim());
-    this.lastUpdateAt = now;
-    return this.text;
-  }
-
-  get text() {
-    return [...this.segments.entries()]
-      .sort(([a], [b]) => a - b)
-      .map(([, segment]) => segment)
-      .filter(Boolean)
-      .join(' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
-
-  shouldFlush(now: number) {
-    return this.startedAt !== null &&
-      (now - this.startedAt >= UTTERANCE_MAX_MS || now - this.lastUpdateAt >= UTTERANCE_SILENCE_MS);
-  }
-
-  take() {
-    const text = this.text;
-    this.clear();
-    return text;
-  }
-
-  clear() {
-    this.segments.clear();
-    this.startedAt = null;
-    this.lastUpdateAt = 0;
-  }
-}
+  | { type: 'transcript' | 'question'; text: string };
 
 /** One deliberate activation authorizes ONE utterance, never an open-ended
  * conversation. This gate also remembers interim output echoes until final. */
@@ -81,20 +39,28 @@ export class WakeTurnGate {
     return true;
   }
 
-  beginCapture(now: number) {
-    if (this.active && !this.pending) this.deadline = now + UTTERANCE_MAX_MS + UTTERANCE_DEADLINE_GRACE_MS;
-  }
-
-  submitQuestion(text: string, now: number): WakeEvent[] {
-    if (!this.active || this.pending) return [];
+  /** Confirma uma transcrição interim somente após o cliente observar que ela
+   * ficou estável. O índice entra em `completed`, então o resultado final do
+   * navegador não pode despachar a mesma pergunta outra vez. */
+  commitInterim(index: number, text: string, now: number, busy = false, echo = false): WakeEvent[] {
+    if (!this.active || this.pending || this.completed.has(index) || this.suppressed.has(index)) return [];
     if (this.expire(now)) return [{ type: 'expired' }];
-    const question = text.replace(/\s+/g, ' ').trim();
-    if (!question || !/[\p{L}\p{N}]/u.test(question) || /^(?:ah|ahn|hum|hmm|é|eh|uh|ok)[.!?\s]*$/i.test(question)) return [];
+    if (busy || echo || now < this.quietUntil) {
+      this.suppressed.add(index);
+      if (echo || now < this.quietUntil) this.echoed.add(index);
+      return [];
+    }
+    const question = text.trim();
+    const words = question.split(/\s+/).filter(Boolean);
+    const last = words.at(-1)?.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase() || '';
+    const reliableInterim = words.length >= 4 && question.length >= 14 && !INTERIM_INCOMPLETE_ENDINGS.has(last);
+    if (!question || !/[\p{L}\p{N}]/u.test(question) || /^(?:ah|ahn|hum|hmm|é|eh|uh|ok)[.!?\s]*$/i.test(question) || !reliableInterim) return [];
+    this.completed.add(index);
     this.active = false; this.deadline = 0; this.pending = true;
     return [{ type: 'question', text: question }];
   }
 
-  receive(text: string, final: boolean, index: number, now: number, busy: boolean, echo = false, interruptibleWait = false, directMode = false, deferQuestion = false): WakeEvent[] {
+  receive(text: string, final: boolean, index: number, now: number, busy: boolean, echo = false, interruptibleWait = false): WakeEvent[] {
     if (this.completed.has(index)) return [];
     const command = parseWakeCommand(text, this.active);
     // A suppressed result never becomes a wake or question. A fragment dropped
@@ -116,13 +82,6 @@ export class WakeTurnGate {
     // An explicit wake may cancel a pending answer/voice preparation, but never
     // playback or its delayed echoes. Ambient speech cannot clear the pending turn.
     if (interruptibleWait && command.wake && !echo && now >= this.quietUntil && this.pending) this.stop();
-    const events: WakeEvent[] = [];
-    // Direct mode is an explicit user opt-in: each recognized utterance can
-    // start one turn without the wake phrase, but never while busy or echoing.
-    if (directMode && !this.active && !this.pending && !busy && !echo && now >= this.quietUntil && !command.wake) {
-      this.arm(now);
-      events.push({ type: 'wake' });
-    }
     if ((busy && !interruptibleWait) || this.pending || now < this.quietUntil || echo) {
       // While merely waiting, "Ok" can be the first interim fragment of a new
       // wake. Do not permanently suppress it before the full phrase arrives.
@@ -134,6 +93,7 @@ export class WakeTurnGate {
       if (final) this.completed.add(index);
       return [];
     }
+    const events: WakeEvent[] = [];
     if (this.expire(now)) events.push({ type: 'expired' });
     if (command.wake && !this.woken.has(index)) {
       this.woken.add(index); this.arm(now);
@@ -142,12 +102,10 @@ export class WakeTurnGate {
     if (!this.active) { if (final) this.completed.add(index); return events; }
     // Parse again after expiration/wake; a wake-only phrase is never a question.
     const question = parseWakeCommand(text, this.active).question;
-    if (question && /[\p{L}\p{N}]/u.test(question) && (!final || deferQuestion)) {
-      events.push({ type: 'transcript', text: question, index });
-    }
+    if (question && /[\p{L}\p{N}]/u.test(question)) events.push({ type: 'transcript', text: question });
     if (final) {
       this.completed.add(index);
-      if (!deferQuestion && question && /[\p{L}\p{N}]/u.test(question) && !/^(?:ah|ahn|hum|hmm|é|eh|uh|ok)[.!?\s]*$/i.test(question)) {
+      if (question && /[\p{L}\p{N}]/u.test(question) && !/^(?:ah|ahn|hum|hmm|é|eh|uh|ok)[.!?\s]*$/i.test(question)) {
         this.active = false; this.deadline = 0; this.pending = true;
         events.push({ type: 'question', text: question });
       }

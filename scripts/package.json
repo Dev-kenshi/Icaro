@@ -11,15 +11,7 @@
     "validate:groq": "tsx ./src/validate-groq.ts",
     "validate:knowledge": "tsx ./src/validate-fast-knowledge.ts",
     "validate:e2e": "tsx ./src/validate-e2e.ts",
-    "validate:voice-output": "tsx ./src/validate-voice-output.ts",
-    "validate:auth": "tsx ./src/validate-auth.ts",
-    "validate:routing": "tsx ./src/validate-routing.ts",
-    "validate:stats": "tsx ./src/validate-stats.ts",
-    "validate:pipeline": "tsx ./src/validate-voice-pipeline.ts",
-    "validate:conhecimento": "tsx ./src/validate-conhecimento.ts",
-    "validate:stream": "tsx ./src/validate-stream.ts",
-    "validate:all": "pnpm run validate:auth && pnpm run validate:routing && pnpm run validate:stats && pnpm run validate:pipeline && pnpm run validate:conhecimento",
-    "validate:listen": "tsx ./src/validate-listen.ts"
+    "validate:voice-output": "tsx ./src/validate-voice-output.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",

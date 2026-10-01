@@ -104,7 +104,7 @@ router.post("/tts-ts", async (req, res): Promise<void> => {
   const timeout = setTimeout(() => {
     timedOut = true;
     controller.abort();
-  }, Number(process.env.TTS_TIMEOUT_MS) || 8_000);
+  }, 30_000);
   const abortForDisconnect = () => controller.abort();
   const abortForClosedResponse = () => {
     if (!res.writableEnded) controller.abort();
@@ -118,7 +118,7 @@ router.post("/tts-ts", async (req, res): Promise<void> => {
       previousText: parsed.data.previous_text || "",
       apiKey,
       voiceId,
-      modelId: process.env.ELEVENLABS_MODEL || "eleven_flash_v2_5",
+      modelId: process.env.ELEVENLABS_MODEL || "eleven_multilingual_v2",
       signal: controller.signal,
     });
 

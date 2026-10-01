@@ -12,8 +12,6 @@ import { createSpeechEngine, DEFAULT_GEMINI_TTS_MODELS, SpeechUnavailableError }
 import { applyTtsPronunciation } from "../lib/tts-timestamps";
 import { normalizeAnswerText } from "../lib/answer-text";
 import { resolveKnowledgeAnswer } from "../lib/knowledge-bank";
-import { brainFor, knowledge, recordAsk } from "../lib/brain";
-import { PRESENTER_STYLE, presenterize } from "../lib/presenter";
 import {
   createGroqTextService,
   getGroqApiKey,
@@ -105,13 +103,11 @@ const ICARO_PERSONA = [
   "Você fala com o professor Rômulo e com os alunos, em sala de aula.",
   "Fale sempre em português do Brasil, em primeira pessoa como ÍCARO, com tom cordial, confiante e didático.",
   "Só fale quando houver uma pergunta ou solicitação explícita; nunca inicie falas proativamente.",
-  "Não afirme que o microfone está bloqueado por uma regra da aula, que só o professor pode falar ou que perguntas por voz são proibidas. A entrada por voz depende da permissão do navegador e dos controles do usuário: no modo padrão, há uma palavra de ativação; no modo direto, o usuário pode autorizar perguntas sem ela. Para ativar a voz de saída, o usuário pode usar o botão “Ativar áudio”; isso é separado da palavra de ativação.",
-  "Suas respostas são faladas em voz alta, no palco, para uma plateia. Frases inteiras: nunca corte uma frase no meio. Só seja mais curto se pedirem uma resposta rápida.",
+  "Suas respostas são faladas em voz alta. Dê respostas completas e bem explicadas: de 5 a 8 frases (cerca de 90 a 150 palavras), com contexto, explicação e, quando útil, um exemplo prático. Só seja mais curto se pedirem uma resposta rápida.",
   "Não use markdown, asteriscos, tabelas, emojis nem marcadores de lista. Para enumerar, diga primeiro, segundo, terceiro.",
   "Especialidades: contabilidade, finanças, auditoria, tributos, custos, ciência de dados, análise de dados e tecnologia contábil. Também responde perguntas gerais.",
   "Não invente leis, normas ou números. Se não souber, diga isso.",
   "Nunca diga que é o ChatGPT, a OpenAI, o Claude ou o Gemini. Você é o ÍCARO.",
-  PRESENTER_STYLE,
 ].join("\n");
 
 function icaroInstructions(datasetContext: string) {
@@ -207,76 +203,26 @@ router.post("/ai/chat", async (req, res) => {
     ? icaroInstructions(datasetContext)
     : analystInstructions(datasetContext);
   const userMessage = input.question.trim();
-  const responseTokenLimit = input.persona === "icaro" ? 1400 : 8192;
+  const responseTokenLimit = input.persona === "icaro" ? 1024 : 8192;
 
   if (!userMessage) {
     res.status(400).json({ error: "Escreva uma pergunta antes de enviar." });
     return;
   }
 
-  let brainContext = "";
-  let systemPromptFinal = systemPrompt;
-  const t0 = Date.now();
-  let fonte: "banco" | "base" | "ia" = "ia";
-  let confianca = 0;
-  let thoughts: Array<{ k: string; t: string }> = [];
-  const origJson = res.json.bind(res);
-  res.json = ((body: unknown) => {
-    if (res.statusCode < 400 && body && typeof body === "object" && "answer" in body) {
-      const ms = Date.now() - t0;
-      recordAsk(fonte, ms);
-      req.log.info({ fonte, confianca, ms }, "ask answered");
-      return origJson({ ...body, fonte, confianca, thoughts });
-    }
-    return origJson(body);
-  }) as typeof res.json;
   if (input.persona === "icaro" && !input.dataset) {
-    const brain = brainFor(req.ip || "anon");
-    const r = brain.answer(userMessage);
-    thoughts = ((r as { thoughts?: typeof thoughts }).thoughts ?? []).slice();
-    fonte = "banco";
-    confianca = (r as { score?: number }).score ?? 0;
-    if (r.mode === "local" && r.text) {
-      res.json(SendAiMessageResponse.parse({ answer: normalizeAnswerText(presenterize(r.text, r.cat === "Conversa" ? "conversa" : "conteudo")), provider: "local", model: "icaro-brain" }));
-      return;
-    }
-    if (r.mode === "puzzle" && r.parts) {
-      const gap = r.parts.find((p) => p.tipo === "lacuna");
-      try {
-        let filled = "";
-        if (gap && gap.tipo === "lacuna" && getGroqApiKey()) {
-          const g = await groq.generateAnswer({ systemPrompt: ICARO_PERSONA, history: [], userMessage: gap.prompt, maxTokens: 90 });
-          filled = g.answer;
-        }
-        const text = r.parts.map((p) => (p.tipo === "lacuna" ? filled : p.texto)).filter(Boolean).join(" ");
-        res.json(SendAiMessageResponse.parse({ answer: normalizeAnswerText(text), provider: "local", model: "icaro-brain+groq" }));
-        return;
-      } catch (error) {
-        req.log.warn({ err: error }, "Brain gap fill failed; falling back to provider");
-      }
-    }
-    fonte = "ia";
-    const k = knowledge.responder(userMessage);
-    confianca = k.confianca;
-    if (k.trechos[0]) thoughts.push({ k: "consulta", t: `Base de conhecimento · ${k.trechos[0].titulo}` });
-    if (k.modo === "base") {
-      fonte = "base";
-      res.json(SendAiMessageResponse.parse({ answer: normalizeAnswerText(presenterize(k.texto, "conteudo")), provider: "local", model: "icaro-base" }));
-      return;
-    }
-    if (k.modo === "contexto" && k.contexto) {
-      brainContext = `${k.contexto}\nResponda com frases completas e bem explicadas, de 4 a 6 frases, sem cortar frase no meio.`;
-    } else if (r.mode === "hint" && r.context) {
-      brainContext = r.context.split("\n").slice(0, 3).join("\n");
-    }
     const localAnswer = resolveKnowledgeAnswer(userMessage);
-    if (localAnswer && r.mode !== "hint" && k.modo === "nada") {
-      fonte = "base";
-      res.json(SendAiMessageResponse.parse({ answer: normalizeAnswerText(localAnswer.answer), provider: "local", model: "knowledge-bank-v1" }));
+    if (localAnswer) {
+      res.json(
+        SendAiMessageResponse.parse({
+          answer: normalizeAnswerText(localAnswer.answer),
+          provider: "local",
+          model: "knowledge-bank-v1",
+        }),
+      );
       return;
     }
   }
-  if (brainContext) systemPromptFinal = `${systemPrompt}\n\nReferências (use se forem pertinentes):\n${brainContext}`;
 
   if (input.provider === "gemini") {
     const apiKey = getGeminiKey();
@@ -305,7 +251,7 @@ router.post("/ai/chat", async (req, res) => {
             "x-goog-api-key": apiKey,
           },
           body: JSON.stringify({
-            systemInstruction: { parts: [{ text: systemPromptFinal }] },
+            systemInstruction: { parts: [{ text: systemPrompt }] },
             contents,
             generationConfig: { maxOutputTokens: responseTokenLimit },
           }),
@@ -376,7 +322,7 @@ router.post("/ai/chat", async (req, res) => {
         body: JSON.stringify({
           model: OPENAI_MODEL,
           messages: [
-            { role: "system", content: systemPromptFinal },
+            { role: "system", content: systemPrompt },
             ...input.history.map((message) => ({
               role: message.role,
               content: message.content,
@@ -465,7 +411,7 @@ router.post("/ai/chat", async (req, res) => {
 
     try {
       const result = await groq.generateAnswer({
-        systemPrompt: systemPromptFinal,
+        systemPrompt,
         history: input.history.map((message) => ({
           role: message.role,
           content: message.content,
@@ -561,7 +507,7 @@ router.post("/ai/chat", async (req, res) => {
       body: JSON.stringify({
         model: CLAUDE_MODEL,
         max_tokens: responseTokenLimit,
-        system: systemPromptFinal,
+        system: systemPrompt,
         messages: [
           ...input.history.map((message) => ({
             role: message.role,
@@ -611,150 +557,6 @@ router.post("/ai/chat", async (req, res) => {
     res.status(502).json({
       error: "Não foi possível conectar ao Claude. Tente novamente em instantes.",
     });
-  }
-});
-
-/**
- * Streaming (SSE) para o palco: o texto sai em pedaços assim que existe, e o front já
- * sintetiza e fala cada frase fechada. Eventos:
- *   meta  {fonte, thoughts}          → chega em milissegundos (o palco mostra "pensando")
- *   delta {t}                        → pedaço de texto da resposta
- *   done  {answer, provider, model, fonte, confianca, ms}
- *   error {error, status}
- * Só para o ÍCARO com a Groq (padrão do palco); outros provedores seguem em /ai/chat.
- */
-router.post("/ai/chat/stream", async (req, res) => {
-  if (isChatRateLimited(req.ip || req.socket.remoteAddress || "unknown")) {
-    res.status(429).json({ error: "Muitas perguntas em sequência. Aguarde alguns minutos e tente novamente." });
-    return;
-  }
-  const parsed = SendAiMessageBody.safeParse(req.body);
-  if (!parsed.success || parsed.data.persona !== "icaro" || parsed.data.provider !== "groq" || parsed.data.dataset) {
-    res.status(400).json({ error: "Streaming disponível só para o ÍCARO com a Groq." });
-    return;
-  }
-  const input = parsed.data;
-  const userMessage = input.question.trim();
-  if (!userMessage) {
-    res.status(400).json({ error: "Escreva uma pergunta antes de enviar." });
-    return;
-  }
-
-  const t0 = Date.now();
-  const abort = new AbortController();
-  res.on("close", () => { if (!res.writableEnded) abort.abort(); });
-  res.status(200);
-  res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-  res.setHeader("Cache-Control", "no-cache, no-transform");
-  res.setHeader("X-Accel-Buffering", "no");
-  res.setHeader("Connection", "keep-alive");
-  res.flushHeaders();
-  const send = (event: string, data: unknown) => {
-    if (!res.writableEnded) res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-  };
-  let answer = "";
-  const emit = (t: string) => { if (t) { answer += t; send("delta", { t }); } };
-  const finish = (provider: string, model: string, fonte: "banco" | "base" | "ia", confianca: number) => {
-    const ms = Date.now() - t0;
-    recordAsk(fonte, ms);
-    req.log.info({ fonte, confianca, ms, stream: true }, "ask answered");
-    send("done", { answer: normalizeAnswerText(answer), provider, model, fonte, confianca, ms });
-    res.end();
-  };
-  // Tira marcações que a voz leria em voz alta (o normalizador completo roda no texto final).
-  const clean = (t: string) => t.replace(/[*_#`]+/g, "");
-
-  const brain = brainFor(req.ip || "anon");
-  const r = brain.answer(userMessage);
-  const thoughts: Array<{ k: string; t: string }> = (r.thoughts ?? []).map(({ k, t }) => ({ k, t }));
-  try {
-    if (r.mode === "local" && r.text) {
-      send("meta", { fonte: "banco", thoughts });
-      emit(presenterize(r.text, r.cat === "Conversa" ? "conversa" : "conteudo"));
-      return finish("local", "icaro-brain", "banco", r.score ?? 1);
-    }
-    if (r.mode === "puzzle" && r.parts) {
-      send("meta", { fonte: "banco", thoughts });
-      let hooked = false;
-      for (const p of r.parts) {
-        if (p.tipo === "gravado") {
-          emit(`${answer ? " " : ""}${hooked ? p.texto : presenterize(p.texto, "conteudo")}`);
-          hooked = true;
-        } else if (getGroqApiKey()) {
-          // gpt-oss raciocina antes: a lacuna precisa de folga além dos 90 tokens de texto.
-          let first = true;
-          try {
-            for await (const t of groq.streamAnswer({ systemPrompt: ICARO_PERSONA, history: [], userMessage: p.prompt, maxTokens: 400 }, abort.signal)) {
-              emit(first ? ` ${clean(t).trimStart()}` : clean(t));
-              first = false;
-            }
-          } catch (error) {
-            req.log.warn({ err: error }, "Brain gap stream failed; skipping gap");
-          }
-        }
-      }
-      return finish("local", "icaro-brain+groq", "banco", r.score ?? 1);
-    }
-
-    const k = knowledge.responder(userMessage);
-    if (k.trechos[0]) thoughts.push({ k: "consulta", t: `Base de conhecimento · ${k.trechos[0].titulo}` });
-    if (k.modo === "base") {
-      send("meta", { fonte: "base", thoughts });
-      emit(presenterize(k.texto, "conteudo"));
-      return finish("local", "icaro-base", "base", k.confianca);
-    }
-    let brainContext = "";
-    if (k.modo === "contexto" && k.contexto) brainContext = `${k.contexto}
-Responda com frases completas e bem explicadas, de 4 a 6 frases, sem cortar frase no meio.`;
-    else if (r.mode === "hint" && r.context) brainContext = r.context.split("\n").slice(0, 3).join("\n");
-    const localAnswer = resolveKnowledgeAnswer(userMessage);
-    if (localAnswer && r.mode !== "hint" && k.modo === "nada") {
-      send("meta", { fonte: "base", thoughts });
-      emit(presenterize(localAnswer.answer, "conteudo"));
-      return finish("local", "knowledge-bank-v1", "base", k.confianca);
-    }
-
-    if (!getGroqApiKey()) {
-      send("error", { status: 503, error: "Groq ainda não está configurado. Adicione GROQ_API_KEY aos Secrets do projeto." });
-      res.end();
-      return;
-    }
-    send("meta", { fonte: "ia", thoughts });
-    const systemPrompt = brainContext
-      ? `${icaroInstructions("")}\n\nReferências (use se forem pertinentes):\n${brainContext}`
-      : icaroInstructions("");
-    const stream = groq.streamAnswer({
-      systemPrompt,
-      history: input.history.map((m) => ({ role: m.role, content: m.content })),
-      userMessage,
-      maxTokens: 1400,
-    }, abort.signal);
-    let model = getGroqModel();
-    while (true) {
-      const step = await stream.next();
-      if (step.done) { model = step.value?.model || model; break; }
-      emit(clean(step.value));
-    }
-    if (abort.signal.aborted) return;
-    if (!answer.trim()) {
-      send("error", { status: 502, error: "A Groq retornou uma resposta vazia." });
-      res.end();
-      return;
-    }
-    return finish("groq", model, "ia", k.confianca);
-  } catch (error) {
-    if (abort.signal.aborted) return;
-    const kind = error instanceof GroqServiceError ? error.kind : "request_failed";
-    const upstreamStatus = error instanceof GroqServiceError ? error.upstreamStatus : undefined;
-    req.log.error({ provider: "groq", kind, upstreamStatus, stream: true }, "Groq stream failed");
-    send("error", {
-      status: kind === "rate_limit" || upstreamStatus === 429 ? 429 : 502,
-      error: kind === "rate_limit" || upstreamStatus === 429
-        ? "O limite temporário da Groq foi atingido. Aguarde e tente novamente."
-        : "A Groq não conseguiu responder agora. Tente novamente.",
-      partial: answer.length > 0,
-    });
-    res.end();
   }
 });
 

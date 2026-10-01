@@ -32,8 +32,6 @@ export interface IcaroSpeechInstance {
   analyser: AnalyserNode | null;
   unlock(): AudioContext;
   say(text: string): Promise<unknown>;
-  flush(): Promise<unknown>;
-  _enqueue(sentence: string): void;
   stop(): void;
   _meter?: () => void;
   sources?: AudioBufferSourceNode[];
@@ -49,7 +47,6 @@ declare global {
     IcaroVisemes?: {
       splitSentences(text: string): string[];
       buildTimeline(alignment: unknown): IcaroTimeline;
-      synthAlignment(text: string, charsPerSecond?: number): unknown;
     };
     __icaroAvatarLibrary?: Promise<void>;
   }

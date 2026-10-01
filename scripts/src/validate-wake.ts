@@ -1,39 +1,9 @@
 import assert from 'node:assert/strict';
 import { parseWakeCommand } from '../../artifacts/icaro/src/lib/wake-commands';
-import { SpeechUtteranceBuffer, UTTERANCE_MAX_MS, UTTERANCE_SILENCE_MS, WakeTurnGate, QUESTION_WINDOW_MS, resemblesPlayback } from '../../artifacts/icaro/src/lib/wake-turn-gate';
+import { WakeTurnGate, QUESTION_WINDOW_MS, resemblesPlayback } from '../../artifacts/icaro/src/lib/wake-turn-gate';
 import { wakeAccessBlockReason, wakeAccessErrorMessage } from '../../artifacts/icaro/src/lib/wake-access';
 
 const checks: Array<[string, () => void]> = [
-  ['A captura da pergunta fica aberta por até 15 segundos', () => assert.equal(QUESTION_WINDOW_MS, 15_000)],
-  ['Trechos finais e revisões interim formam uma única frase', () => {
-    const buffer = new SpeechUtteranceBuffer();
-    assert.equal(buffer.update(0, 'qual', 100), 'qual');
-    assert.equal(buffer.update(0, 'qual é', 300), 'qual é');
-    assert.equal(buffer.update(1, 'o prazo?', 500), 'qual é o prazo?');
-    assert.equal(buffer.shouldFlush(500 + UTTERANCE_SILENCE_MS - 1), false);
-    assert.equal(buffer.shouldFlush(500 + UTTERANCE_SILENCE_MS), true);
-    assert.equal(buffer.take(), 'qual é o prazo?');
-    assert.equal(buffer.empty, true);
-  }],
-  ['A captura contínua respeita o limite absoluto de 15 segundos', () => {
-    const buffer = new SpeechUtteranceBuffer();
-    buffer.update(0, 'consulta', 100);
-    buffer.update(1, 'continua', 100 + UTTERANCE_SILENCE_MS - 1);
-    assert.equal(buffer.shouldFlush(100 + UTTERANCE_MAX_MS), true);
-  }],
-  ['Trechos adiados só viram uma pergunta depois de enviar a frase completa', () => {
-    const gate = new WakeTurnGate();
-    const first = gate.receive('Ok Ícaro, explique', false, 0, 100, false, false, false, false, true);
-    assert.ok(first.some((event) => event.type === 'wake'));
-    assert.ok(first.some((event) => event.type === 'transcript'));
-    const final = gate.receive('Ok Ícaro, explique fluxo de caixa', true, 0, 500, false, false, false, false, true);
-    assert.equal(final.some((event) => event.type === 'question'), false);
-    assert.equal(gate.pending, false);
-    assert.deepEqual(gate.submitQuestion('explique fluxo de caixa', 1_700), [
-      { type: 'question', text: 'explique fluxo de caixa' },
-    ]);
-    assert.equal(gate.pending, true);
-  }],
   ['Conversa ambiente não ativa nem envia perguntas', () => assert.equal(parseWakeCommand('qual é a hora?', false).question, '')],
   ['Ok, Ícaro ativa com acento', () => assert.equal(parseWakeCommand('Ok, Ícaro', false).wake, true)],
   ['Aceita caixa alta e nome sem acento', () => assert.equal(parseWakeCommand('OK ICARO', false).wake, true)],
@@ -73,26 +43,6 @@ const checks: Array<[string, () => void]> = [
     assert.equal(gate.active, false);
     gate.complete(1);
     assert.deepEqual(gate.receive('conversa ao fundo', true, 1, 2, false), []);
-  }],
-  ['Modo direto envia uma pergunta sem palavra de ativação após opt-in', () => {
-    const gate = new WakeTurnGate();
-    const events = gate.receive('Qual é a hora?', true, 0, 100, false, false, false, true);
-    assert.equal(events.filter((event) => event.type === 'question').length, 1);
-    assert.equal(gate.pending, true);
-  }],
-  ['Modo direto aceita a próxima fala após a resposta', () => {
-    const gate = new WakeTurnGate();
-    gate.receive('Explique o ativo circulante.', true, 0, 100, false, false, false, true);
-    gate.complete(1_000);
-    const next = gate.receive('Dê um exemplo.', true, 1, 1_500, false, false, false, true);
-    assert.equal(next.filter((event) => event.type === 'question').length, 1);
-  }],
-  ['Modo direto não envia eco durante resposta ou período de silêncio', () => {
-    const gate = new WakeTurnGate();
-    gate.receive('Explique o ativo circulante.', true, 0, 100, false, false, false, true);
-    gate.complete(1_000, true);
-    assert.deepEqual(gate.receive('Explique o ativo circulante.', true, 1, 1_100, true, false, false, true), []);
-    assert.deepEqual(gate.receive('Explique o ativo circulante.', true, 2, 1_200, false, true, false, true), []);
   }],
   ['Eco final após terminar o áudio é ignorado', () => {
     const gate = new WakeTurnGate();

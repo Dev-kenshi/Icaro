@@ -7,4 +7,3 @@
 - [Avatar atlas reframing](avatar-atlas-reframing.md) — padding must translate positions, not rescale tile dimensions; preserve original face pixels for sprite registration.
 - [Groq model availability](groq-model-availability.md) — verify a real authenticated request; documentation and a configured key do not prove a model is usable.
 - [Local knowledge matching](knowledge-bank-matching.md) — rank subject specificity above question phrasing so generic local triggers do not swallow questions for the remote provider.
-- [Voice diagnostic scope](voice-diagnostic-scope.md) — a mic test must exercise wake → one question → real assistant response; transcript-only checks do not prove Ícaro works.

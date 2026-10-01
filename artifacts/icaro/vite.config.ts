@@ -60,8 +60,6 @@ export default defineConfig({
     dedupe: ['react', 'react-dom'],
   },
   root: path.resolve(import.meta.dirname),
-  // Worker da voz local (Piper) carrega módulos sob demanda: precisa de saída ES.
-  worker: { format: 'es' },
   build: {
     outDir: path.resolve(import.meta.dirname, 'dist/public'),
     emptyOutDir: true,

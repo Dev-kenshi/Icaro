@@ -81,6 +81,9 @@ export function HoloFace({ state, getLevel }: { state: HoloStageState; getLevel:
           aria-label="Rosto holográfico do Ícaro"
           data-testid="holo-face-canvas"
         />
+        <span className="orb-ring orb-ring--outer" />
+        <span className="orb-ring orb-ring--main" />
+        <span className="orb-ring orb-ring--inner" />
       </div>
     </div>
   );

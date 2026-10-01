@@ -26,14 +26,6 @@ app.use(
     },
   }),
 );
-app.disable("x-powered-by");
-app.use((_req, res, next) => {
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("Referrer-Policy", "no-referrer");
-  res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
-  res.setHeader("Cache-Control", "no-store");
-  next();
-});
 app.use(cors());
 app.use(cookieParser());
 app.use(express.json({ limit: "1mb" }));
