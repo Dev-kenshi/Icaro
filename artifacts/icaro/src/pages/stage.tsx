@@ -5,7 +5,7 @@ import { shouldActivateStageShortcut } from '@/lib/stage-shortcuts';
 import { Mic, X, BarChart3, ExternalLink, Trash2, Menu, Keyboard, Play, Maximize, Volume2, VolumeX, Eye, EyeOff } from 'lucide-react';
 import { getGetAiStatusQueryKey, useGetAiStatus, useSendAiMessage, type AiChatResponse } from '@workspace/api-client-react';
 import { interpret, formatDuration } from '@/lib/commands';
-import { speak, stopSpeaking, ensureAudio, activateAudio, getAnalyser, getLevel, releaseSpeechCache } from '@/lib/speech';
+import { speak, speakStream, stopSpeaking, ensureAudio, activateAudio, getAnalyser, getLevel, releaseSpeechCache, type SpeechStream } from '@/lib/speech';
 import { useWakeListener } from '@/hooks/use-wake-listener';
 import { getLocalVoiceStatus, getVoiceMode, localVoiceSupported, onLocalVoiceStatus, setVoiceMode, warmLocalVoice, type LocalVoiceStatus, type VoiceMode } from '@/lib/local-voice';
 import { resemblesPlayback } from '@/lib/wake-turn-gate';
@@ -24,6 +24,9 @@ type Note = { text: string; at: number };
 const STATE_LABEL: Record<State, string> = { idle: 'Online', listening: 'Ouvindo', thinking: 'Pensando', talking: 'Falando', intro: 'Apresentação' };
 const media = (f: string) => `${import.meta.env.BASE_URL}media/${f}`;
 const NOTES_KEY = 'icaro.notes';
+// Máscara de espera do modo apresentador: dita na hora em que a pergunta vai para a IA.
+const OPENERS = ['Certo.', 'Bora lá.', 'Deixa comigo.', 'Boa. Vamos nessa.'];
+type StreamEvent = { event: string; data: Record<string, unknown> };
 const loadNotes = (): Note[] => { try { const v = JSON.parse(localStorage.getItem(NOTES_KEY) || '[]'); return Array.isArray(v) ? v.filter((n) => n && typeof n.text === 'string') : []; } catch { return []; } };
 
 function errMsg(e: unknown) {
@@ -74,6 +77,8 @@ export default function Stage() {
   const logRef = useRef(log); logRef.current = log;
   const stateRef = useRef(state); stateRef.current = state;
   const logEnd = useRef<HTMLDivElement>(null);
+  const streamAbortRef = useRef<AbortController | null>(null);
+  const openerTurnRef = useRef(0);
 
   useEffect(() => { const id = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(id); }, []);
   // Voz local: carrega o modelo em segundo plano assim que o palco abre (download só na 1ª vez).
@@ -96,6 +101,7 @@ export default function Stage() {
   }, []);
   useEffect(() => () => {
     turnRef.current++;
+    streamAbortRef.current?.abort();
     window.clearTimeout(captionTimerRef.current);
     stopSpeaking();
     releaseSpeechCache();
@@ -136,6 +142,119 @@ export default function Stage() {
   }, [voiceOn]);
   const sayRef = useRef(say); sayRef.current = say;
 
+  /** Começa a falar antes de a resposta terminar: cada frase do LLM entra na fila da voz. */
+  const startSpeechStream = useCallback((turn: number, opener?: string): SpeechStream | null => {
+    if (!voiceOnRef.current) return null;
+    setSpeechError('');
+    window.clearTimeout(captionTimerRef.current);
+    setCaptionWords(null);
+    setCaption('');
+    speechPendingRef.current = true;
+    setState('thinking');
+    let playedAudio = false;
+    return speakStream({
+      pitch, rate, voiceURI, neural: true,
+      onProvider: setEngine,
+      onChunk: (c) => { if (turnRef.current === turn) setCaption(c); },
+      onWords: (words, activeIndex) => { if (turnRef.current === turn) setCaptionWords({ words, activeIndex }); },
+      onStart: () => { if (turnRef.current === turn) { playedAudio = true; setState('talking'); } },
+      onError: (message) => { if (turnRef.current === turn) setSpeechError(message); },
+      onEnd: () => {
+        if (turnRef.current !== turn) return;
+        speechPendingRef.current = false;
+        activeRef.current = false; setState('idle'); commandCompleteRef.current(playedAudio);
+        captionTimerRef.current = window.setTimeout(() => { if (turnRef.current === turn) { setCaption(''); setCaptionWords(null); } }, 2000);
+      },
+    }, opener);
+  }, []);
+
+  /**
+   * Pergunta à IA em streaming (SSE). Devolve false se falhou antes de qualquer texto,
+   * para o chamador cair no caminho antigo (/ai/chat) sem o professor perceber.
+   */
+  const askStream = useCallback(async (q: string, turn: number, history: Array<{ role: 'user' | 'assistant'; content: string }>): Promise<boolean> => {
+    streamAbortRef.current?.abort();
+    const ctl = new AbortController();
+    streamAbortRef.current = ctl;
+    let spoken: SpeechStream | null = null;
+    let full = '';
+    let started = false;
+    const settle = (answer: string) => {
+      lastAnswerRef.current = answer;
+      setLog((l) => [...l, { role: 'assistant', content: answer }]);
+      if (spoken) { spoken.end(); return; }
+      setCaption(answer);
+      speechPendingRef.current = false;
+      activeRef.current = false; setState('idle'); commandCompleteRef.current(false);
+    };
+    const handleEvent = ({ event, data }: StreamEvent): boolean | null => {
+      if (event === 'meta' && !started) {
+        started = true;
+        const opener = data.fonte === 'ia' ? OPENERS[openerTurnRef.current++ % OPENERS.length] : undefined;
+        spoken = startSpeechStream(turn, opener);
+      } else if (event === 'delta' && typeof data.t === 'string') {
+        full += data.t;
+        lastAnswerRef.current = full;
+        if (spoken) spoken.feed(data.t);
+        else if (!voiceOnRef.current) setCaption(full);
+      } else if (event === 'done') {
+        settle(typeof data.answer === 'string' && data.answer ? data.answer : full.trim());
+        return true;
+      } else if (event === 'error') {
+        if (full.trim()) { settle(full.trim()); return true; }
+        stopSpeaking();
+        speechPendingRef.current = false; activeRef.current = false;
+        setState('idle'); setCaption(''); setCaptionWords(null);
+        setLog((l) => [...l, { role: 'assistant', content: typeof data.error === 'string' ? data.error : errMsg(null) }]);
+        commandCompleteRef.current(false);
+        return true;
+      }
+      return null;
+    };
+    try {
+      const r = await fetch(`${import.meta.env.BASE_URL}api/ai/chat/stream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        signal: ctl.signal,
+        body: JSON.stringify({ provider: 'groq', persona: 'icaro', question: q, history, dataset: null }),
+      });
+      if (!r.ok || !r.body) return false;
+      const reader = r.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      while (true) {
+        const { value, done } = await reader.read();
+        if (turnRef.current !== turn) { ctl.abort(); return true; }
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let cut: number;
+        while ((cut = buffer.indexOf('\n\n')) >= 0) {
+          const block = buffer.slice(0, cut);
+          buffer = buffer.slice(cut + 2);
+          const event = /^event: (.+)$/m.exec(block)?.[1];
+          const raw = /^data: (.+)$/m.exec(block)?.[1];
+          if (!event || !raw) continue;
+          let data: Record<string, unknown>;
+          try { data = JSON.parse(raw) as Record<string, unknown>; } catch { continue; }
+          const result = handleEvent({ event, data });
+          if (result !== null) return result;
+        }
+      }
+      // Conexão caiu sem 'done': fala o que chegou ou deixa o caminho antigo tentar.
+      if (full.trim()) { settle(full.trim()); return true; }
+      stopSpeaking();
+      return false;
+    } catch {
+      if (ctl.signal.aborted || turnRef.current !== turn) return true;
+      if (full.trim()) { settle(full.trim()); return true; }
+      stopSpeaking();
+      return false;
+    } finally {
+      if (streamAbortRef.current === ctl) streamAbortRef.current = null;
+    }
+  }, [startSpeechStream]);
+
   // timer
   useEffect(() => {
     if (timerEnd && now >= timerEnd) { setTimerEnd(null); sayRef.current('Tempo encerrado, professor.'); }
@@ -155,6 +274,7 @@ export default function Stage() {
   const handle = useCallback((raw: string) => {
     const q = raw.trim().slice(0, 4000); if (!q) return;
     const turn = ++turnRef.current;
+    streamAbortRef.current?.abort();
     activeRef.current = false;
     speechPendingRef.current = false;
     window.clearTimeout(captionTimerRef.current);
@@ -188,7 +308,7 @@ export default function Stage() {
       case 'ai': {
         setState('thinking'); setCaption(''); setCaptionWords(null);
         const history = logRef.current.slice(-8).map(({ role, content }) => ({ role, content: content.slice(0, 4000) }));
-        sendRef.current({ data: { provider, persona: 'icaro', question: q, history, dataset: null } }, {
+        const viaChat = () => sendRef.current({ data: { provider, persona: 'icaro', question: q, history, dataset: null } }, {
           onSuccess: (res: AiChatResponse) => { if (turnRef.current === turn) sayRef.current(res.answer); },
           onError: (e) => {
             if (turnRef.current !== turn) return;
@@ -199,9 +319,12 @@ export default function Stage() {
             commandCompleteRef.current(false);
           },
         });
+        // Groq (padrão do palco) fala em streaming; se o streaming falhar antes do 1º texto, usa o caminho antigo.
+        if (provider !== 'groq') { viaChat(); return; }
+        void askStream(q, turn, history).then((ok) => { if (!ok && turnRef.current === turn) viaChat(); });
       }
     }
-  }, [prime, playIntro, provider]);
+  }, [prime, playIntro, provider, askStream]);
   const handleRef = useRef(handle); handleRef.current = handle;
 
   const listener = useWakeListener({
@@ -212,6 +335,7 @@ export default function Stage() {
     onTranscript: () => { setCaption(''); setCaptionWords(null); },
     onWake: () => {
       setHelpOpen(false);
+      streamAbortRef.current?.abort();
       activeRef.current = true; turnRef.current++; stopSpeaking(); prime();
       speechPendingRef.current = false;
       window.clearTimeout(captionTimerRef.current);
@@ -219,6 +343,7 @@ export default function Stage() {
       setState('listening'); setCaption('');
     },
     onStop: () => {
+      streamAbortRef.current?.abort();
       activeRef.current = false; turnRef.current++;
       speechPendingRef.current = false;
       window.clearTimeout(captionTimerRef.current);

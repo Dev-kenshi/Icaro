@@ -72,6 +72,10 @@ interface SpeechRun {
   words: IcaroWord[];
   startWatchdog?: number;
   aborts: Set<AbortController>;
+  /** Streaming: o texto ainda está chegando; a fila pode esvaziar sem que a fala tenha acabado. */
+  streaming?: boolean;
+  streamEnded?: boolean;
+  drained?: boolean;
 }
 
 function asError(error: unknown, fallback: string): Error {
@@ -263,6 +267,8 @@ function createRunEngine(run: SpeechRun, Constructor: NonNullable<Window['IcaroS
     },
     onEnd() {
       if (!isCurrent(run)) return;
+      // A voz alcançou o texto, mas o LLM ainda está escrevendo: espera a próxima frase.
+      if (run.streaming && !run.streamEnded && !run.error) { run.drained = true; return; }
       const error = run.error ?? (!run.started ? new Error('Nenhum áudio foi iniciado.') : undefined);
       completeRun(run, error);
     },
@@ -582,6 +588,134 @@ export function speak(text: string, options: SpeakOpts) {
     }
   };
   void begin();
+}
+
+export interface SpeechStream {
+  /** Pedaço de texto do LLM: cada frase que fecha já vai para a voz. */
+  feed(text: string): void;
+  /** O texto acabou: fala o resto e termina. */
+  end(): void;
+}
+
+/**
+ * Fala em streaming: começa a sintetizar a 1ª frase enquanto o LLM ainda escreve as próximas.
+ * `opener` é uma frase curta dita na hora (máscara de espera), antes da resposta.
+ */
+export function speakStream(options: SpeakOpts, opener?: string): SpeechStream {
+  stopSpeaking();
+  const my = ++token;
+  const activeAvatar = avatar;
+  let buffered = '';
+  let ended = false;
+  let run: SpeechRun | null = null;
+
+  // Divisor próprio: libera cada trecho assim que fecha uma frase, juntando ganchos curtos
+  // ("Pensa comigo.") à frase seguinte em vez de travar a fila até o fim do texto.
+  let pending = '';
+  const BOUNDARY = /[.!?…]+(?=\s)/g;
+  const drainSentences = (r: SpeechRun) => {
+    while (true) {
+      BOUNDARY.lastIndex = 0;
+      let cut = -1;
+      for (let m = BOUNDARY.exec(pending); m; m = BOUNDARY.exec(pending)) {
+        const end = m.index + m[0].length;
+        if (pending.slice(0, end).trim().length >= 18) { cut = end; break; }
+      }
+      if (cut < 0) return;
+      const sentence = pending.slice(0, cut).trim();
+      pending = pending.slice(cut);
+      r.drained = false;
+      r.engine._enqueue(sentence);
+    }
+  };
+  const flushRest = (r: SpeechRun) => {
+    const rest = pending.trim();
+    pending = '';
+    if (!rest) return;
+    r.drained = false;
+    const split = window.IcaroVisemes?.splitSentences(rest) ?? [rest];
+    for (const sentence of split) r.engine._enqueue(sentence);
+  };
+
+  const finishWhenDrained = (r: SpeechRun) => {
+    r.streamEnded = true;
+    if (r.drained && isCurrent(r)) completeRun(r, r.error ?? (!r.started ? new Error('Nenhum áudio foi iniciado.') : undefined));
+  };
+  const watch = (r: SpeechRun, done: Promise<unknown>) => {
+    void done.catch((error: unknown) => {
+      if (!isCurrent(r)) return;
+      r.error = asError(error, 'A reprodução da fala falhou.');
+      completeRun(r, r.error, true);
+    });
+  };
+
+  void (async () => {
+    try {
+      await loadIcaroAvatarLibrary();
+      if (my !== token) return;
+      const Constructor = window.IcaroSpeech;
+      if (!Constructor) throw new Error('A biblioteca de voz do Ícaro não foi carregada.');
+      if (!activeAvatar || avatar !== activeAvatar) throw new Error('O rosto do Ícaro ainda não está pronto.');
+      ensureSharedAudioContext();
+      const r: SpeechRun = {
+        id: my,
+        engine: null as unknown as IcaroSpeechInstance,
+        avatar: activeAvatar,
+        options,
+        started: false,
+        completed: false,
+        usedFallback: false,
+        usedLocal: false,
+        voiceMode: getVoiceMode(),
+        error: null,
+        pendingTimeline: null,
+        pendingClock: null,
+        sentenceText: '',
+        words: [],
+        aborts: new Set<AbortController>(),
+        streaming: true,
+      };
+      const engine = createRunEngine(r, Constructor);
+      currentRun = r;
+      player = engine;
+      run = r;
+      engine.unlock();
+      if (opener?.trim()) engine._enqueue(opener.trim());
+      if (buffered) { pending += buffered; buffered = ''; drainSentences(r); }
+      if (ended) { flushRest(r); watch(r, engine.flush()); finishWhenDrained(r); }
+    } catch (error) {
+      if (my !== token) return;
+      if (run && isCurrent(run)) completeRun(run, asError(error, 'Não foi possível preparar a fala.'), true);
+      else {
+        console.error('Não foi possível preparar a fala do Ícaro.', error);
+        options.onError?.(`Não foi possível iniciar o áudio do Ícaro: ${asError(error, 'erro de áudio').message}`);
+        options.onEnd();
+      }
+    }
+  })();
+
+  return {
+    feed(text) {
+      if (my !== token || !text) return;
+      const r = run;
+      if (!r) { buffered += text; return; }
+      if (!isCurrent(r)) return;
+      pending += text;
+      drainSentences(r);
+    },
+    end() {
+      if (my !== token) return;
+      const r = run;
+      if (!r) { ended = true; return; }
+      if (!isCurrent(r)) return;
+      flushRest(r);
+      watch(r, r.engine.flush());
+      // flush() de uma fila vazia não dispara onEnd: se nada ficou pendente, encerra aqui.
+      const idle = !(r.engine as unknown as { queue?: unknown[] }).queue?.length && !(r.engine as unknown as { active?: number }).active;
+      if (idle) r.drained = true;
+      finishWhenDrained(r);
+    },
+  };
 }
 
 export function setSpeechAvatar(next: IcaroAvatarInstance | null) {

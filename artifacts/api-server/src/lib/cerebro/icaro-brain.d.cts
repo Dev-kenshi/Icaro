@@ -4,6 +4,10 @@ export type BrainResult = {
   text?: string;
   parts?: BrainPart[];
   context?: string;
+  id?: string;
+  cat?: string;
+  score?: number;
+  thoughts?: Array<{ k: string; t: string; c?: number }>;
 };
 declare const IcaroBrain: {
   create(bank: unknown, opts?: Record<string, unknown>): { answer(q: string): BrainResult; reset(): void };
