@@ -129,3 +129,4 @@ check(unauth.status === 401, "stream exige login (401 sem sessão)");
 server.close();
 console.log(`\nvalidate-stream: ${passed} ok, ${failed} falha(s)`);
 process.exit(failed ? 1 : 0);
+export {};
