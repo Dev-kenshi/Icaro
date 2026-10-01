@@ -491,7 +491,7 @@ export default function Stage() {
               <MicSettings mode={micMode} onMode={chooseMicMode} usingServer={useServerMic} busy={micTestActive} onTestStart={beginMicTest} onTestEnd={endMicTest} />
               <div className="card space-y-2">
                 <div className="mono text-[10px] uppercase tracking-widest text-[color:var(--ok)]">Ativação por voz</div>
-                <p>Diga <strong>“Ok, Ícaro”</strong> ou <strong>“Let’s go, Ícaro”</strong>, seguido da pergunta, ou espere a indicação “Escuta ativa”. Cada ativação autoriza uma pergunta; após responder, o ÍCARO volta à espera. Sem pergunta em 12 segundos, a ativação expira em silêncio. Diga <strong>“Stop, Ícaro”</strong> para interromper.</p>
+                <p>Diga <strong>“Ok, Ícaro”</strong> ou <strong>“Let’s go, Ícaro”</strong>, seguido da pergunta, ou espere a indicação “Escuta ativa”. Cada ativação autoriza uma pergunta; após responder, o ÍCARO volta à espera. Sem pergunta em 10 segundos, a ativação expira em silêncio. Diga <strong>“Stop, Ícaro”</strong> para interromper.</p>
                 <p className="privacy-note text-xs text-[color:var(--dim)]">O microfone fica aberto enquanto a escuta está ligada. A fala é transcrita pelo serviço do navegador; só perguntas após a ativação são enviadas ao ÍCARO. Use “Pausar microfone” para desligar totalmente.</p>
                 <p className="text-xs text-[color:var(--warn)]">Requer permissão do navegador e a página aberta. Chrome ou Edge são recomendados; outros navegadores podem não oferecer escuta contínua.</p>
               </div>

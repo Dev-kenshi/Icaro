@@ -4,6 +4,7 @@ import { WakeTurnGate, QUESTION_WINDOW_MS, resemblesPlayback } from '../../artif
 import { wakeAccessBlockReason, wakeAccessErrorMessage } from '../../artifacts/icaro/src/lib/wake-access';
 
 const checks: Array<[string, () => void]> = [
+  ['Janela amarela para a pergunta dura 10 segundos', () => assert.equal(QUESTION_WINDOW_MS, 10_000)],
   ['Conversa ambiente não ativa nem envia perguntas', () => assert.equal(parseWakeCommand('qual é a hora?', false).question, '')],
   ['Ok, Ícaro ativa com acento', () => assert.equal(parseWakeCommand('Ok, Ícaro', false).wake, true)],
   ['Let’s go, Ícaro ativa a escuta sem enviar pergunta', () => {

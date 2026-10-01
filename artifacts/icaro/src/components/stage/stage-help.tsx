@@ -29,7 +29,7 @@ export function StageHelp({ open, onOpen, onClose, clock, stateLabel, children }
         </div>
         <h3>Como usar</h3>
         <p>Diga “Ok, Ícaro” ou “Let’s go, Ícaro”, seguido da pergunta, ou pressione Enter / seta direita (avançar slide). “Stop, Ícaro” interrompe.</p>
-        <p>Cada ativação autoriza uma pergunta; sem pergunta em 12 segundos, expira em silêncio.</p>
+        <p>Cada ativação autoriza uma pergunta; sem pergunta em 10 segundos, expira em silêncio.</p>
         <h3>Privacidade</h3>
         <p>Com Navegador, o microfone fica aberto enquanto a escuta está ligada; só uma pergunta após “Ok, Ícaro” ou “Let’s go, Ícaro” é enviada. Com Servidor, o áudio só é gravado depois de tocar no microfone e é enviado para transcrição. A permissão continua sob controle do navegador.</p>
         {children}

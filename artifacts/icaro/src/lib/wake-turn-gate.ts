@@ -1,6 +1,6 @@
 import { parseWakeCommand } from './wake-commands';
 
-export const QUESTION_WINDOW_MS = 12_000;
+export const QUESTION_WINDOW_MS = 10_000;
 export const OUTPUT_ECHO_GUARD_MS = 450;
 const INTERIM_INCOMPLETE_ENDINGS = new Set([
   'a', 'o', 'as', 'os', 'um', 'uma', 'de', 'da', 'do', 'das', 'dos', 'em', 'no', 'na',

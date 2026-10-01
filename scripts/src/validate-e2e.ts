@@ -296,9 +296,9 @@ async function main() {
     await waitState(page, 'talking', 10000); await waitState(page, 'idle', 15000);
     assert(chatCalls.length === before + 1, 'pergunta não respondida');
   });
-  await test('Espera de 12 s expira e volta ao modo de espera', async () => {
+  await test('Espera de 10 s expira e volta ao modo de espera', async () => {
     await sleep(600); await say(page, 'Ok Ícaro', true); await waitState(page, 'listening');
-    await waitState(page, 'idle', 14000);
+    await waitState(page, 'idle', 12000);
     const before = chatCalls.length; await speakLike(page, 'qual é a capital da Bahia hoje'); await sleep(1000);
     assert(chatCalls.length === before, 'respondeu depois da janela');
   });
