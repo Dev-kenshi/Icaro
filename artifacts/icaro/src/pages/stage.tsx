@@ -522,7 +522,7 @@ export default function Stage() {
             <div className="space-y-5">
               <div className="card space-y-2">
                 <div className="mono text-[10px] uppercase tracking-widest text-[color:var(--ok)]">Entrada por voz</div>
-                <p>No modo padrão, diga <strong>“Ok, Ícaro”</strong> seguido da pergunta. Também é possível ligar o modo direto abaixo e falar sem a palavra de ativação. Diga <strong>“Stop, Ícaro”</strong> para interromper.</p>
+                <p>No modo padrão, diga <strong>“Ok, Ícaro”</strong> seguido da pergunta. Também é possível ligar o modo direto abaixo e falar sem a palavra de ativação. O Ícaro reúne os trechos da fala e envia a pergunta após uma pausa curta, com limite de captura de 15 segundos. Diga <strong>“Stop, Ícaro”</strong> para interromper.</p>
                 <p className="privacy-note text-xs text-[color:var(--dim)]">O microfone fica aberto enquanto a escuta está ligada. A fala é transcrita pelo serviço do navegador. Use “Pausar microfone” para desligar totalmente.</p>
                 <p className="text-xs text-[color:var(--warn)]">Requer permissão do navegador e a página aberta. Chrome ou Edge são recomendados; outros navegadores podem não oferecer escuta contínua.</p>
               </div>
@@ -546,7 +546,7 @@ export default function Stage() {
                   <span>
                     <strong>Modo direto — sem “Ok, Ícaro”</strong>
                     <span className="mt-1 block text-xs text-[color:var(--dim)]">
-                      Ligado: cada fala reconhecida pode ser enviada como uma pergunta. Desligue o modo ou pause o microfone para parar.
+                      Ligado: cada fala reconhecida é reunida numa pergunta; o envio ocorre após uma pausa curta ou ao atingir 15 segundos. Desligue o modo ou pause o microfone para parar.
                     </span>
                   </span>
                 </label>

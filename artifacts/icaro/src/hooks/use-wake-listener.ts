@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { WakeTurnGate } from '@/lib/wake-turn-gate';
+import { SpeechUtteranceBuffer, UTTERANCE_MAX_MS, UTTERANCE_SILENCE_MS, WakeTurnGate, type WakeEvent } from '@/lib/wake-turn-gate';
 import { wakeAccessBlockReason } from '@/lib/wake-access';
 
 interface Recognition {
@@ -18,7 +18,6 @@ const ctor = () => {
   const w = window as unknown as { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition };
   return w.SpeechRecognition ?? w.webkitSpeechRecognition;
 };
-const INTERIM_COMMIT_MS = 550;
 export type ListeningStatus = 'starting' | 'listening' | 'blocked' | 'unsupported' | 'error' | 'paused';
 type Options = {
   busy: boolean;
@@ -31,8 +30,8 @@ type Options = {
   isEcho?: (text: string) => boolean;
 };
 
-/** Continuous wake-word listening. Permission errors stop retries; activated
- * speech may be dispatched after a short stable-interim window, never twice. */
+/** Continuous wake-word listening. Speech segments are collected until a short
+ * silence or the 15-second cap, then dispatched once as a complete utterance. */
 export function useWakeListener(options: Options) {
   const latest = useRef(options); latest.current = options;
   const [status, setStatus] = useState<ListeningStatus>('starting');
@@ -56,36 +55,60 @@ export function useWakeListener(options: Options) {
     let disposed = false;
     let rec: Recognition | null = null;
     let timer = 0;
-    let interimTimer = 0;
-    let interimCandidate: { index: number; text: string } | null = null;
+    let captureQuietTimer = 0;
+    let captureMaxTimer = 0;
+    let recognitionSession = 0;
+    const utterance = new SpeechUtteranceBuffer();
     let failures = 0;
-    const clearInterimCommit = () => {
-      window.clearTimeout(interimTimer);
-      interimTimer = 0;
-      interimCandidate = null;
+    const clearUtterance = () => {
+      window.clearTimeout(captureQuietTimer);
+      window.clearTimeout(captureMaxTimer);
+      captureQuietTimer = 0;
+      captureMaxTimer = 0;
+      utterance.clear();
     };
-    const dispatch = (events: ReturnType<WakeTurnGate['receive']>) => {
+    let dispatchEvents: (events: WakeEvent[], sessionId?: number) => void = () => {};
+    const flushUtterance = () => {
+      window.clearTimeout(captureQuietTimer);
+      window.clearTimeout(captureMaxTimer);
+      captureQuietTimer = 0;
+      captureMaxTimer = 0;
+      const text = utterance.take();
+      if (text) dispatchEvents(gate.current.submitQuestion(text, Date.now()));
+    };
+    const collectTranscript = (index: number, text: string, sessionId: number) => {
+      const firstSegment = utterance.empty;
+      const now = Date.now();
+      const fullText = utterance.update(sessionId * 1_000_000 + index, text, now);
+      if (firstSegment) {
+        gate.current.beginCapture(now);
+        captureMaxTimer = window.setTimeout(flushUtterance, UTTERANCE_MAX_MS);
+      }
+      window.clearTimeout(captureQuietTimer);
+      captureQuietTimer = window.setTimeout(flushUtterance, UTTERANCE_SILENCE_MS);
+      latest.current.onTranscript(fullText);
+    };
+    dispatchEvents = (events, sessionId = recognitionSession) => {
       setActive(gate.current.active);
       for (const action of events) {
         switch (action.type) {
-          case 'stop': case 'expired': clearInterimCommit(); latest.current.onStop(); break;
-          case 'wake': latest.current.onWake(); break;
-          case 'transcript': latest.current.onTranscript(action.text); break;
-          case 'question': clearInterimCommit(); latest.current.onQuestion(action.text); break;
+          case 'stop': case 'expired': clearUtterance(); latest.current.onStop(); break;
+          case 'wake': clearUtterance(); latest.current.onWake(); break;
+          case 'transcript': collectTranscript(action.index, action.text, sessionId); break;
+          case 'question': clearUtterance(); latest.current.onQuestion(action.text); break;
         }
       }
     };
     completeRef.current = (playedAudio = false) => {
-      clearInterimCommit();
+      clearUtterance();
       gate.current.complete(Date.now(), playedAudio); setActive(false);
     };
     const expiryTimer = window.setInterval(() => {
-      if (gate.current.expire(Date.now())) { clearInterimCommit(); setActive(false); latest.current.onStop(); }
+      if (gate.current.expire(Date.now())) { clearUtterance(); setActive(false); latest.current.onStop(); }
     }, 100);
     const start = () => {
       if (disposed || !desired.current || rec) return;
       window.clearTimeout(timer);
-      clearInterimCommit();
       const block = wakeAccessBlockReason(
         document as unknown as Parameters<typeof wakeAccessBlockReason>[0],
         window.isSecureContext,
@@ -97,6 +120,7 @@ export function useWakeListener(options: Options) {
       }
       const next = new Constructor();
       rec = next;
+      const sessionId = ++recognitionSession;
       next.lang = 'pt-BR'; next.interimResults = true; next.continuous = true; next.maxAlternatives = 1;
       gate.current.newRecognitionSession();
       setError(null);
@@ -111,38 +135,20 @@ export function useWakeListener(options: Options) {
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const result = event.results[i];
           const transcript = result[0].transcript;
+          const echo = latest.current.isEcho?.(transcript) ?? false;
+          if (echo) clearUtterance();
           const events = gate.current.receive(
             transcript,
             result.isFinal,
             i,
             Date.now(),
             latest.current.busy,
-            latest.current.isEcho?.(transcript),
+            echo,
             latest.current.allowWakeDuringWait,
             latest.current.directMode,
+            true,
           );
-          if (result.isFinal) clearInterimCommit();
-          dispatch(events);
-          if (!result.isFinal) {
-            const transcriptText = events.flatMap((action) => action.type === 'transcript' ? [action.text] : [])[0];
-            if (!transcriptText) { clearInterimCommit(); continue; }
-            interimCandidate = { index: i, text: transcriptText };
-            window.clearTimeout(interimTimer);
-            interimTimer = window.setTimeout(() => {
-              const candidate = interimCandidate;
-              if (!candidate || candidate.index !== i || candidate.text !== transcriptText) return;
-              if (disposed || !desired.current || rec !== next) return;
-              interimCandidate = null; interimTimer = 0;
-              const commitEvents = gate.current.commitInterim(
-                candidate.index,
-                candidate.text,
-                Date.now(),
-                latest.current.busy,
-                latest.current.isEcho?.(candidate.text) ?? false,
-              );
-              dispatch(commitEvents);
-            }, INTERIM_COMMIT_MS);
-          }
+          dispatchEvents(events, sessionId);
         }
       };
       next.onerror = ({ error }) => {
@@ -153,7 +159,7 @@ export function useWakeListener(options: Options) {
           console.warn('Reconhecimento de voz indisponível:', error);
         }
         if (['not-allowed', 'service-not-allowed', 'audio-capture', 'language-not-supported'].includes(error)) {
-          clearInterimCommit();
+          clearUtterance();
           requested.current = false;
           desired.current = false; gate.current.stop(); setStatus('blocked');
           setActive(false);
@@ -174,7 +180,7 @@ export function useWakeListener(options: Options) {
       };
       try { next.start(); }
       catch {
-        clearInterimCommit();
+        clearUtterance();
         rec = null; desired.current = false; running.current = false; requested.current = false;
         setError('not-allowed');
         setStatus('blocked');
@@ -182,7 +188,7 @@ export function useWakeListener(options: Options) {
     };
     restart.current = () => { desired.current = true; failures = 0; start(); };
     pauseRef.current = () => {
-      desired.current = false; gate.current.stop(); window.clearTimeout(timer); clearInterimCommit();
+      desired.current = false; gate.current.stop(); window.clearTimeout(timer); clearUtterance();
       running.current = false; requested.current = false;
       setActive(false); setStatus('paused');
       latest.current.onStop();
@@ -190,7 +196,7 @@ export function useWakeListener(options: Options) {
     };
     start();
     return () => {
-      disposed = true; window.clearTimeout(timer); window.clearTimeout(interimTimer); window.clearInterval(expiryTimer);
+      disposed = true; window.clearTimeout(timer); clearUtterance(); window.clearInterval(expiryTimer);
       running.current = false; requested.current = false;
       restart.current = null; pauseRef.current = null; completeRef.current = null;
       if (rec) {
