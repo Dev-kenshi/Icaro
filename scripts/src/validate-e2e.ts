@@ -30,10 +30,10 @@ function wav(seconds: number) {
 
 const INIT = `
 (() => {
-  window.__rec = { current: null, results: [], started: 0 };
+  window.__rec = { current: null, results: [], started: 0, failStarts: 0 };
   class FakeRec {
     constructor() { this.lang=''; this.interimResults=false; this.continuous=false; this.maxAlternatives=1; this.onstart=this.onend=this.onerror=this.onresult=null; this.alive=false; }
-    start() { window.__rec.current=this; window.__rec.results=[]; window.__rec.started++; this.alive=true; setTimeout(() => { if (this.alive && this.onstart) this.onstart(); }, 20); }
+    start() { if(window.__rec.failStarts>0){window.__rec.failStarts--;throw new DOMException('recognizer restarting','InvalidStateError');} window.__rec.current=this; window.__rec.results=[]; window.__rec.started++; this.alive=true; setTimeout(() => { if (this.alive && this.onstart) this.onstart(); }, 20); }
     abort() { if (!this.alive) return; this.alive=false; setTimeout(() => this.onend && this.onend(), 10); }
     stop() { this.abort(); }
   }
@@ -465,8 +465,9 @@ async function main() {
   });
   await test('Reconhecimento encerrado pelo navegador reinicia sozinho', async () => {
     const started = await page.evaluate(() => (window as any).__rec.started);
+    await page.evaluate(() => { (window as any).__rec.failStarts = 1; });
     await page.evaluate(() => (window as any).__recEnd());
-    await until(() => page.evaluate((s) => (window as any).__rec.started > s && (window as any).__rec.current.alive, started), 3000, 'reinício');
+    await until(() => page.evaluate((s) => (window as any).__rec.started > s && (window as any).__rec.current?.alive, started), 3000, 'reinício após falha temporária');
     await sleep(600); assert((await fullTurn(page, 'o que é provisão')) === 1, 'não respondeu após reinício');
   });
   await test('Erro de rede se recupera; microfone negado mostra ajuda', async () => {

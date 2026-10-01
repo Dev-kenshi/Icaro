@@ -27,3 +27,9 @@ Distinguish *why* a recognition result was suppressed. Echo/quiet-period suppres
 **Why:** Real recognizers send the interim “pare” before “pare Ícaro” on one index; permanent busy-suppression silently broke Stop during speech while final-only tests passed.
 
 **How to apply:** Browser/gate tests for Stop, wake and questions must feed word-by-word interims followed by the final on the same index, never only complete finals.
+
+After a normal `SpeechRecognition.onend`, wait at least 150 ms before restarting. Treat a synchronous `InvalidStateError` from `start()` as transient and retry with backoff; only permission/security errors should permanently stop listening.
+
+**Why:** Restarting after 30 ms can race the browser's recognizer teardown. Treating that race as `not-allowed` disables the listener until the user manually resumes it.
+
+**How to apply:** Keep automatic recognition enabled across transient end/start failures and test an injected `InvalidStateError`; still surface denied permission as blocked with clear recovery guidance.

@@ -167,15 +167,24 @@ export function useWakeListener(options: Options) {
         rec = null; running.current = false;
         if (!disposed && desired.current) {
           setStatus(failures ? 'error' : 'starting');
-          timer = window.setTimeout(start, failures ? Math.min(150 * 2 ** failures, 15_000) : 30);
+          timer = window.setTimeout(start, failures ? Math.min(150 * 2 ** failures, 15_000) : 150);
         }
       };
       try { next.start(); }
-      catch {
+      catch (cause) {
         clearInterimCommit();
-        rec = null; desired.current = false; running.current = false; requested.current = false;
-        setError('not-allowed');
-        setStatus('blocked');
+        rec = null; running.current = false;
+        const name = cause instanceof DOMException ? cause.name : '';
+        if (name === 'NotAllowedError' || name === 'SecurityError') {
+          desired.current = false; requested.current = false;
+          gate.current.stop(); setActive(false); setError('not-allowed'); setStatus('blocked');
+          latest.current.onStop();
+        } else {
+          failures++;
+          setError('start-failed');
+          setStatus('starting');
+          timer = window.setTimeout(start, Math.min(150 * 2 ** (failures - 1), 15_000));
+        }
       }
     };
     restart.current = () => { desired.current = true; failures = 0; start(); };
