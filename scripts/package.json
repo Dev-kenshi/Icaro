@@ -10,6 +10,7 @@
     "validate:hologram": "tsx ./src/validate-hologram.ts",
     "validate:groq": "tsx ./src/validate-groq.ts",
     "validate:knowledge": "tsx ./src/validate-fast-knowledge.ts",
+    "validate:stt": "tsx ./src/validate-stt.ts",
     "validate:e2e": "tsx ./src/validate-e2e.ts",
     "validate:voice-output": "tsx ./src/validate-voice-output.ts"
   },

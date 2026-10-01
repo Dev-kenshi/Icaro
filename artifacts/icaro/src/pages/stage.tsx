@@ -12,7 +12,9 @@ import { wakeAccessErrorMessage } from '@/lib/wake-access';
 import { Particles, Waveform } from '@/components/stage/canvases';
 import { HoloFace } from '@/components/stage/holo-face';
 import { FutureScene } from '@/components/stage/future-scene';
+import { MicSettings } from '@/components/stage/mic-settings';
 import { HOLO_MEDIA } from '@/lib/holo-state';
+import { getMicMode, micErrorMessage, recordUtterance, setMicMode, SERVER_FALLBACK_ERRORS, transcribeOnServer, type MicMode } from '@/lib/mic-config';
 import './stage.css';
 
 type State = 'idle' | 'listening' | 'thinking' | 'talking' | 'intro';
@@ -41,6 +43,8 @@ export default function Stage() {
   const [captionsVisible, setCaptionsVisible] = useState(false);
   const [audioActivated, setAudioActivated] = useState(false);
   const [speechError, setSpeechError] = useState('');
+  const [micMode, setMicModeState] = useState<MicMode>(getMicMode);
+  const [recording, setRecording] = useState(false);
   const [panel, setPanel] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const helpRef = useRef(false); helpRef.current = helpOpen;
@@ -68,6 +72,7 @@ export default function Stage() {
   const commandCompleteRef = useRef<(playedAudio?: boolean) => void>(() => undefined);
   const lastAnswerRef = useRef('');
   const captionTimerRef = useRef(0);
+  const recordAbortRef = useRef<AbortController | null>(null);
   const logRef = useRef(log); logRef.current = log;
   const stateRef = useRef(state); stateRef.current = state;
   const logEnd = useRef<HTMLDivElement>(null);
@@ -216,16 +221,82 @@ export default function Stage() {
     },
   });
   commandCompleteRef.current = listener.complete;
+  const useServerMic = micMode === 'server'
+    || (micMode === 'auto' && (listener.status === 'unsupported' || (!!listener.error && SERVER_FALLBACK_ERRORS.has(listener.error))));
+  const chooseMicMode = (mode: MicMode) => {
+    setMicMode(mode);
+    setMicModeState(mode);
+    if (mode === 'server' && listener.status !== 'paused' && listener.supported) listener.pause();
+    else if (mode !== 'server' && (listener.status === 'paused' || listener.status === 'error' || listener.status === 'blocked')) listener.enable();
+  };
+  useEffect(() => {
+    if (micMode === 'server' && listener.supported && listener.status !== 'paused') listener.pause();
+  }, [micMode, listener.status, listener.supported]);
+  useEffect(() => () => recordAbortRef.current?.abort(), []);
+  const listenOnServer = async () => {
+    if (recordAbortRef.current) {
+      recordAbortRef.current.abort();
+      return;
+    }
+    if (listener.supported && listener.status !== 'paused') listener.pause();
+    prime();
+    stopSpeaking();
+    const controller = new AbortController();
+    recordAbortRef.current = controller;
+    setRecording(true);
+    setHelpOpen(false);
+    setSpeechError('');
+    setState('listening');
+    setCaption('Pode falar…');
+    setCaptionWords(null);
+    try {
+      const audio = await recordUtterance({
+        signal: controller.signal,
+        onSpeech: () => { if (!controller.signal.aborted) setCaption('Ouvindo…'); },
+      });
+      if (controller.signal.aborted) { setState('idle'); setCaption(''); return; }
+      if (!audio) {
+        setState('idle');
+        setCaption('Não ouvi nada. Toque no microfone e fale.');
+        setHelpOpen(true);
+        return;
+      }
+      setState('thinking');
+      setCaption('Transcrevendo…');
+      const question = await transcribeOnServer(audio, controller.signal);
+      if (controller.signal.aborted) { setState('idle'); setCaption(''); return; }
+      if (!question) {
+        setState('idle');
+        setCaption('Não entendi. Tente de novo, mais perto do microfone.');
+        setHelpOpen(true);
+        return;
+      }
+      setCaption('');
+      handleRef.current(question);
+    } catch (error) {
+      setState('idle');
+      setCaption('');
+      if (controller.signal.aborted) return;
+      setSpeechError(error instanceof DOMException ? micErrorMessage(error) : error instanceof Error ? error.message : 'O microfone falhou.');
+      setHelpOpen(true);
+    } finally {
+      if (recordAbortRef.current === controller) recordAbortRef.current = null;
+      setRecording(false);
+    }
+  };
+  const listenOnServerRef = useRef(listenOnServer);
+  listenOnServerRef.current = listenOnServer;
   useEffect(() => { if (!listener.supported) { setTyping(true); setCaption(''); } }, [listener.supported]);
   const microphoneHelpShown = useRef(false);
   useEffect(() => {
-    if ((listener.status === 'blocked' || listener.status === 'unsupported' || listener.status === 'error') && !microphoneHelpShown.current) {
+    if ((listener.status === 'blocked' || listener.status === 'unsupported' || listener.status === 'error') && !microphoneHelpShown.current && micMode !== 'server') {
       microphoneHelpShown.current = true;
       setHelpOpen(true);
     }
-  }, [listener.status]);
+  }, [listener.status, micMode]);
   const toggleMic = () => {
     prime();
+    if (useServerMic) { void listenOnServer(); return; }
     if (!listener.supported) { setTyping(true); return; }
     if (listener.active) listener.standby(); else listener.activate();
   };
@@ -251,15 +322,19 @@ export default function Stage() {
     setVoiceOn(true);
     sayRef.current('Olá, o áudio do Ícaro está ativado.');
   };
-  const listenLabel = {
+  const listenLabel = useServerMic
+    ? (recording ? 'Gravando… pare de falar para enviar' : 'Microfone pelo servidor · toque no microfone e fale')
+    : {
     starting: 'Conectando microfone…', listening: listener.active ? 'Escuta ativa' : 'Em espera · palavra de ativação',
     blocked: 'Escuta indisponível', unsupported: 'Voz não suportada',
     error: 'Reconectando reconhecimento…', paused: 'Microfone pausado',
   }[listener.status];
+  const showListenerError = !!listener.error && !useServerMic;
   const visibleCaption = caption;
   const activateRef = useRef<() => void>(() => undefined);
   activateRef.current = () => {
     prime();
+    if (useServerMic) { void listenOnServerRef.current(); return; }
     if (!listener.supported) { setTyping(true); return; }
     listener.activate();
   };
@@ -292,7 +367,8 @@ export default function Stage() {
       <StageHelp open={helpOpen} onOpen={() => setHelpOpen(true)} onClose={() => setHelpOpen(false)} clock={clock} stateLabel={state === 'idle' ? 'Em espera' : STATE_LABEL[state]}>
         <h3>Microfone</h3>
         <p role="status" data-testid="status-listening">{listenLabel}</p>
-        {listener.error && <p role="alert" data-testid="status-listening-error">{wakeAccessErrorMessage(listener.error)}</p>}
+        {showListenerError && <p role="alert" data-testid="status-listening-error">{wakeAccessErrorMessage(listener.error!)}</p>}
+        {useServerMic && micMode === 'auto' && listener.error && <p data-testid="status-mic-fallback">O reconhecimento do navegador falhou ({listener.error}); use o microfone para falar pelo servidor.</p>}
         <div className="sh-row"><button onClick={() => void activateVoice()} data-testid="button-audio-activate-help">Ativar e testar áudio do Ícaro</button></div>
         {speechError && <p role="alert" data-testid="status-audio-error-help">{speechError}</p>}
         {(listener.inFrame || listener.error === 'iframe-policy') && <a className="hbtn mt-2" href={import.meta.env.BASE_URL} target="_blank" rel="noopener noreferrer" data-testid="link-open-stage-tab">Abrir Ícaro em uma nova aba</a>}
@@ -301,6 +377,7 @@ export default function Stage() {
           {listener.status === 'blocked' && listener.error !== 'iframe-policy' && listener.error !== 'insecure-context' && <button onClick={() => { prime(); listener.enable(); }} data-testid="button-enable-listening">Retomar microfone</button>}
           {listener.supported && <button onClick={() => { prime(); if (listener.status === 'paused') listener.enable(); else listener.pause(); }} data-testid="button-pause-listening">{listener.status === 'paused' ? 'Retomar microfone' : 'Pausar microfone'}</button>}
         </div>
+        <MicSettings mode={micMode} onMode={chooseMicMode} usingServer={useServerMic} />
       </StageHelp>
 
       <button className="menu hbtn disp text-lg" onClick={() => setPanel(true)} aria-label="Abrir painel" data-testid="button-open-panel"><Menu size={18} /></button>
@@ -329,7 +406,7 @@ export default function Stage() {
             {captionsVisible ? <EyeOff size={16} /> : <Eye size={16} />} Legendas {captionsVisible ? 'ligadas' : 'desligadas'}
           </button>
         </div>
-        <button className="mic" onClick={toggleMic} aria-label={listener.active ? 'Voltar ao modo de espera' : 'Ativar Ícaro manualmente'} aria-pressed={listener.active} data-testid="button-mic"><Mic size={34} /></button>
+        <button className="mic" onClick={toggleMic} aria-label={recording ? 'Parar gravação' : useServerMic ? 'Falar com Ícaro pelo microfone' : listener.active ? 'Voltar ao modo de espera' : 'Ativar Ícaro manualmente'} aria-pressed={listener.active || recording} data-testid="button-mic" data-recording={recording || undefined}><Mic size={34} /></button>
         <button onClick={() => setTyping((v) => !v)} className="hbtn" aria-label="Digitar pergunta" aria-expanded={typing} data-testid="button-toggle-typing"><Keyboard size={18} /></button>
       </div>
 
@@ -377,6 +454,7 @@ export default function Stage() {
           )}
           {tab === 'voz' && (
             <div className="space-y-5">
+              <MicSettings mode={micMode} onMode={chooseMicMode} usingServer={useServerMic} />
               <div className="card space-y-2">
                 <div className="mono text-[10px] uppercase tracking-widest text-[color:var(--ok)]">Ativação por voz</div>
                 <p>Diga <strong>“Ok, Ícaro”</strong>, seguido da pergunta, ou espere a indicação “Escuta ativa”. Cada ativação autoriza uma pergunta; após responder, o ÍCARO volta à espera. Sem pergunta em 12 segundos, a ativação expira em silêncio. Diga <strong>“Stop, Ícaro”</strong> para interromper.</p>

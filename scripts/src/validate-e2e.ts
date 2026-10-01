@@ -1,7 +1,7 @@
 /**
- * Validação de ponta a ponta do Ícaro: 10 checagens reais da API + 40 cenários
+ * Validação de ponta a ponta do Ícaro: 10 checagens reais da API + 41 cenários
  * em Chromium headless com microfone (SpeechRecognition) simulado.
- * Total: exatamente 50 testes. Uso: pnpm --filter @workspace/scripts run validate:e2e
+ * Total: exatamente 51 testes. Uso: pnpm --filter @workspace/scripts run validate:e2e
  */
 import { chromium, type Page, type Route } from 'playwright-core';
 
@@ -481,12 +481,24 @@ async function main() {
     await page.click('[data-testid="button-enable-listening"]');
     await until(() => page.evaluate(() => (window as any).__rec.current.alive), 3000, 'retomada');
   });
+  await test('Configurações do microfone alternam entre navegador e servidor', async () => {
+    await fresh();
+    await page.click('[data-testid="button-help"]');
+    const settings = page.locator('[data-testid="card-mic-settings"]').first();
+    await settings.waitFor({ state: 'visible' });
+    assert(await settings.locator('[data-testid="select-mic-device"]').count() === 1, 'seletor de aparelho ausente');
+    await settings.locator('[data-testid="button-mic-mode-server"]').click();
+    await until(async () => (await page.textContent('[data-testid="status-listening"]'))?.includes('servidor') === true, 3000, 'modo servidor');
+    await settings.locator('[data-testid="button-mic-mode-auto"]').click();
+    await until(() => page.evaluate(() => (window as any).__rec.current?.alive === true), 3000, 'retomada do navegador');
+    await page.click('[data-testid="button-close-help"]');
+  });
 
   await browser.close();
   const failed = results.filter((r) => !r.ok);
   if (pageErrors.length) failed.push({ n: 0, name: 'erros de página', ok: false, info: pageErrors.join('; ') });
   console.log(`\n${results.filter((r) => r.ok).length}/${results.length} testes aprovados. Erros de página: ${pageErrors.length}${pageErrors.length ? ` (${[...new Set(pageErrors)].join('; ')})` : ''}`);
-  if (results.length !== 50) { console.log(`ERRO: esperados 50 testes, executados ${results.length}`); process.exit(1); }
+  if (results.length !== 51) { console.log(`ERRO: esperados 51 testes, executados ${results.length}`); process.exit(1); }
   process.exit(failed.length ? 1 : 0);
 }
 
