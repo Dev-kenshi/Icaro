@@ -497,12 +497,14 @@ async function main() {
     await page.click('[data-testid="button-enable-listening"]');
     await until(() => page.evaluate(() => (window as any).__rec.current.alive), 3000, 'retomada');
   });
-  await test('Configurações do microfone alternam entre navegador e servidor', async () => {
+  await test('Microfone padrão do Chrome e modos navegador/servidor', async () => {
     await fresh();
     await page.click('[data-testid="button-help"]');
     const settings = page.locator('[data-testid="card-mic-settings"]').first();
     await settings.waitFor({ state: 'visible' });
-    assert(await settings.locator('[data-testid="select-mic-device"]').count() === 1, 'seletor de aparelho ausente');
+    const defaultInput = await settings.locator('[data-testid="text-mic-default-device"]').textContent();
+    assert((defaultInput ?? '').includes('microfone padrão do Chrome/Windows'), `entrada não segue o padrão do Chrome: ${defaultInput}`);
+    assert(await settings.locator('[data-testid="select-mic-device"]').count() === 0, 'seletor separado de aparelho ainda está visível');
     await settings.locator('[data-testid="button-mic-mode-server"]').click();
     await until(async () => (await page.textContent('[data-testid="status-listening"]'))?.includes('servidor') === true, 3000, 'modo servidor');
     await settings.locator('[data-testid="button-mic-mode-auto"]').click();

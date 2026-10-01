@@ -1,10 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   diagnoseMicrophone,
-  getMicDeviceId,
-  listMicrophones,
   micErrorMessage,
-  setMicDeviceId,
   type MicDiagnosis,
   type MicMode,
 } from '@/lib/mic-config';
@@ -28,21 +25,9 @@ export function MicSettings({
   onTestStart?: () => void;
   onTestEnd?: () => void;
 }) {
-  const [devices, setDevices] = useState<Array<{ id: string; label: string }>>([]);
-  const [device, setDevice] = useState(getMicDeviceId);
   const [level, setLevel] = useState(0);
   const [testing, setTesting] = useState(false);
   const [diagnosis, setDiagnosis] = useState<MicDiagnosis | null>(null);
-
-  const refresh = useCallback(() => {
-    void listMicrophones().then(setDevices).catch(() => setDevices([]));
-  }, []);
-
-  useEffect(() => {
-    refresh();
-    navigator.mediaDevices?.addEventListener?.('devicechange', refresh);
-    return () => navigator.mediaDevices?.removeEventListener?.('devicechange', refresh);
-  }, [refresh]);
 
   const testMicrophone = async () => {
     setTesting(true);
@@ -55,7 +40,6 @@ export function MicSettings({
     } finally {
       onTestEnd?.();
       setTesting(false);
-      refresh();
     }
   };
 
@@ -84,22 +68,8 @@ export function MicSettings({
       <p className="text-xs text-[color:var(--holo)]" data-testid="text-mic-engine">
         Em uso agora: {usingServer ? 'servidor (Whisper)' : 'reconhecimento do navegador'}
       </p>
-      <label className="block text-xs">
-        <span className="text-[color:var(--dim)]">Aparelho de entrada</span>
-        <select
-          className="mt-1 w-full rounded-lg border border-[color:var(--line)] bg-transparent p-2"
-          value={device}
-          onChange={(event) => { setDevice(event.target.value); setMicDeviceId(event.target.value); }}
-          data-testid="select-mic-device"
-        >
-          <option value="">Padrão do sistema</option>
-          {devices.filter((entry) => entry.id && entry.id !== 'default').map((entry) => (
-            <option key={entry.id} value={entry.id}>{entry.label}</option>
-          ))}
-        </select>
-      </label>
-      <p className="text-xs text-[color:var(--dim)]">
-        No modo Navegador, o Chrome usa o microfone padrão definido nas configurações do site. A seleção acima vale para o teste e para o modo Servidor.
+      <p className="text-xs text-[color:var(--dim)]" data-testid="text-mic-default-device">
+        Entrada fixa: microfone padrão do Chrome/Windows. Para trocar de aparelho, altere a entrada nas configurações do navegador ou do sistema.
       </p>
       <button
         type="button"

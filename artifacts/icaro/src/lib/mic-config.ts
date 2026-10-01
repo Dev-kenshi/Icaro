@@ -2,7 +2,6 @@
 // explicit utterance and transcribes it on the API when browser recognition fails.
 export type MicMode = 'auto' | 'browser' | 'server';
 const MODE_KEY = 'icaro.micMode';
-const DEVICE_KEY = 'icaro.micDevice';
 const BASE_URL = import.meta.env.BASE_URL;
 
 export const SERVER_FALLBACK_ERRORS = new Set([
@@ -25,47 +24,19 @@ export function setMicMode(mode: MicMode) {
   try { localStorage.setItem(MODE_KEY, mode); } catch { /* Keep this session's selection. */ }
 }
 
-export function getMicDeviceId(): string {
-  try { return localStorage.getItem(DEVICE_KEY) || ''; } catch { return ''; }
-}
-
-export function setMicDeviceId(id: string) {
-  try {
-    if (id) localStorage.setItem(DEVICE_KEY, id);
-    else localStorage.removeItem(DEVICE_KEY);
-  } catch { /* Keep this session's selection. */ }
-}
-
-export async function listMicrophones(): Promise<Array<{ id: string; label: string }>> {
-  if (!navigator.mediaDevices?.enumerateDevices) return [];
-  const devices = await navigator.mediaDevices.enumerateDevices();
-  return devices
-    .filter((device) => device.kind === 'audioinput')
-    .map((device, index) => ({ id: device.deviceId, label: device.label || `Microfone ${index + 1}` }));
-}
-
-function audioConstraints(deviceId: string): MediaTrackConstraints {
+function audioConstraints(): MediaTrackConstraints {
   return {
-    ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
     echoCancellation: true,
     noiseSuppression: true,
     autoGainControl: true,
   };
 }
 
-export async function openMicrophone(deviceId = getMicDeviceId()): Promise<MediaStream> {
+export async function openMicrophone(): Promise<MediaStream> {
   if (!navigator.mediaDevices?.getUserMedia) {
     throw new Error('Este navegador não oferece acesso ao microfone.');
   }
-  try {
-    return await navigator.mediaDevices.getUserMedia({ audio: audioConstraints(deviceId) });
-  } catch (error) {
-    if (deviceId && error instanceof DOMException && ['OverconstrainedError', 'NotFoundError'].includes(error.name)) {
-      setMicDeviceId('');
-      return navigator.mediaDevices.getUserMedia({ audio: audioConstraints('') });
-    }
-    throw error;
-  }
+  return navigator.mediaDevices.getUserMedia({ audio: audioConstraints() });
 }
 
 export function micErrorMessage(error: unknown): string {
@@ -91,7 +62,6 @@ function pickMime(): string {
 }
 
 export type RecordOptions = {
-  deviceId?: string;
   signal?: AbortSignal;
   onLevel?: (level: number) => void;
   onSpeech?: () => void;
@@ -103,7 +73,7 @@ export type RecordOptions = {
 /** Records one utterance, ending after silence; returns null for silence/cancel. */
 export async function recordUtterance(opts: RecordOptions = {}): Promise<Blob | null> {
   const { silenceMs = 900, startTimeoutMs = 8000, maxMs = 15000 } = opts;
-  const stream = await openMicrophone(opts.deviceId);
+  const stream = await openMicrophone();
   if (opts.signal?.aborted) {
     stream.getTracks().forEach((track) => track.stop());
     return null;
