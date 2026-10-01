@@ -10,9 +10,12 @@ import os from "node:os";
 import path from "node:path";
 import {
   createSpeechEngine,
+  DEFAULT_GEMINI_TTS_MODELS,
   elevenLabsBody,
+  geminiTtsBody,
   ModelRotation,
   normalizeGeminiAudio,
+  parseGeminiErrorMessage,
   parseRetryDelayMs,
   pcmToWav,
   speechCacheKey,
@@ -106,6 +109,41 @@ check("Tempo de espera da cota é lido do erro 429", () => {
   assert.equal(parseRetryDelayMs("sem informação"), null);
 });
 
+check("Detalhe de erro Gemini é extraído sem registrar uma chave", () => {
+  assert.equal(
+    parseGeminiErrorMessage('{"error":{"message":"Bad request with key AIza123456789012345678901234567890123"}}'),
+    "Bad request with key [redacted]",
+  );
+  assert.equal(parseGeminiErrorMessage("resposta inválida"), null);
+  assert.equal(parseGeminiErrorMessage('{"error":{"code":400}}'), null);
+});
+
+check("Credencial Gemini rejeitada falha rápido sem resfriar os modelos", async () => {
+  const h = harness({
+    handler: () => new Response(JSON.stringify({ error: { message: "API key not valid. Please pass a valid API key." } }), { status: 400 }),
+  });
+  await assert.rejects(
+    h.engine.synthesize("Teste de credencial."),
+    (error: unknown) => error instanceof SpeechUnavailableError && error.code === "provider_auth",
+  );
+  assert.equal(h.calls.length, 1);
+  assert.equal(h.engine.rotation.next(), "model-a");
+});
+
+check("Gemini TTS usa os modelos ativos e o contrato atual de voz", () => {
+  assert.deepEqual(DEFAULT_GEMINI_TTS_MODELS, [
+    "gemini-3.8-flash-tts",
+    "gemini-3.8-flash-lite-tts",
+  ]);
+  assert.deepEqual(geminiTtsBody("Olá, Ícaro.", "Charon"), {
+    contents: [{ role: "user", parts: [{ text: "Olá, Ícaro." }] }],
+    generationConfig: {
+      responseModalities: ["AUDIO"],
+      speechConfig: { voiceConfig: { voice: "Charon" } },
+    },
+  });
+});
+
 check("Rodízio de modelos pula quem está em espera e volta depois", () => {
   let t = 0;
   const r = new ModelRotation(["a", "b"], () => t);
@@ -125,8 +163,8 @@ check("Cota esgotada num modelo troca de modelo mantendo a MESMA voz", async () 
   assert.equal(res.model, "model-b");
   assert.equal(h.calls.length, 2);
   for (const c of h.calls) {
-    const voice = (c.body as { generationConfig: { speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: string } } } } })
-      .generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName;
+    const voice = (c.body as { generationConfig: { speechConfig: { voiceConfig: { voice: string } } } })
+      .generationConfig.speechConfig.voiceConfig.voice;
     assert.equal(voice, "Charon");
   }
 });

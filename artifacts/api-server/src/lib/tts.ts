@@ -23,7 +23,11 @@ export type SpeechResult = SpeechAudio & {
 };
 
 export class SpeechUnavailableError extends Error {
-  constructor(message: string, public retryAfterMs: number | null = null) {
+  constructor(
+    message: string,
+    public retryAfterMs: number | null = null,
+    public code: "provider_auth" | "unavailable" = "unavailable",
+  ) {
     super(message);
     this.name = "SpeechUnavailableError";
   }
@@ -39,9 +43,7 @@ export const ELEVENLABS_VOICE_SETTINGS = {
 
 /** The first model is the one that produced the voice the user approved. */
 export const DEFAULT_GEMINI_TTS_MODELS = [
-  "gemini-2.5-flash-preview-tts",
   "gemini-3.8-flash-tts",
-  "gemini-3.1-flash-tts-preview",
   "gemini-3.8-flash-lite-tts",
 ];
 
@@ -83,6 +85,18 @@ export function parseRetryDelayMs(body: string): number | null {
   return null;
 }
 
+export function parseGeminiErrorMessage(body: string): string | null {
+  try {
+    const parsed = JSON.parse(body) as { error?: { message?: unknown } };
+    if (typeof parsed.error?.message !== "string") return null;
+    return parsed.error.message
+      .replace(/AIza[0-9A-Za-z_-]{20,}/g, "[redacted]")
+      .slice(0, 400);
+  } catch {
+    return null;
+  }
+}
+
 export class ModelRotation {
   private until = new Map<string, number>();
   constructor(readonly models: string[], private now: () => number = Date.now) {}
@@ -102,10 +116,10 @@ export class ModelRotation {
 
 export function geminiTtsBody(text: string, voice: string) {
   return {
-    contents: [{ parts: [{ text }] }],
+    contents: [{ role: "user", parts: [{ text }] }],
     generationConfig: {
       responseModalities: ["AUDIO"],
-      speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
+      speechConfig: { voiceConfig: { voice } },
     },
   };
 }
@@ -328,13 +342,19 @@ export function createSpeechEngine(cfg: SpeechEngineConfig) {
         continue;
       }
       const body = await r.text().catch(() => "");
+      const providerMessage = parseGeminiErrorMessage(body);
+      if (r.status === 401 || r.status === 403
+        || (r.status === 400 && /api[_ ]key.{0,40}(not valid|invalid)|invalid.{0,20}api[_ ]key/i.test(providerMessage ?? ""))) {
+        cfg.log?.warn({ model, status: r.status, providerMessage }, "Gemini TTS credentials rejected");
+        throw new SpeechUnavailableError("gemini tts credentials rejected", null, "provider_auth");
+      }
       const coolMs = r.status === 429 ? parseRetryDelayMs(body) ?? 60_000
         : r.status === 404 ? 60 * 60_000
           : r.status === 400 ? 30_000
             : 15_000;
       rotation.cool(model, coolMs);
-      lastError = `${model} ${r.status}`;
-      cfg.log?.warn({ model, status: r.status, coolMs }, "Gemini TTS model unavailable, rotating");
+      lastError = `${model} ${r.status}${providerMessage ? `: ${providerMessage}` : ""}`;
+      cfg.log?.warn({ model, status: r.status, coolMs, providerMessage }, "Gemini TTS model unavailable, rotating");
     }
     const wait = rotation.earliestReadyAt() - now();
     throw new SpeechUnavailableError(`gemini tts failed: ${lastError}`, wait > 0 ? wait : null);

@@ -124,13 +124,16 @@ function analystInstructions(datasetContext: string) {
     .join("\n\n");
 }
 
+let speechProviderAuthRejected = false;
+
 router.get("/ai/status", (_req, res) => {
+  const speechConfigured = Boolean(getElevenLabsKey() || getGeminiKey() || getOpenAiKey());
   const data = GetAiStatusResponse.parse({
     geminiAvailable: Boolean(getGeminiKey()),
     openaiAvailable: Boolean(getOpenAiKey()),
     groqAvailable: Boolean(getGroqApiKey()),
     claudeAvailable: Boolean(process.env.ANTHROPIC_API_KEY),
-    speechAvailable: Boolean(getElevenLabsKey() || getGeminiKey() || getOpenAiKey()),
+    speechAvailable: speechConfigured && !speechProviderAuthRejected,
   });
   res.json(data);
 });
@@ -167,6 +170,7 @@ router.post("/ai/tts", async (req, res) => {
   try {
     const speechText = speech.family() === "gemini" ? applyTtsPronunciation(text) : text;
     const result = await speech.synthesize(speechText);
+    if (result.family === "gemini" && result.cache === "miss") speechProviderAuthRejected = false;
     res.setHeader("Content-Type", result.contentType);
     res.setHeader("X-Speech-Provider", result.family);
     res.setHeader("X-Speech-Voice", result.voice);
@@ -175,10 +179,15 @@ router.post("/ai/tts", async (req, res) => {
     res.send(result.audio);
   } catch (error) {
     const retryAfterMs = error instanceof SpeechUnavailableError ? error.retryAfterMs : null;
+    const providerAuthFailed = error instanceof SpeechUnavailableError && error.code === "provider_auth";
+    if (providerAuthFailed && speech.family() === "gemini") speechProviderAuthRejected = true;
     req.log.error({ err: error }, "Speech synthesis failed");
     if (retryAfterMs) res.setHeader("Retry-After", String(Math.ceil(retryAfterMs / 1000)));
     res.status(503).json({
-      error: "A voz neural está temporariamente indisponível. Tente novamente em instantes.",
+      code: providerAuthFailed ? "SPEECH_PROVIDER_AUTH" : "SPEECH_UNAVAILABLE",
+      error: providerAuthFailed
+        ? "A chave Gemini para síntese de voz foi recusada. Atualize GEMINI_API_KEY."
+        : "A voz neural está temporariamente indisponível. Tente novamente em instantes.",
     });
   }
 });
