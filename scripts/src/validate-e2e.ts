@@ -1,7 +1,7 @@
 /**
- * Validação de ponta a ponta do Ícaro: 10 checagens reais da API + 41 cenários
+ * Validação de ponta a ponta do Ícaro: 10 checagens reais da API + 47 cenários
  * em Chromium headless com microfone (SpeechRecognition) simulado.
- * Total: exatamente 51 testes. Uso: pnpm --filter @workspace/scripts run validate:e2e
+ * Total: exatamente 57 testes. Uso: pnpm --filter @workspace/scripts run validate:e2e
  */
 import { chromium, type Page, type Route } from 'playwright-core';
 
@@ -81,6 +81,10 @@ const voiceActive = (p: Page) => p.evaluate(() => document.querySelector('.stage
 const caption = (p: Page) => p.evaluate(() => document.querySelector('[data-testid="text-caption"]')?.textContent?.trim() ?? '');
 const waitState = (p: Page, s: string, t = 8000) => until(async () => (await state(p)) === s, t, `estado ${s}`);
 const say = (p: Page, text: string, final = true, index?: number) => p.evaluate(([t, f, i]) => (window as any).__say(t, f, i ?? undefined), [text, final, index ?? null] as const);
+const waitForChat = async (before: number, timeout = 6000) => {
+  await until(async () => chatCalls.length > before, timeout, 'pergunta completa chegar à API');
+  return chatCalls.slice(before);
+};
 /** Fala realista: parciais palavra a palavra, depois o resultado final. */
 async function speakLike(p: Page, text: string, gap = 70) {
   const words = text.split(' ');
@@ -223,6 +227,11 @@ async function main() {
     await until(() => page.evaluate(() => (window as any).__rec.current?.alive === true && !!(window as any).__avatars[0]?.mouth), 15000, 'microfone e avatar prontos');
     await sleep(150);
   }
+  async function enableDirectMode() {
+    await page.click('[data-testid="button-open-panel"]');
+    await page.click('[data-testid="tab-voz"]');
+    await page.locator('[data-testid="toggle-direct-voice-mode"]').check();
+  }
 
   await test('Página carrega em espera, avatar pronto, sem erros', async () => {
     const errs = pageErrors.length; await fresh();
@@ -263,6 +272,89 @@ async function main() {
     await sleep(700);
     assert(chatCalls.length === after && (await state(page)) === 'idle', 'fala foi enviada depois de desligar o modo direto');
   });
+  await test('CAPTURA VOZ · modo direto une trechos finais numa pergunta', async () => {
+    await fresh(); await enableDirectMode();
+    const before = chatCalls.length;
+    await say(page, 'o que', true); await sleep(250);
+    await say(page, 'é', true); await sleep(250);
+    await say(page, 'o ativo circulante?', true);
+    const lastSegmentAt = Date.now();
+    await sleep(500);
+    assert(chatCalls.length === before, 'enviou antes da pausa de fala');
+    const sent = await waitForChat(before, 4000);
+    assert(sent.length === 1 && /o que é o ativo circulante/i.test(sent[0] ?? ''), `pergunta incompleta ou duplicada: ${sent.join(' | ')}`);
+    assert(Date.now() - lastSegmentAt < 3000, 'pergunta demorou para ser enviada depois que a fala terminou');
+  });
+  await test('CAPTURA VOZ · ativação separada aceita pergunta em vários trechos', async () => {
+    await fresh();
+    const before = chatCalls.length;
+    await say(page, 'Ok, Ícaro', true); await waitState(page, 'listening');
+    await say(page, 'o que é', true); await sleep(250);
+    await say(page, 'ativo circulante?', true);
+    const sent = await waitForChat(before, 6000);
+    assert(sent.length === 1 && /o que é ativo circulante/i.test(sent[0] ?? ''), `pergunta incompleta ou duplicada: ${sent.join(' | ')}`);
+  });
+  await test('CAPTURA VOZ · ativação e pergunta juntas preservam as revisões do reconhecimento', async () => {
+    await fresh();
+    const before = chatCalls.length;
+    await speakLike(page, 'Ok Ícaro, explique o fluxo de caixa', 80);
+    const sent = await waitForChat(before, 6000);
+    assert(sent.length === 1 && /explique o fluxo de caixa/i.test(sent[0] ?? ''), `pergunta incompleta ou duplicada: ${sent.join(' | ')}`);
+  });
+  await test('CAPTURA VOZ · responde rapidamente após a pausa curta', async () => {
+    await fresh(); await enableDirectMode();
+    const before = chatCalls.length;
+    await say(page, 'qual é o prazo', true); await sleep(300);
+    await say(page, 'de entrega?', true);
+    const lastSegmentAt = Date.now();
+    let sent: string[];
+    try { sent = await waitForChat(before, 5000); }
+    catch (error) {
+      const diagnostic = await page.evaluate(() => ({
+        state: document.querySelector('.stage')?.getAttribute('data-state'),
+        active: document.querySelector('.stage')?.getAttribute('data-voice-active'),
+        directMode: (document.querySelector('[data-testid="toggle-direct-voice-mode"]') as HTMLInputElement | null)?.checked,
+        recognized: (window as any).__rec.results.map((result: any) => result?.[0]?.transcript ?? ''),
+        caption: document.querySelector('[data-testid="text-caption"]')?.textContent?.trim(),
+      }));
+      throw new Error(`${(error as Error).message}: ${JSON.stringify(diagnostic)}`);
+    }
+    assert(Date.now() - lastSegmentAt < 3000, 'não enviou rapidamente após a pausa');
+    assert(sent.length === 1 && /qual é o prazo de entrega/i.test(sent[0] ?? ''), `pergunta incompleta ou duplicada: ${sent.join(' | ')}`);
+  });
+  await test('CAPTURA VOZ · limita a captura contínua a 15 segundos', async () => {
+    await fresh(); await enableDirectMode();
+    const before = chatCalls.length;
+    const words = Array.from({ length: 22 }, (_, i) => `parte ${i + 1}`);
+    let lastSegmentAt = 0;
+    for (let i = 1; i <= words.length; i++) {
+      await say(page, `consulta longa ${words.slice(0, i).join(' ')}`, false, 0);
+      lastSegmentAt = Date.now();
+      if (i < words.length) await sleep(680);
+    }
+    const sent = await waitForChat(before, 3000);
+    assert(Date.now() - lastSegmentAt < 1100, 'não foi encerrada no limite de 15 segundos');
+    assert(sent.length === 1 && /parte 22/i.test(sent[0] ?? ''), `limite não enviou a captura completa uma única vez: ${sent.join(' | ')}`);
+  });
+  await test('Ícaro aparece sem aro circular ao redor do rosto', async () => {
+    await fresh();
+    const styles = await page.locator('[data-testid="holo-face-orb"]').evaluate((el) => {
+      const orb = getComputedStyle(el);
+      const canvas = getComputedStyle(el.querySelector('canvas')!);
+      return {
+        background: orb.backgroundColor,
+        border: orb.borderWidth,
+        shadow: orb.boxShadow,
+        ring: getComputedStyle(el, '::before').content,
+        faceRadius: canvas.borderRadius,
+      };
+    });
+    assert(
+      styles.background === 'rgba(0, 0, 0, 0)' && styles.border === '0px' &&
+        styles.shadow === 'none' && styles.ring === 'none' && styles.faceRadius === '0px',
+      `o aro ou a máscara circular ainda aparece: ${JSON.stringify(styles)}`,
+    );
+  });
   await test('Legenda mostra só a resposta, nunca a transcrição', async () => {
     await fresh(); const q = 'qual a diferença entre ativo e passivo';
     assert((await fullTurn(page, q)) === 1, 'chamadas != 1');
@@ -293,9 +385,9 @@ async function main() {
     await waitState(page, 'talking', 10000); await waitState(page, 'idle', 15000);
     assert(chatCalls.length === before + 1, 'pergunta não respondida');
   });
-  await test('Espera de 12 s expira e volta ao modo de espera', async () => {
+  await test('Espera de 15 s expira e volta ao modo de espera', async () => {
     await sleep(600); await say(page, 'Ok Ícaro', true); await waitState(page, 'listening');
-    await waitState(page, 'idle', 14000);
+    await waitState(page, 'idle', 17000);
     const before = chatCalls.length; await speakLike(page, 'qual é a capital da Bahia hoje'); await sleep(1000);
     assert(chatCalls.length === before, 'respondeu depois da janela');
   });
@@ -513,7 +605,7 @@ async function main() {
   const failed = results.filter((r) => !r.ok);
   if (pageErrors.length) failed.push({ n: 0, name: 'erros de página', ok: false, info: pageErrors.join('; ') });
   console.log(`\n${results.filter((r) => r.ok).length}/${results.length} testes aprovados. Erros de página: ${pageErrors.length}${pageErrors.length ? ` (${[...new Set(pageErrors)].join('; ')})` : ''}`);
-  if (!onlyTest && results.length !== 51) { console.log(`ERRO: esperados 51 testes, executados ${results.length}`); process.exit(1); }
+  if (!onlyTest && results.length !== 57) { console.log(`ERRO: esperados 57 testes, executados ${results.length}`); process.exit(1); }
   if (onlyTest && !results.length) { console.log(`ERRO: nenhum teste corresponde a "${onlyTest}"`); process.exit(1); }
   process.exit(failed.length ? 1 : 0);
 }

@@ -108,7 +108,7 @@ check("Contrato permite local apenas como resposta, nunca como provedor escolhid
 check("Limite de tokens fala em voz alta sem deixar respostas longas demais", () => {
   const route = read("artifacts/api-server/src/routes/ai.ts");
   const groq = read("artifacts/api-server/src/lib/groq.ts");
-  assert.match(route, /const responseTokenLimit = input\.persona === "icaro" \? 1024 : 8192/);
+  assert.match(route, /const responseTokenLimit = input\.persona === "icaro" \? 1400 : 8192/);
   assert.match(route, /maxTokens: responseTokenLimit/);
   assert.match(groq, /max_tokens: input\.maxTokens \?\? 1536/);
 });
@@ -125,33 +125,29 @@ check("Legenda central não exibe Pensando, Preparando, transcrição ou erro de
   assert.doesNotMatch(stage, /onError: \(e\)[\s\S]{0,300}sayRef\.current/);
 });
 
-check("Interim estável dispara a pergunta uma única vez antes do resultado final", () => {
+check("A pergunta completa só é enviada depois do fim da captura", () => {
   const gate = new WakeTurnGate();
   gate.arm(0);
-  const interim = gate.receive("Ok Ícaro, quando será o ITCONT", false, 3, 10, false);
+  const interim = gate.receive("Ok Ícaro, quando será o ITCONT", false, 3, 10, false, false, false, false, true);
   assert.equal(interim.some((event) => event.type === "transcript"), true);
-  const early = gate.commitInterim(3, "quando será o ITCONT", 560);
-  assert.deepEqual(early, [{ type: "question", text: "quando será o ITCONT" }]);
+  const final = gate.receive("Ok Ícaro, quando será o ITCONT 2026?", true, 3, 900, false, false, false, false, true);
+  assert.equal(final.some((event) => event.type === "question"), false);
+  const complete = gate.submitQuestion("quando será o ITCONT 2026?", 1_200);
+  assert.deepEqual(complete, [{ type: "question", text: "quando será o ITCONT 2026?" }]);
   assert.equal(gate.pending, true);
-  assert.deepEqual(gate.receive("Ok Ícaro, quando será o ITCONT", true, 3, 900, false), []);
 
   const incomplete = new WakeTurnGate();
   incomplete.arm(0);
-  incomplete.receive("Ok Ícaro, o que é", false, 4, 10, false);
-  assert.deepEqual(incomplete.commitInterim(4, "o que é", 570), []);
-  assert.equal(incomplete.pending, false);
-  assert.equal(
-    incomplete.receive("Ok Ícaro, o que é DRE", true, 4, 900, false)
-      .filter((event) => event.type === "question").length,
-    1,
-  );
+  incomplete.receive("Ok Ícaro, o que é", false, 4, 10, false, false, false, false, true);
+  assert.equal(incomplete.submitQuestion("o que é", 570).length, 1);
 });
 
 check("Guarda de eco e retomada da captura ficam curtos sem abrir conversa ambiente", () => {
   const gateSource = read("artifacts/icaro/src/lib/wake-turn-gate.ts");
   const hook = read("artifacts/icaro/src/hooks/use-wake-listener.ts");
   assert.match(gateSource, /OUTPUT_ECHO_GUARD_MS = 450/);
-  assert.match(hook, /INTERIM_COMMIT_MS = 550/);
+  assert.match(gateSource, /UTTERANCE_SILENCE_MS = 1_200/);
+  assert.match(gateSource, /UTTERANCE_MAX_MS = 15_000/);
   assert.match(hook, /150 \* 2 \*\* failures/);
   assert.match(hook, /maxAlternatives = 1/);
   const echoStop = new WakeTurnGate();

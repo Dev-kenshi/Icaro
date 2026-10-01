@@ -2,7 +2,7 @@
 // Foco nas regressões possíveis do streaming (fala frase por frase) e no ciclo de vida do turno.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { WakeTurnGate, QUESTION_WINDOW_MS, resemblesPlayback } from '../../artifacts/icaro/src/lib/wake-turn-gate';
+import { SpeechUtteranceBuffer, UTTERANCE_MAX_MS, UTTERANCE_SILENCE_MS, WakeTurnGate, QUESTION_WINDOW_MS, resemblesPlayback } from '../../artifacts/icaro/src/lib/wake-turn-gate';
 import { wakeAccessBlockReason, wakeAccessErrorMessage } from '../../artifacts/icaro/src/lib/wake-access';
 
 const root = new URL('../../', import.meta.url).pathname;
@@ -90,7 +90,7 @@ const checks: Array<[string, () => void]> = [
     assert.ok(ev.some((e) => e.type === 'wake'), 'wake durante thinking deveria rearmar');
     assert.equal(gate.pending, false);
   }],
-  ['Janela de 12 s após a ativação expira e não escuta mais', () => {
+  ['Janela de 15 s após a ativação expira e não escuta mais', () => {
     const gate = new WakeTurnGate();
     gate.arm(0);
     assert.equal(gate.expire(QUESTION_WINDOW_MS), true);
@@ -116,6 +116,16 @@ const checks: Array<[string, () => void]> = [
     assert.ok(interim.some((e) => e.type === 'transcript' && e.text.includes('auditoria')), JSON.stringify(interim));
     const final = gate.receive('o que é auditoria?', true, 0, 600, false);
     assert.ok(final.some((e) => e.type === 'question'), JSON.stringify(final));
+  }],
+  ['Hook reúne a fala e só envia após silêncio ou limite de 15 s', () => {
+    assert.match(hook, /new SpeechUtteranceBuffer\(\)/);
+    assert.match(hook, /setTimeout\(flushUtterance,\s*UTTERANCE_SILENCE_MS\)/);
+    assert.match(hook, /setTimeout\(flushUtterance,\s*UTTERANCE_MAX_MS\)/);
+    assert.match(hook, /gate\.current\.submitQuestion\(text,\s*Date\.now\(\)\)/);
+  }],
+  ['Limites de captura são 1,2 s de silêncio e 15 s no máximo', () => {
+    assert.equal(UTTERANCE_SILENCE_MS, 1_200);
+    assert.equal(UTTERANCE_MAX_MS, 15_000);
   }],
 ];
 
