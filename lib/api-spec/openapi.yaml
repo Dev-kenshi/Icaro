@@ -1,0 +1,298 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: ai
+    description: AI assistant operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /ai/tts:
+    post:
+      operationId: speakAiText
+      summary: Synthesize ÍCARO's voice from text
+      tags:
+        - AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiSpeechInput"
+      responses:
+        "200":
+          description: Synthesized audio (WAV or MP3 depending on the provider)
+          content:
+            audio/wav:
+              schema:
+                type: string
+                format: binary
+            audio/mpeg:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: Invalid request
+        "429":
+          description: Too many speech requests in a short period
+        "503":
+          description: No speech provider available or all providers failed
+  /tts-ts:
+    post:
+      operationId: synthesizeTtsTimestamps
+      tags: [ai]
+      summary: Synthesize ElevenLabs audio with character-level timestamps
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TtsTimestampsInput"
+      responses:
+        "200":
+          description: Base64 audio and character-level alignment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TtsTimestampsResult"
+        "400":
+          description: Invalid request
+        "413":
+          description: Text exceeds the supported character limit
+        "429":
+          description: Too many timestamped speech requests in a short period
+        "502":
+          description: ElevenLabs request failed or returned invalid data
+        "503":
+          description: ElevenLabs is not configured
+        "504":
+          description: ElevenLabs request timed out
+  /ai/status:
+    get:
+      operationId: getAiStatus
+      tags: [ai]
+      summary: Get configured AI provider status
+      responses:
+        "200":
+          description: Provider availability without exposing credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiProviderStatus"
+  /ai/chat:
+    post:
+      operationId: sendAiMessage
+      tags: [ai]
+      summary: Ask an AI provider a question
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiChatInput"
+      responses:
+        "200":
+          description: Assistant response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiChatResponse"
+        "400":
+          description: Invalid request or provider is not configured
+        "429":
+          description: Too many questions in a short period
+        "502":
+          description: AI provider request failed
+        "503":
+          description: Requested AI provider is not configured
+components:
+  schemas:
+    AiSpeechInput:
+      type: object
+      additionalProperties: false
+      required:
+        - text
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 1200
+    TtsTimestampsInput:
+      type: object
+      additionalProperties: false
+      required:
+        - text
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 600
+        previous_text:
+          type: string
+          maxLength: 1200
+    TtsCharacterAlignment:
+      type: object
+      additionalProperties: false
+      required:
+        - characters
+        - character_start_times_seconds
+        - character_end_times_seconds
+      properties:
+        characters:
+          type: array
+          items:
+            type: string
+        character_start_times_seconds:
+          type: array
+          items:
+            type: number
+        character_end_times_seconds:
+          type: array
+          items:
+            type: number
+    TtsTimestampsResult:
+      type: object
+      additionalProperties: false
+      required:
+        - audio_base64
+        - alignment
+        - normalized_alignment
+      properties:
+        audio_base64:
+          type: string
+          format: byte
+        alignment:
+          $ref: "#/components/schemas/TtsCharacterAlignment"
+        normalized_alignment:
+          oneOf:
+            - $ref: "#/components/schemas/TtsCharacterAlignment"
+            - type: "null"
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    AiProviderStatus:
+      type: object
+      properties:
+        geminiAvailable:
+          type: boolean
+        openaiAvailable:
+          type: boolean
+        groqAvailable:
+          type: boolean
+        claudeAvailable:
+          type: boolean
+        speechAvailable:
+          type: boolean
+          description: Whether at least one server-side speech (TTS) provider is configured
+      required:
+        - geminiAvailable
+        - openaiAvailable
+        - groqAvailable
+        - claudeAvailable
+        - speechAvailable
+    AiChatHistoryMessage:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+          maxLength: 4000
+      required:
+        - role
+        - content
+    DatasetRow:
+      type: object
+      additionalProperties:
+        type: ["string", "null"]
+    DatasetContext:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 160
+        columns:
+          type: array
+          maxItems: 60
+          items:
+            type: string
+            maxLength: 160
+        sampleRows:
+          type: array
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/DatasetRow"
+        summary:
+          type: string
+          maxLength: 6000
+      required:
+        - name
+        - columns
+        - sampleRows
+    AiChatInput:
+      type: object
+      properties:
+        provider:
+          type: string
+          enum: [gemini, openai, groq, claude]
+        persona:
+          type: string
+          enum: [analyst, icaro]
+          default: analyst
+        question:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        history:
+          type: array
+          maxItems: 8
+          items:
+            $ref: "#/components/schemas/AiChatHistoryMessage"
+        dataset:
+          oneOf:
+            - $ref: "#/components/schemas/DatasetContext"
+            - type: "null"
+      required:
+        - provider
+        - question
+        - history
+        - dataset
+    AiChatResponse:
+      type: object
+      properties:
+        answer:
+          type: string
+        provider:
+          type: string
+          enum: [gemini, openai, groq, claude, local]
+        model:
+          type: string
+      required:
+        - answer
+        - provider
+        - model
+

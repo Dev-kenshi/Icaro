@@ -1,0 +1,15 @@
+import { API, ask, check, done, login } from "./_check";
+console.log("3. Estatísticas /api/ask/stats");
+const { cookie } = await login();
+const get = async () => (await (await fetch(`${API}/ask/stats`, { headers: { Cookie: cookie } })).json()) as { total: number; banco: { n: number; pct: number }; base: { n: number; pct: number }; ia: { n: number; pct: number }; msMedio: number };
+const a = await get();
+await ask(cookie, "como funciona o fator R?");
+await ask(cookie, "o que é auditoria?");
+const b = await get();
+check(b.total === a.total + 2, `total subiu 2 (${a.total} → ${b.total})`);
+check(b.base.n === a.base.n + 1, "contador da base subiu 1");
+check(b.banco.n === a.banco.n + 1, "contador do banco subiu 1");
+check(b.banco.n + b.base.n + b.ia.n === b.total, "banco + base + IA = total");
+check(Math.abs(b.banco.pct + b.base.pct + b.ia.pct - 100) < 0.5, "percentuais somam ~100%");
+check(typeof b.msMedio === "number" && b.msMedio >= 0, "tempo médio presente");
+done("validate-stats");

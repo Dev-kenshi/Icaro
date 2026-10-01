@@ -1,0 +1,27 @@
+{
+  "name": "@workspace/scripts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "hello": "tsx ./src/hello.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "validate:voice": "tsx ./src/validate-voice.ts",
+    "validate:hologram": "tsx ./src/validate-hologram.ts",
+    "validate:groq": "tsx ./src/validate-groq.ts",
+    "validate:knowledge": "tsx ./src/validate-fast-knowledge.ts",
+    "validate:e2e": "tsx ./src/validate-e2e.ts",
+    "validate:voice-output": "tsx ./src/validate-voice-output.ts",
+    "validate:auth": "tsx ./src/validate-auth.ts",
+    "validate:routing": "tsx ./src/validate-routing.ts",
+    "validate:stats": "tsx ./src/validate-stats.ts",
+    "validate:pipeline": "tsx ./src/validate-voice-pipeline.ts",
+    "validate:conhecimento": "tsx ./src/validate-conhecimento.ts",
+    "validate:all": "pnpm run validate:auth && pnpm run validate:routing && pnpm run validate:stats && pnpm run validate:pipeline && pnpm run validate:conhecimento"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "playwright-core": "^1.63.0",
+    "tsx": "catalog:"
+  }
+}

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ícaro · Rosto Humano (demo)</title>
+  <link rel="stylesheet" href="/avatar/avatar.css">
+  <style>
+    :root { --bg: #000; --ink: #a9cbe6; --cyan: #6ff3ff; --line: rgba(80,180,255,.35); }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: system-ui, "Segoe UI", sans-serif; overflow: hidden; }
+    .stage { position: fixed; inset: 0; display: grid; grid-template-rows: 1fr auto auto; }
+    .faceWrap { position: relative; overflow: hidden; display: grid; place-items: start center; min-height: 0; }
+    #face { width: auto; height: 100%; max-width: 100vw; }
+    .hud { position: fixed; left: 16px; top: 12px; font: 600 12px/1.4 ui-monospace, monospace; letter-spacing: .2em; color: var(--cyan); }
+    .hud small { display: block; color: var(--ink); letter-spacing: .12em; opacity: .8; }
+    #cap { padding: 0 16px 8px; }
+    .dock { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; padding: 10px 16px 18px; }
+    .dock input { flex: 1 1 420px; max-width: 640px; height: 40px; border-radius: 20px; border: 1px solid var(--line); background: rgba(6,22,40,.6); color: #e6f7ff; padding: 0 16px; font: inherit; }
+    button { height: 40px; padding: 0 16px; border-radius: 20px; border: 1px solid var(--line); background: rgba(30,123,255,.14); color: var(--cyan); font: inherit; cursor: pointer; }
+    button:hover { background: rgba(30,123,255,.3); }
+    #dbg { position: fixed; right: 12px; top: 12px; font: 11px/1.4 ui-monospace, monospace; color: #6d8aa6; text-align: right; }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="faceWrap"><canvas id="face" class="icaro-face" aria-label="Rosto do Ícaro"></canvas></div>
+    <p id="cap"></p>
+    <form class="dock" id="f">
+      <input id="t" value="Olá! Eu sou o Ícaro, o assistente do projeto Contador do Amanhã. Posso explicar a reforma tributária, ciência de dados e o impacto da tecnologia no cotidiano contábil. Qual é a sua dúvida?">
+      <button type="submit">Falar (voz real)</button>
+      <button type="button" id="sim">Simular sem chave</button>
+      <button type="button" data-s="listening">Ouvindo</button>
+      <button type="button" data-s="thinking">Pensando</button>
+      <button type="button" id="stop">Interromper</button>
+    </form>
+  </div>
+  <div class="hud">ÍCARO<small id="st">EM ESPERA</small></div>
+  <div id="dbg"></div>
+
+  <script src="/avatar/visemes-ptbr.js"></script>
+  <script src="/avatar/avatar-engine.js"></script>
+  <script src="/avatar/speech-player.js"></script>
+  <script src="/avatar/captions.js"></script>
+  <script>
+    const face = new IcaroAvatar(document.getElementById('face'), { assets: '/avatar/assets/' });
+    const cap = new IcaroCaptions(document.getElementById('cap'));
+    const st = document.getElementById('st'), dbg = document.getElementById('dbg');
+    const LABEL = { idle: 'EM ESPERA', listening: 'OUVINDO', thinking: 'PENSANDO', speaking: 'FALANDO' };
+    face.onframe = s => { st.textContent = LABEL[s.state]; dbg.textContent = `boca ${s.open.toFixed(2)} · largura ${s.width.toFixed(2)} · olhos ${s.eye} · sobrancelha ${s.brow.toFixed(2)}`; document.documentElement.style.setProperty('--icaro-lvl', s.open.toFixed(3)); };
+    const player = new IcaroSpeech({ avatar: face, endpoint: '/api/tts-ts', onSentence: cap.sentence, onWord: cap.word, onEnd: cap.end });
+
+    document.getElementById('f').onsubmit = e => { e.preventDefault(); simId++; player.unlock(); player.stop(); player.say(document.getElementById('t').value); };
+    document.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { simId++; player.stop(); face.setState(b.dataset.s); cap.status(b.dataset.s === 'listening' ? 'Estou ouvindo…' : 'Pensando…'); });
+    document.getElementById('stop').onclick = () => { simId++; player.stop(); face.setState('idle'); };
+
+    // Simulação sem ElevenLabs: alinhamento estimado + relógio de parede (valida a boca visualmente)
+    let simId = 0;
+    document.getElementById('sim').onclick = async () => {
+      player.stop();
+      const my = ++simId;
+      const sentences = IcaroVisemes.splitSentences(document.getElementById('t').value);
+      for (const s of sentences) {
+        if (my !== simId) return;
+        const tl = IcaroVisemes.buildTimeline(IcaroVisemes.synthAlignment(s));
+        const t0 = performance.now();
+        const clock = () => (performance.now() - t0) / 1000;
+        face.speak(tl, clock); cap.sentence(s, tl);
+        let wi = -1;
+        await new Promise(res => { const tick = () => { const t = clock(); while (wi + 1 < tl.words.length && tl.words[wi + 1].t0 <= t) cap.word(tl.words[++wi], wi); my === simId && t < tl.duration + 0.15 ? requestAnimationFrame(tick) : res(); }; tick(); });
+      }
+      if (my !== simId) return;
+      face.stopSpeaking(); cap.end();
+    };
+    window.__icaro = { face, player, cap };
+  </script>
+</body>
+</html>

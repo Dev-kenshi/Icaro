@@ -1,0 +1,9 @@
+.help-btn{position:fixed;top:16px;right:68px;z-index:7;min-width:44px;min-height:44px;display:grid;place-items:center}
+.stage-help{max-width:min(480px,92vw);max-height:86dvh;overflow:auto;padding:20px;border-radius:16px;border:1px solid rgba(95,216,255,.3);background:rgba(6,14,24,.96);color:#dff6ff}
+.stage-help::backdrop{background:rgba(2,6,12,.7)}
+.stage-help h2{letter-spacing:.24em;color:#5fd8ff;font-weight:600}
+.stage-help h3{font-size:10px;text-transform:uppercase;letter-spacing:.16em;opacity:.6;margin-top:14px}
+.stage-help p{font-size:13px;line-height:1.5;margin-top:4px}
+.stage-help .sh-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.stage-help button{min-height:44px;padding:0 14px;border-radius:10px;border:1px solid rgba(95,216,255,.35)}
+@media (prefers-reduced-motion:no-preference){.stage-help[open]{animation:shin .18s ease-out}@keyframes shin{from{opacity:0;transform:translateY(6px)}}}

@@ -1,0 +1,18 @@
+import { readFileSync, existsSync } from "node:fs";
+import { API, check, done, login } from "./_check";
+console.log("4. Pipeline de voz (limite de 8 s, reserva, voz local)");
+const root = new URL("../../", import.meta.url).pathname;
+const rd = (p: string) => readFileSync(root + p, "utf8");
+const route = rd("artifacts/api-server/src/routes/tts-timestamps.ts");
+check(/TTS_TIMEOUT_MS\) \|\| 8_000/.test(route), "/api/tts-ts limita a 8 s (TTS_TIMEOUT_MS)");
+check(route.includes("eleven_flash_v2_5"), "modelo padrão eleven_flash_v2_5");
+const sp = rd("artifacts/icaro/src/lib/speech.ts");
+check(/ttsTimestampsUnavailable/.test(sp) && /\\btts 503\\b/.test(sp), "após o 1º 503 do tts-ts, não pergunta de novo (voz reserva direta)");
+for (const f of ["local-voice.ts", "local-voice.worker.ts"]) check(existsSync(`${root}artifacts/icaro/src/lib/${f}`), `voz local presente: ${f}`);
+check(/format:\s*'es'/.test(rd("artifacts/icaro/vite.config.ts")), "vite usa worker.format 'es'");
+const { cookie } = await login();
+const t = Date.now();
+const r = await fetch(`${API}/tts-ts`, { method: "POST", headers: { "Content-Type": "application/json", Cookie: cookie }, body: JSON.stringify({ text: "Teste de voz do Ícaro." }) });
+check([200, 502, 503, 504].includes(r.status), `tts-ts responde de forma controlada (${r.status})`);
+check(Date.now() - t < 9500, `tts-ts respondeu em ${Date.now() - t} ms (<9,5 s)`);
+done("validate-voice-pipeline");

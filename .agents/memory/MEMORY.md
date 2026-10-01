@@ -1,0 +1,9 @@
+- [Gemini model IDs](gemini-model-compatibility.md) — direct `generateContent` model IDs can go stale; verify the selected model with a minimal server-side request.
+- [Gemini TTS quota](gemini-tts-quota.md) — ~10 RPM per TTS model; rotate models with same voice, never switch voice family mid-conversation.
+- [Voice command lifetime](voice-command-lifetime.md) — release command guards on explicit completion; fixed elapsed-time locks can discard valid follow-up speech.
+- [Voice output activation](voice-output-activation.md) — mic permission and audible output are separate; unlock Web Audio from a user gesture and report playback failures.
+- [Voice activation policy](voice-activation-policy.md) — each wake authorizes one question; ambient speech and delayed self-transcription must never trigger replies.
+- [Vendor speech lifetime](vendor-speech-lifetime.md) — isolate each reply's player queue; stopped async pumps must not affect the next turn.
+- [Avatar atlas reframing](avatar-atlas-reframing.md) — padding must translate positions, not rescale tile dimensions; preserve original face pixels for sprite registration.
+- [Groq model availability](groq-model-availability.md) — verify a real authenticated request; documentation and a configured key do not prove a model is usable.
+- [Local knowledge matching](knowledge-bank-matching.md) — rank subject specificity above question phrasing so generic local triggers do not swallow questions for the remote provider.

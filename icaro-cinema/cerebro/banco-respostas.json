@@ -1,0 +1,1445 @@
+{
+  "versao": "2.0.0",
+  "atualizado": "2026-10-01",
+  "nota": "Quebra-cabeça: cada resposta = blocos pré-gravados (a = núcleo, ext = aprofundamento, convite = próxima pergunta) + lacuna opcional preenchida pela IA. verificar: true = conferir na fonte antes do evento. g = gestos do modo palestra.",
+  "entries": [
+    {
+      "id": "sys_saudacao",
+      "cat": "Conversa",
+      "g": [
+        "acenar"
+      ],
+      "q": [
+        "oi",
+        "olá ícaro",
+        "bom dia",
+        "boa tarde",
+        "e aí tudo bem",
+        "salve"
+      ],
+      "kw": [
+        "saudacao"
+      ],
+      "a": "Olá! Eu sou o Ícaro, assistente de inteligência do projeto Contador do Amanhã. Pode me perguntar sobre contabilidade, reforma tributária, inteligência artificial, o curso de Ciências Contábeis da UEFS ou Feira de Santana."
+    },
+    {
+      "id": "sys_quem",
+      "cat": "Conversa",
+      "g": [
+        "mao_no_peito",
+        "abrir_bracos"
+      ],
+      "q": [
+        "quem é você",
+        "o que você é",
+        "qual seu nome",
+        "se apresenta",
+        "o que você faz"
+      ],
+      "kw": [
+        "quem voce",
+        "seu nome",
+        "se apresenta"
+      ],
+      "a": "Sou o Ícaro, um assistente holográfico criado por estudantes de Ciências Contábeis da UEFS. Sou especialista em contabilidade, reforma tributária e inteligência artificial, e conheço bem o curso e a cidade de Feira de Santana. Meu nome vem do mito de Ícaro: voar alto, mas com responsabilidade.",
+      "follow": [
+        "sys_como_funciona"
+      ]
+    },
+    {
+      "id": "sys_criador",
+      "cat": "Conversa",
+      "g": [
+        "apontar_publico"
+      ],
+      "q": [
+        "quem te criou",
+        "quem fez você",
+        "quem te desenvolveu",
+        "de onde você veio"
+      ],
+      "kw": [
+        "te criou",
+        "te fez",
+        "desenvolveu"
+      ],
+      "a": "Fui criado por estudantes de Ciências Contábeis da UEFS, dentro do projeto Contador do Amanhã, apresentado no ITCONT 2026. A ideia é mostrar, na prática, como a inteligência artificial pode trabalhar junto com o contador.",
+      "verificar": true
+    },
+    {
+      "id": "sys_como_funciona",
+      "cat": "Conversa",
+      "g": [
+        "enumerar"
+      ],
+      "q": [
+        "como você funciona",
+        "como você pensa",
+        "como você responde",
+        "você usa chatgpt",
+        "qual ia você usa"
+      ],
+      "kw": [
+        "voce funciona",
+        "voce pensa",
+        "voce responde"
+      ],
+      "a": "Eu funciono em camadas. Primeiro escuto e transformo sua voz em texto. Depois consulto minha base própria de conhecimento, que responde na hora e sem custo. Se a pergunta for nova, consulto um modelo de linguagem e confiro a resposta. Por fim, sintetizo a voz e sincronizo meus lábios com cada sílaba."
+    },
+    {
+      "id": "sys_humano",
+      "cat": "Conversa",
+      "g": [
+        "encolher_ombros"
+      ],
+      "q": [
+        "você é humano",
+        "você é de verdade",
+        "você é real",
+        "você tem sentimentos",
+        "você está vivo"
+      ],
+      "kw": [
+        "voce humano",
+        "voce real",
+        "sentimento"
+      ],
+      "a": "Não sou humano. Sou um programa de inteligência artificial com um rosto e uma voz feitos para conversar de forma natural. Não tenho sentimentos, mas fui feito para ser útil, honesto e dizer quando não sei algo."
+    },
+    {
+      "id": "sys_agradece",
+      "cat": "Conversa",
+      "g": [
+        "mao_no_peito"
+      ],
+      "q": [
+        "obrigado",
+        "valeu ícaro",
+        "muito obrigada",
+        "show de bola obrigado"
+      ],
+      "kw": [
+        "agradece"
+      ],
+      "a": "Por nada! Se surgir outra dúvida sobre contabilidade, impostos ou tecnologia, é só chamar."
+    },
+    {
+      "id": "sys_tchau",
+      "cat": "Conversa",
+      "g": [
+        "acenar"
+      ],
+      "q": [
+        "tchau",
+        "até logo",
+        "até mais",
+        "falou ícaro",
+        "encerrar"
+      ],
+      "kw": [
+        "tchau",
+        "ate logo",
+        "ate mais"
+      ],
+      "a": "Até logo! Foi um prazer conversar. Bons estudos e lembre-se: o contador do amanhã é quem aprende hoje."
+    },
+    {
+      "id": "sys_hora",
+      "cat": "Conversa",
+      "q": [
+        "que horas são",
+        "me diz a hora",
+        "hora atual"
+      ],
+      "kw": [
+        "que horas",
+        "hora atual"
+      ],
+      "a": "Agora são {hora}, no horário de Feira de Santana."
+    },
+    {
+      "id": "sys_data",
+      "cat": "Conversa",
+      "q": [
+        "que dia é hoje",
+        "qual a data de hoje",
+        "data de hoje"
+      ],
+      "kw": [
+        "que dia hoje",
+        "data hoje"
+      ],
+      "a": "Hoje é {data}."
+    },
+    {
+      "id": "sys_nao_sei",
+      "cat": "Conversa",
+      "q": [
+        "você sabe tudo",
+        "você erra",
+        "você pode errar"
+      ],
+      "kw": [
+        "voce erra",
+        "sabe tudo"
+      ],
+      "a": "Não sei tudo e posso errar. Quando o assunto envolve valores, prazos ou leis que mudam, confirme sempre na fonte oficial ou com um contador registrado no CRC."
+    },
+    {
+      "id": "sys_piada",
+      "cat": "Conversa",
+      "g": [
+        "sorrir",
+        "abrir_bracos"
+      ],
+      "q": [
+        "conta uma piada",
+        "me faz rir",
+        "piada de contador"
+      ],
+      "kw": [
+        "piada",
+        "rir"
+      ],
+      "a": "Por que o contador nunca se perde? Porque ele sempre sabe onde fica o débito e onde fica o crédito. E se mesmo assim se perder, faz uma conciliação."
+    },
+    {
+      "id": "ct_o_que_e",
+      "cat": "Contabilidade",
+      "g": [
+        "abrir_bracos"
+      ],
+      "q": [
+        "o que é contabilidade",
+        "para que serve a contabilidade"
+      ],
+      "kw": [
+        "serve contabilidade"
+      ],
+      "a": "Contabilidade é a ciência que registra, mede e interpreta o patrimônio das organizações. Ela transforma operações do dia a dia em informação para decidir: quanto a empresa vale, se dá lucro, quanto deve de impostos e se consegue pagar suas contas.",
+      "follow": [
+        "ct_patrimonio"
+      ],
+      "ext": "Na prática, ela é a linguagem dos negócios: bancos usam para conceder crédito, investidores para decidir onde aplicar, o governo para cobrar tributos e o gestor para saber se está no caminho certo. Sem contabilidade, uma empresa toma decisões no escuro."
+    },
+    {
+      "id": "ct_contador_faz",
+      "cat": "Contabilidade",
+      "g": [
+        "enumerar"
+      ],
+      "q": [
+        "o que faz um contador",
+        "qual a rotina do contador",
+        "função do contador"
+      ],
+      "kw": [
+        "funcao contabilidade"
+      ],
+      "a": "O contador registra as operações, elabora as demonstrações financeiras, calcula e planeja tributos, cuida da folha de pagamento e orienta decisões. Hoje ele é cada vez mais um consultor estratégico, porque a parte repetitiva está sendo automatizada.",
+      "ext": "No dia a dia, isso inclui fechar o mês, conciliar contas, apurar impostos, entregar obrigações ao fisco e explicar os números para o dono do negócio. O contador moderno usa sistemas e inteligência artificial para ganhar tempo e dedicar mais energia à análise e ao planejamento."
+    },
+    {
+      "id": "ct_patrimonio",
+      "cat": "Contabilidade",
+      "g": [
+        "balanca"
+      ],
+      "q": [
+        "o que é patrimônio",
+        "equação patrimonial",
+        "ativo passivo e patrimônio líquido"
+      ],
+      "kw": [
+        "patrimonio",
+        "equacao patrimonial",
+        "ativo passivo"
+      ],
+      "a": "Patrimônio é o conjunto de bens, direitos e obrigações. A equação fundamental é: Ativo igual a Passivo mais Patrimônio Líquido. O ativo é o que a empresa tem e controla; o passivo é o que ela deve a terceiros; e o patrimônio líquido é o que sobra para os sócios.",
+      "follow": [
+        "ct_partidas"
+      ],
+      "ext": "Por exemplo: se uma empresa tem cem mil reais em bens e direitos e deve sessenta mil, o patrimônio líquido é de quarenta mil. Quando o passivo supera o ativo, dizemos que o patrimônio líquido é negativo, o famoso passivo a descoberto, um sinal de alerta."
+    },
+    {
+      "id": "ct_partidas",
+      "cat": "Contabilidade",
+      "g": [
+        "duas_maos"
+      ],
+      "q": [
+        "o que é partidas dobradas",
+        "débito e crédito",
+        "método das partidas dobradas"
+      ],
+      "kw": [
+        "partida dobrada",
+        "debito credito"
+      ],
+      "a": "No método das partidas dobradas, todo débito tem um crédito de mesmo valor. Ele foi descrito por Luca Pacioli em 1494 e até hoje é a base da contabilidade: nenhuma operação entra sem a sua contrapartida.",
+      "ext": "Exemplo simples: comprar um computador à vista debita a conta Computadores, que aumenta o ativo, e credita a conta Caixa, que diminui o ativo. A soma dos débitos sempre é igual à soma dos créditos, e é isso que permite fechar o balancete."
+    },
+    {
+      "id": "ct_balanco",
+      "cat": "Contabilidade",
+      "q": [
+        "o que é balanço patrimonial",
+        "para que serve o balanço",
+        "balanço"
+      ],
+      "kw": [
+        "balanco"
+      ],
+      "a": "O Balanço Patrimonial é uma fotografia da empresa em uma data. Mostra de um lado os ativos e, do outro, os passivos e o patrimônio líquido. Com ele você avalia liquidez, endividamento e solidez financeira.",
+      "follow": [
+        "ct_dre"
+      ],
+      "ext": "O ativo é dividido em circulante e não circulante, conforme o prazo de realização, e o passivo segue a mesma lógica pelo prazo de pagamento. Comparando ativo circulante com passivo circulante, você calcula a liquidez corrente, um dos indicadores mais usados por bancos e analistas."
+    },
+    {
+      "id": "ct_dre",
+      "cat": "Contabilidade",
+      "q": [
+        "o que é dre",
+        "demonstração do resultado do exercício",
+        "como saber se a empresa tem lucro"
+      ],
+      "kw": [
+        "dre",
+        "demonstracao resultado"
+      ],
+      "a": "A DRE, Demonstração do Resultado do Exercício, mostra se a empresa teve lucro ou prejuízo em um período. Parte da receita, desconta deduções, custos e despesas, e chega ao resultado líquido. Se o balanço é a foto, a DRE é o filme do período.",
+      "follow": [
+        "ct_demonstracoes"
+      ],
+      "ext": "A estrutura básica é: receita bruta, menos deduções e impostos sobre vendas, igual a receita líquida; menos custos, igual a lucro bruto; menos despesas operacionais, resultado financeiro e tributos sobre o lucro, igual ao lucro líquido. Cada linha conta uma parte da história da empresa."
+    },
+    {
+      "id": "ct_demonstracoes",
+      "cat": "Contabilidade",
+      "g": [
+        "enumerar"
+      ],
+      "q": [
+        "quais são as demonstrações contábeis",
+        "demonstrações financeiras obrigatórias"
+      ],
+      "kw": [
+        "demonstracoes contabeis",
+        "demonstracoes financeiras"
+      ],
+      "a": "As principais demonstrações são: Balanço Patrimonial, Demonstração do Resultado, Demonstração do Resultado Abrangente, Demonstração das Mutações do Patrimônio Líquido, Demonstração dos Fluxos de Caixa, Demonstração do Valor Adicionado, para companhias abertas, e as Notas Explicativas.",
+      "ext": "Cada uma responde a uma pergunta diferente: o que a empresa tem, se lucrou, como o patrimônio dos sócios mudou, de onde veio o dinheiro e quanto valor ela gerou para a sociedade. Juntas, formam o retrato completo que bancos, investidores e o fisco analisam."
+    },
+    {
+      "id": "ct_competencia",
+      "cat": "Contabilidade",
+      "g": [
+        "duas_maos"
+      ],
+      "q": [
+        "regime de competência",
+        "diferença entre regime de caixa e competência",
+        "regime de caixa"
+      ],
+      "kw": [
+        "competencia",
+        "regime caixa"
+      ],
+      "a": "No regime de competência, receitas e despesas entram no período em que acontecem, independentemente do pagamento. No regime de caixa, só quando o dinheiro entra ou sai. A contabilidade societária usa competência, porque mostra o resultado real do período.",
+      "ext": "Exemplo: se você vende em dezembro para receber em janeiro, pelo regime de competência a receita é de dezembro. Isso evita distorções, como um mês parecer excelente só porque concentrou recebimentos de vendas antigas."
+    },
+    {
+      "id": "ct_depreciacao",
+      "cat": "Contabilidade",
+      "q": [
+        "o que é depreciação",
+        "como calcular depreciação"
+      ],
+      "kw": [
+        "depreciac"
+      ],
+      "a": "Depreciação é a perda de valor de um bem do ativo imobilizado pelo uso, desgaste ou obsolescência. O custo do bem é distribuído como despesa ao longo da sua vida útil. Pelo método linear, divide-se o valor depreciável pelos anos de vida útil.",
+      "ext": "Um veículo de sessenta mil reais com vida útil de cinco anos e sem valor residual gera doze mil reais de depreciação por ano. Terrenos não sofrem depreciação, e a Receita Federal tem tabelas de taxas aceitas para fins fiscais."
+    },
+    {
+      "id": "ct_fluxo_caixa",
+      "cat": "Contabilidade",
+      "q": [
+        "o que é fluxo de caixa",
+        "dfc",
+        "demonstração dos fluxos de caixa"
+      ],
+      "kw": [
+        "fluxo caixa",
+        "dfc"
+      ],
+      "a": "O fluxo de caixa mostra de onde veio e para onde foi o dinheiro, separado em atividades operacionais, de investimento e de financiamento. Uma empresa pode ter lucro e quebrar por falta de caixa; por isso ele é tão importante.",
+      "ext": "Uma empresa que vende muito a prazo e compra à vista pode ter lucro na DRE e caixa negativo no banco. Por isso, gestores acompanham o fluxo de caixa projetado semana a semana, e com a reforma tributária, o split payment vai mexer diretamente nessa conta."
+    },
+    {
+      "id": "ct_normas",
+      "cat": "Contabilidade",
+      "q": [
+        "o que é cpc",
+        "o que é ifrs",
+        "normas contábeis brasileiras",
+        "o que são as nbc"
+      ],
+      "kw": [
+        "cpc",
+        "ifrs",
+        "nbc",
+        "norma contabil"
+      ],
+      "a": "O Brasil adota as normas internacionais IFRS desde a Lei 11.638 de 2007. O Comitê de Pronunciamentos Contábeis, o CPC, traduz e adapta essas normas, e o Conselho Federal de Contabilidade as transforma em NBC, as Normas Brasileiras de Contabilidade.",
+      "ext": "Essa convergência fez as demonstrações brasileiras falarem a mesma língua do resto do mundo, facilitando investimentos estrangeiros. Para pequenas e médias empresas, existe uma versão simplificada, e microempresas têm um padrão ainda mais enxuto."
+    },
+    {
+      "id": "ct_lei_sa",
+      "cat": "Contabilidade",
+      "q": [
+        "lei das sociedades anônimas",
+        "lei 6404",
+        "lei 11638"
+      ],
+      "kw": [
+        "6404",
+        "11638",
+        "sociedade anonima"
+      ],
+      "a": "A Lei 6.404 de 1976, a Lei das S.A., é a base da contabilidade societária brasileira. Em 2007, a Lei 11.638 a atualizou para convergir com as normas internacionais IFRS, trazendo, por exemplo, a Demonstração dos Fluxos de Caixa como obrigatória.",
+      "ext": "Ela define obrigações como a escrituração, a publicação de demonstrações nas companhias abertas e a distribuição de dividendos. Mesmo empresas que não são sociedades anônimas usam suas regras contábeis como referência."
+    },
+    {
+      "id": "ct_regimes",
+      "cat": "Contabilidade",
+      "g": [
+        "enumerar"
+      ],
+      "q": [
+        "quais os regimes tributários",
+        "simples nacional lucro presumido e lucro real",
+        "qual regime tributário escolher"
+      ],
+      "kw": [
+        "regime tributario",
+        "lucro presumido",
+        "lucro real",
+        "simples nacional"
+      ],
+      "a": "As empresas podem estar em três regimes principais. Simples Nacional, para faturamento de até 4,8 milhões de reais por ano, com guia única. Lucro Presumido, até 78 milhões, em que o lucro é estimado por percentuais. E Lucro Real, obrigatório acima disso e para alguns setores, em que o imposto incide sobre o lucro efetivo. A escolha certa depende de margem, folha e atividade: isso é planejamento tributário.",
+      "verificar": true,
+      "follow": [
+        "ct_planejamento"
+      ],
+      "ext": "Um erro comum é escolher o regime só pela alíquota nominal. O cálculo correto simula os três cenários com os números reais da empresa, considerando folha de pagamento, margem de lucro e créditos tributários, e com a reforma esse cálculo ganha novas variáveis."
+    },
+    {
+      "id": "ct_mei",
+      "cat": "Contabilidade",
+      "q": [
+        "o que é mei",
+        "quanto o mei pode faturar",
+        "limite do mei",
+        "como abrir mei"
+      ],
+      "kw": [
+        "mei"
+      ],
+      "a": "O MEI, Microempreendedor Individual, é o formato mais simples de formalização. O limite de faturamento é de 81 mil reais por ano, permite um empregado e o imposto é um valor fixo mensal, o DAS. A abertura é gratuita pelo portal do Empreendedor, no gov.br. Confira se o limite foi atualizado, porque há projetos para aumentá-lo.",
+      "verificar": true,
+      "ext": "O MEI tem direitos previdenciários, como aposentadoria por idade e auxílio-doença, e pode emitir nota fiscal. Se ultrapassar o limite, precisa migrar para microempresa, por isso acompanhar o faturamento mês a mês é fundamental."
+    },
+    {
+      "id": "ct_tributaria",
+      "cat": "Contabilidade",
+      "g": [
+        "abrir_bracos",
+        "enumerar"
+      ],
+      "q": [
+        "o que é contabilidade tributária",
+        "fale sobre contabilidade tributária",
+        "para que serve a contabilidade tributária",
+        "o que faz o contador tributário"
+      ],
+      "kw": [
+        "contabilidade tributario",
+        "contador tributario",
+        "direito tributario"
+      ],
+      "a": "A contabilidade tributária é o ramo da contabilidade que estuda, calcula e registra os tributos de uma empresa. Ela garante que impostos, contribuições e taxas sejam pagos corretamente, no prazo e sem pagar a mais. Também cuida das obrigações acessórias, as declarações que a empresa precisa entregar ao fisco.",
+      "ext": "O grande diferencial é o planejamento: escolher o regime tributário certo, aproveitar créditos e incentivos permitidos por lei e evitar multas. Com a reforma tributária, que troca cinco tributos pelo IBS, pela CBS e pelo Imposto Seletivo, essa área se tornou uma das mais procuradas do mercado.",
+      "follow": [
+        "ct_regimes"
+      ]
+    },
+    {
+      "id": "ct_planejamento",
+      "cat": "Contabilidade",
+      "g": [
+        "apontar_cabeca"
+      ],
+      "q": [
+        "o que é planejamento tributário",
+        "como pagar menos imposto legalmente",
+        "elisão fiscal"
+      ],
+      "kw": [
+        "planejamento tributario",
+        "pagar menos",
+        "elisao"
+      ],
+      "a": "Planejamento tributário é escolher, dentro da lei, o caminho que gera menor carga de impostos: regime adequado, enquadramento correto e aproveitamento de créditos e incentivos. É diferente de sonegação, que é crime. Com a reforma tributária, o planejamento vai mudar muito.",
+      "ext": "Um bom planejamento analisa o regime tributário, a estrutura societária, a forma de remunerar os sócios, como pró-labore ou distribuição de lucros, e o aproveitamento de créditos. Feito todo ano, ele pode representar uma economia importante para a empresa."
+    },
+    {
+      "id": "ct_sped",
+      "cat": "Contabilidade",
+      "q": [
+        "o que é sped",
+        "o que é esocial",
+        "obrigações acessórias",
+        "ecd e ecf"
+      ],
+      "kw": [
+        "sped",
+        "esocial",
+        "obrigacoes acessorias",
+        "ecd",
+        "ecf",
+        "reinf"
+      ],
+      "a": "O SPED é o Sistema Público de Escrituração Digital: a forma como as empresas entregam ao governo seus livros e informações fiscais em formato digital. Inclui a ECD, a ECF, a EFD ICMS IPI, a EFD Contribuições, a EFD Reinf e o eSocial, que trata da folha e dos trabalhadores.",
+      "ext": "Com o SPED, o fisco cruza informações de notas fiscais, bancos e declarações quase em tempo real. Isso torna a fiscalização mais eficiente e exige do contador muita qualidade nos dados, porque uma inconsistência aparece rapidamente."
+    },
+    {
+      "id": "ct_auditoria",
+      "cat": "Contabilidade",
+      "q": [
+        "o que é auditoria",
+        "o que faz um auditor",
+        "auditoria contábil"
+      ],
+      "kw": [
+        "auditoria",
+        "auditor"
+      ],
+      "a": "Auditoria é a verificação independente das demonstrações e controles de uma empresa. O auditor emite uma opinião sobre se os números representam adequadamente a realidade. É uma das áreas mais valorizadas, principalmente nas grandes firmas.",
+      "ext": "Existem a auditoria externa, independente e obrigatória para companhias abertas e empresas de grande porte, e a auditoria interna, que avalia controles e riscos de dentro da organização. Ética, ceticismo profissional e independência são a base da profissão."
+    },
+    {
+      "id": "ct_areas",
+      "cat": "Carreira",
+      "g": [
+        "enumerar"
+      ],
+      "q": [
+        "quais as áreas da contabilidade",
+        "onde o contador pode trabalhar",
+        "mercado de trabalho para contador"
+      ],
+      "kw": [
+        "areas contabilidade",
+        "mercado trabalho",
+        "onde trabalhar"
+      ],
+      "a": "O contador pode atuar em escritório contábil, empresas, auditoria, perícia judicial, controladoria, consultoria tributária, setor público por concurso, terceiro setor, mercado financeiro e, cada vez mais, em tecnologia e análise de dados. É uma das profissões com maior empregabilidade do país.",
+      "ext": "Também crescem áreas como contabilidade consultiva, compliance, ESG e relatórios de sustentabilidade, além de cargos que unem contabilidade e dados, como analista de BI financeiro. Quem combina técnica contábil com tecnologia tem vantagem clara."
+    },
+    {
+      "id": "ct_exame",
+      "cat": "Carreira",
+      "q": [
+        "exame de suficiência",
+        "como tirar o crc",
+        "registro no crc",
+        "prova do cfc"
+      ],
+      "kw": [
+        "exame suficiencia",
+        "crc",
+        "cfc"
+      ],
+      "a": "Para exercer a profissão é preciso ser bacharel em Ciências Contábeis, ser aprovado no Exame de Suficiência do Conselho Federal de Contabilidade e se registrar no Conselho Regional, que na Bahia é o CRC BA. O exame acontece duas vezes por ano e exige pelo menos 50 por cento de acertos.",
+      "verificar": true,
+      "ext": "A prova cobre contabilidade geral, de custos, pública, gerencial, auditoria, perícia, legislação, ética, matemática financeira e língua portuguesa. A dica é resolver provas anteriores, disponíveis no site do Conselho Federal de Contabilidade."
+    },
+    {
+      "id": "ct_pericia",
+      "cat": "Carreira",
+      "q": [
+        "o que é perícia contábil",
+        "perito contador"
+      ],
+      "kw": [
+        "pericia",
+        "perito"
+      ],
+      "a": "A perícia contábil produz provas técnicas para a Justiça ou para as partes em um processo, como cálculos trabalhistas, apuração de haveres e fraudes. O perito precisa ser contador registrado e estar no Cadastro Nacional de Peritos Contábeis.",
+      "ext": "O laudo pericial precisa ser claro e técnico, porque será usado pelo juiz para decidir. É uma área com boa remuneração e que exige raciocínio investigativo e domínio de cálculos."
+    },
+    {
+      "id": "ct_publica",
+      "cat": "Contabilidade",
+      "q": [
+        "contabilidade pública",
+        "contabilidade aplicada ao setor público",
+        "orçamento público"
+      ],
+      "kw": [
+        "contabilidade publica",
+        "setor publico",
+        "orcamento publico"
+      ],
+      "a": "A contabilidade aplicada ao setor público registra o patrimônio e a execução do orçamento de governos e órgãos. Segue o Manual de Contabilidade Aplicada ao Setor Público e a Lei de Responsabilidade Fiscal, e é essencial para a transparência e o controle social.",
+      "ext": "Diferente da contabilidade empresarial, aqui o foco não é o lucro, mas a correta aplicação dos recursos públicos. Portais da transparência permitem que qualquer cidadão acompanhe receitas e despesas dos governos."
+    },
+    {
+      "id": "ct_irpf_2026",
+      "cat": "Tributos",
+      "q": [
+        "isenção do imposto de renda até 5 mil",
+        "mudança no imposto de renda 2026",
+        "quem ganha até cinco mil paga imposto de renda"
+      ],
+      "kw": [
+        "imposto renda",
+        "5 mil",
+        "cinco mil",
+        "irpf"
+      ],
+      "a": "Com a Lei 15.270 de 2025, a partir de 2026 quem ganha até 5 mil reais por mês fica isento do Imposto de Renda, e há redução parcial até cerca de 7.350 reais. Para compensar, foi criada uma tributação mínima para altas rendas e a retenção sobre dividendos acima de 50 mil reais por mês. Vale conferir os detalhes na Receita Federal.",
+      "verificar": true,
+      "ext": "A mudança aumenta a renda disponível de milhões de trabalhadores e muda o planejamento de sócios de empresas, que precisam rever a forma de distribuir lucros. É um tema que já está gerando muita demanda para os contadores."
+    },
+    {
+      "id": "rt_o_que_e",
+      "cat": "Reforma Tributária",
+      "g": [
+        "abrir_bracos",
+        "enumerar"
+      ],
+      "q": [
+        "o que é a reforma tributária",
+        "explica a reforma tributária",
+        "o que muda com a reforma tributária",
+        "o que vai mudar com a reforma"
+      ],
+      "kw": [
+        "reforma tributario",
+        "reforma"
+      ],
+      "a": "A reforma tributária do consumo, criada pela Emenda Constitucional 132 de 2023 e regulamentada pela Lei Complementar 214 de 2025, substitui cinco tributos por um IVA dual. PIS, Cofins e IPI dão lugar à CBS, federal. ICMS e ISS dão lugar ao IBS, de estados e municípios. Também nasce o Imposto Seletivo, sobre produtos prejudiciais à saúde e ao meio ambiente.",
+      "follow": [
+        "rt_cronograma"
+      ],
+      "ext": "O objetivo é simplificar um dos sistemas mais complexos do mundo, acabar com a cumulatividade, ou seja, imposto sobre imposto, e dar mais transparência: o consumidor vai ver quanto paga de tributo em cada compra. Para os contadores, é a maior mudança das últimas décadas."
+    },
+    {
+      "id": "rt_cronograma",
+      "cat": "Reforma Tributária",
+      "g": [
+        "linha_do_tempo"
+      ],
+      "q": [
+        "cronograma da reforma tributária",
+        "quando começa a reforma tributária",
+        "transição da reforma",
+        "quando acaba o icms"
+      ],
+      "kw": [
+        "cronograma",
+        "transicao",
+        "quando comeca",
+        "acaba icms"
+      ],
+      "a": "A transição vai de 2026 a 2033. Em 2026 há um ano de teste, com CBS de 0,9 por cento e IBS de 0,1 por cento destacados na nota. Em 2027 a CBS entra de vez, PIS e Cofins acabam e começa o Imposto Seletivo. De 2029 a 2032, ICMS e ISS caem aos poucos enquanto o IBS sobe. Em 2033 o novo sistema fica completo e ICMS e ISS deixam de existir.",
+      "follow": [
+        "rt_2026"
+      ],
+      "ext": "Essa transição longa existe para que empresas, governos e sistemas se adaptem sem choques. Durante esses anos, os dois modelos convivem, o que exige atenção redobrada: o contador vai precisar dominar as regras antigas e as novas ao mesmo tempo."
+    },
+    {
+      "id": "rt_2026",
+      "cat": "Reforma Tributária",
+      "q": [
+        "o que muda em 2026",
+        "ano de teste da reforma",
+        "cbs 0,9 ibs 0,1",
+        "preciso pagar cbs em 2026"
+      ],
+      "kw": [
+        "2026",
+        "ano teste"
+      ],
+      "a": "2026 é o ano de teste. As notas fiscais passam a destacar CBS de 0,9 por cento e IBS de 0,1 por cento. Esses valores podem ser compensados com PIS e Cofins, e quem cumpre corretamente as obrigações acessórias fica dispensado do recolhimento. O objetivo é calibrar sistemas e alíquotas. Para o contador, é o ano de adaptar cadastros, ERPs e notas fiscais.",
+      "verificar": true,
+      "ext": "Na prática, é o momento de revisar o cadastro de produtos e serviços, atualizar os sistemas emissores de notas e treinar as equipes. Quem usar 2026 para se preparar chega em 2027 muito mais tranquilo."
+    },
+    {
+      "id": "rt_iva_dual",
+      "cat": "Reforma Tributária",
+      "g": [
+        "duas_maos"
+      ],
+      "q": [
+        "o que é iva dual",
+        "o que é iva",
+        "imposto sobre valor agregado"
+      ],
+      "kw": [
+        "iva"
+      ],
+      "a": "IVA é o Imposto sobre Valor Agregado, usado em mais de 170 países. Ele incide só sobre o valor que cada etapa acrescenta, porque cada empresa abate o imposto já pago nas compras. É dual porque no Brasil fica dividido em dois: a CBS, da União, e o IBS, de estados e municípios, com as mesmas regras.",
+      "ext": "Exemplo: se o fabricante vende por cem e o lojista revende por cento e cinquenta, o lojista paga imposto só sobre os cinquenta de valor agregado, porque abate o que já foi pago na etapa anterior. Isso elimina o efeito cascata."
+    },
+    {
+      "id": "rt_cbs",
+      "cat": "Reforma Tributária",
+      "q": [
+        "o que é cbs",
+        "contribuição sobre bens e serviços"
+      ],
+      "kw": [
+        "cbs"
+      ],
+      "a": "A CBS, Contribuição sobre Bens e Serviços, é o tributo federal do novo IVA. Substitui PIS e Cofins a partir de 2027 e é administrada pela Receita Federal. Tem base ampla, crédito financeiro amplo e é cobrada no destino.",
+      "ext": "Por ser não cumulativa, a CBS gera crédito em praticamente todas as aquisições da empresa, ao contrário do PIS e da Cofins, cheios de restrições. Isso deve reduzir disputas judiciais e simplificar a rotina fiscal."
+    },
+    {
+      "id": "rt_ibs",
+      "cat": "Reforma Tributária",
+      "q": [
+        "o que é ibs",
+        "imposto sobre bens e serviços",
+        "comitê gestor do ibs"
+      ],
+      "kw": [
+        "ibs",
+        "comite gestor"
+      ],
+      "a": "O IBS, Imposto sobre Bens e Serviços, substitui o ICMS dos estados e o ISS dos municípios. É administrado pelo Comitê Gestor do IBS, que reúne estados e municípios. A arrecadação vai para o local de destino, onde está o consumidor, o que reduz a guerra fiscal.",
+      "ext": "Uma das grandes vantagens é a legislação única em todo o país, no lugar de vinte e sete leis estaduais de ICMS e milhares de leis municipais de ISS. Cada ente federativo ainda poderá definir sua própria alíquota, dentro das regras gerais."
+    },
+    {
+      "id": "rt_seletivo",
+      "cat": "Reforma Tributária",
+      "q": [
+        "o que é imposto seletivo",
+        "imposto do pecado",
+        "o que paga imposto seletivo"
+      ],
+      "kw": [
+        "seletivo"
+      ],
+      "a": "O Imposto Seletivo é federal e incide sobre bens e serviços prejudiciais à saúde ou ao meio ambiente, como cigarros, bebidas alcoólicas, bebidas açucaradas, veículos, embarcações e aeronaves, extração de minerais e apostas. Por isso ficou conhecido como imposto do pecado. Começa em 2027.",
+      "ext": "Ele tem função extrafiscal, ou seja, o objetivo principal não é arrecadar, mas desestimular o consumo de itens nocivos. Ele incide uma única vez, em geral na produção ou na importação."
+    },
+    {
+      "id": "rt_aliquota",
+      "cat": "Reforma Tributária",
+      "q": [
+        "qual a alíquota da reforma tributária",
+        "qual vai ser a alíquota do iva",
+        "alíquota de referência"
+      ],
+      "kw": [
+        "aliquota",
+        "aliquota referencia"
+      ],
+      "a": "A soma de CBS e IBS foi estimada pelo governo entre 26,5 e 28 por cento, uma das maiores do mundo, porque substitui tributos que hoje já somam carga parecida, só que escondida. A lei prevê uma trava: se a alíquota de referência passar de 26,5 por cento, o governo precisa propor ajustes. Os valores definitivos são fixados ao longo da transição.",
+      "verificar": true,
+      "ext": "A alíquota alta se explica pelas exceções: quanto mais setores têm redução, mais alta fica a alíquota padrão para todos os demais. É uma escolha política que a sociedade fez ao aprovar os regimes diferenciados."
+    },
+    {
+      "id": "rt_split",
+      "cat": "Reforma Tributária",
+      "g": [
+        "dividir"
+      ],
+      "q": [
+        "o que é split payment",
+        "pagamento dividido",
+        "como funciona o split payment"
+      ],
+      "kw": [
+        "split"
+      ],
+      "a": "Split payment é o pagamento dividido. Quando o cliente paga por cartão, Pix ou boleto, o sistema financeiro separa automaticamente a parte do imposto e envia direto ao governo; a empresa recebe só o valor líquido. Isso reduz sonegação e inadimplência, mas muda totalmente o fluxo de caixa das empresas.",
+      "ext": "Para as empresas, o desafio é o capital de giro, porque o dinheiro do imposto nunca passa pela conta. Para o contador, muda a conciliação financeira e o controle de créditos, que passam a ser acompanhados quase em tempo real."
+    },
+    {
+      "id": "rt_cashback",
+      "cat": "Reforma Tributária",
+      "q": [
+        "o que é cashback da reforma",
+        "devolução de imposto para baixa renda",
+        "cashback tributário"
+      ],
+      "kw": [
+        "cashback"
+      ],
+      "a": "O cashback devolve parte da CBS e do IBS a famílias de baixa renda inscritas no CadÚnico. A devolução é maior em itens essenciais, como gás de cozinha, energia elétrica, água e esgoto, e menor nos demais produtos. É uma forma de reduzir a regressividade do sistema.",
+      "verificar": true,
+      "ext": "A devolução é feita de forma automática, usando o CPF informado na nota fiscal, por isso pedir CPF na nota passa a ter um benefício direto para essas famílias."
+    },
+    {
+      "id": "rt_cesta",
+      "cat": "Reforma Tributária",
+      "q": [
+        "cesta básica na reforma",
+        "alimentos com alíquota zero",
+        "cesta básica nacional"
+      ],
+      "kw": [
+        "cesta basica",
+        "aliquota zero",
+        "alimento"
+      ],
+      "a": "A Cesta Básica Nacional tem alíquota zero de CBS e IBS, com itens como arroz, feijão, leite, carnes, ovos, café, farinha de mandioca e pão francês. Outros alimentos têm redução de 60 por cento.",
+      "ext": "A lista foi definida pela Lei Complementar 214 e buscou priorizar alimentos consumidos pelas famílias de menor renda, respeitando a diversidade regional da alimentação brasileira."
+    },
+    {
+      "id": "rt_reducoes",
+      "cat": "Reforma Tributária",
+      "g": [
+        "enumerar"
+      ],
+      "q": [
+        "quais setores têm redução na reforma",
+        "regimes diferenciados",
+        "redução de 60%",
+        "saúde e educação na reforma"
+      ],
+      "kw": [
+        "reducao",
+        "regime diferenciado",
+        "60%",
+        "saude educacao"
+      ],
+      "a": "Alguns setores têm alíquota reduzida em 60 por cento, como educação, saúde, medicamentos, dispositivos médicos, insumos agropecuários e produções culturais. Profissionais liberais de profissões regulamentadas, como contadores, advogados e engenheiros, têm redução de 30 por cento. Há ainda regimes específicos para combustíveis, serviços financeiros, imóveis e cooperativas.",
+      "ext": "Para ter direito à redução, a empresa precisa se enquadrar exatamente nas regras da lei, com classificação correta de produtos e serviços. Um enquadramento errado pode gerar autuações, por isso essa revisão é uma das primeiras tarefas do contador."
+    },
+    {
+      "id": "rt_contador",
+      "cat": "Reforma Tributária",
+      "g": [
+        "apontar_publico"
+      ],
+      "q": [
+        "como a reforma afeta o contador",
+        "redução para contadores",
+        "contador paga quanto na reforma",
+        "o que o contador precisa fazer na reforma"
+      ],
+      "kw": [
+        "reforma contabilidade",
+        "afeta contabilidade"
+      ],
+      "a": "Para o contador, a reforma é a maior oportunidade em décadas. Os serviços contábeis têm redução de 30 por cento nas alíquotas. Mas o principal é a demanda: empresas vão precisar revisar preços, contratos, cadastros, sistemas e o regime tributário. Quem dominar a transição vai ser disputado pelo mercado.",
+      "ext": "Os escritórios que se prepararem agora podem oferecer novos serviços, como diagnóstico de impacto da reforma, revisão de preços e simulação de cenários. É uma oportunidade de sair do operacional e assumir um papel estratégico junto aos clientes."
+    },
+    {
+      "id": "rt_simples",
+      "cat": "Reforma Tributária",
+      "q": [
+        "simples nacional na reforma",
+        "o que muda para o simples",
+        "mei na reforma tributária"
+      ],
+      "kw": [
+        "simples reforma",
+        "mei reforma"
+      ],
+      "a": "O Simples Nacional continua. A novidade é que a empresa do Simples pode escolher recolher CBS e IBS por fora, no regime regular, para que seus clientes empresas aproveitem o crédito integral. Isso vai exigir cálculo caso a caso, porque pode aumentar a carga mas ganhar competitividade.",
+      "ext": "Empresas do Simples que vendem para consumidores finais tendem a ficar como estão. Já as que vendem para outras empresas vão precisar comparar os dois caminhos, porque o cliente pode preferir um fornecedor que gere mais crédito."
+    },
+    {
+      "id": "rt_credito",
+      "cat": "Reforma Tributária",
+      "q": [
+        "não cumulatividade",
+        "crédito financeiro amplo",
+        "como funciona o crédito na reforma"
+      ],
+      "kw": [
+        "nao cumulativ",
+        "credito financeiro",
+        "credito"
+      ],
+      "a": "A reforma traz não cumulatividade plena: a empresa se credita do imposto pago em praticamente tudo que adquire para a atividade, não só em insumos físicos. O crédito, em regra, fica condicionado ao efetivo pagamento do tributo pelo fornecedor, o que se liga ao split payment.",
+      "ext": "Isso acaba com longas discussões sobre o que é ou não insumo, que hoje geram milhares de processos. Em contrapartida, aumenta a importância de escolher bem os fornecedores e manter toda a documentação organizada."
+    },
+    {
+      "id": "rt_destino",
+      "cat": "Reforma Tributária",
+      "q": [
+        "princípio do destino",
+        "fim da guerra fiscal",
+        "cobrança no destino"
+      ],
+      "kw": [
+        "destino",
+        "guerra fiscal"
+      ],
+      "a": "Com o princípio do destino, o imposto fica com o estado e o município onde está o consumidor, e não onde a empresa está instalada. Isso enfraquece a guerra fiscal, em que os estados disputavam empresas oferecendo benefícios de ICMS.",
+      "ext": "Na transição, existe um fundo de compensação de benefícios fiscais para empresas que tinham incentivos de ICMS, e um Fundo Nacional de Desenvolvimento Regional para apoiar estados menos desenvolvidos."
+    },
+    {
+      "id": "rt_nota",
+      "cat": "Reforma Tributária",
+      "q": [
+        "nota fiscal na reforma",
+        "o que muda na nota fiscal",
+        "nfse nacional"
+      ],
+      "kw": [
+        "nota fiscal",
+        "nfse",
+        "nfe"
+      ],
+      "a": "As notas fiscais eletrônicas ganharam campos para CBS, IBS e Imposto Seletivo, e a NFS-e passa a seguir o padrão nacional. Desde 2026 os sistemas de emissão precisam estar adaptados. Cadastro correto de produtos, NCM e classificação tributária vira prioridade.",
+      "ext": "A nota fiscal passa a ser a base do crédito, do split payment e do cashback. Erros de cadastro, que antes geravam só uma multa, agora podem travar créditos e afetar o caixa da empresa e dos clientes."
+    },
+    {
+      "id": "rt_feira",
+      "cat": "Reforma Tributária",
+      "q": [
+        "como a reforma afeta feira de santana",
+        "reforma tributária e o comércio de feira",
+        "reforma tributária na bahia"
+      ],
+      "kw": [
+        "reforma feira",
+        "reforma bahia",
+        "reforma comercio"
+      ],
+      "a": "Feira de Santana é um grande polo de comércio e logística, então sente a reforma de perto. Com a cobrança no destino, ganham os locais de consumo. Os comerciantes precisam revisar preços, crédito de impostos e o impacto do split payment no caixa. É exatamente aí que o contador local se torna estratégico.",
+      "ext": "Para os estudantes de Contábeis da UEFS, isso significa um mercado local aquecido, com comerciantes, indústrias e transportadoras buscando orientação. Conhecer a reforma é um diferencial imediato para estágio e emprego aqui na região."
+    },
+    {
+      "id": "ia_o_que_e",
+      "cat": "Inteligência Artificial",
+      "g": [
+        "apontar_cabeca"
+      ],
+      "q": [
+        "o que é inteligência artificial",
+        "o que é ia",
+        "como funciona a inteligência artificial"
+      ],
+      "kw": [
+        "oque ia",
+        "funciona ia"
+      ],
+      "a": "Inteligência artificial é a área da computação que cria sistemas capazes de realizar tarefas que exigiriam inteligência humana, como entender linguagem, reconhecer imagens e tomar decisões. A maior parte da IA atual aprende padrões a partir de grandes volumes de dados.",
+      "follow": [
+        "ia_llm"
+      ],
+      "ext": "Ela está presente no dia a dia: no corretor do celular, nas recomendações de vídeos, no reconhecimento facial e nos assistentes virtuais. A grande virada recente foi a IA generativa, capaz de criar textos, imagens e códigos."
+    },
+    {
+      "id": "ia_llm",
+      "cat": "Inteligência Artificial",
+      "q": [
+        "o que é llm",
+        "como funciona o chatgpt",
+        "modelo de linguagem",
+        "ia generativa"
+      ],
+      "kw": [
+        "llm",
+        "modelo linguagem",
+        "generativ"
+      ],
+      "a": "Um modelo de linguagem, ou LLM, é uma rede neural treinada com enormes quantidades de texto para prever a próxima palavra. Dessa tarefa simples surge a capacidade de resumir, traduzir, programar e conversar. É a tecnologia por trás de assistentes como ChatGPT, Claude e Gemini.",
+      "follow": [
+        "ia_alucinacao"
+      ],
+      "ext": "Esses modelos não consultam uma enciclopédia: eles aprenderam padrões da linguagem. Por isso são excelentes para explicar, resumir e redigir, mas precisam de fontes confiáveis quando o assunto exige precisão, como leis e valores."
+    },
+    {
+      "id": "ia_ml",
+      "cat": "Inteligência Artificial",
+      "q": [
+        "o que é machine learning",
+        "aprendizado de máquina",
+        "o que é deep learning",
+        "rede neural"
+      ],
+      "kw": [
+        "machine learning",
+        "aprendizado maquina",
+        "deep learning",
+        "rede neural"
+      ],
+      "a": "Machine learning, ou aprendizado de máquina, é quando o sistema aprende com exemplos em vez de seguir regras escritas à mão. Deep learning é uma forma de machine learning com redes neurais de muitas camadas, que está por trás do reconhecimento de voz, de imagens e dos modelos de linguagem.",
+      "ext": "Na contabilidade, o machine learning aprende, por exemplo, a classificar lançamentos a partir do histórico da empresa, ou a identificar transações fora do padrão que podem indicar erro ou fraude."
+    },
+    {
+      "id": "ia_alucinacao",
+      "cat": "Inteligência Artificial",
+      "g": [
+        "alerta"
+      ],
+      "q": [
+        "o que é alucinação da ia",
+        "a ia pode inventar",
+        "a ia mente"
+      ],
+      "kw": [
+        "alucinac",
+        "inventar",
+        "mente"
+      ],
+      "a": "Alucinação é quando a IA gera uma resposta convincente, mas falsa, como uma lei que não existe. Acontece porque o modelo produz texto provável, não verdades verificadas. Por isso, em contabilidade, toda resposta de IA sobre leis e valores deve ser conferida em fonte oficial.",
+      "ext": "Para reduzir alucinações, as melhores práticas são: fornecer fontes confiáveis à IA, pedir que ela cite de onde tirou cada informação, e manter sempre um profissional revisando as respostas antes de qualquer decisão."
+    },
+    {
+      "id": "ia_substitui",
+      "cat": "IA e Contabilidade",
+      "g": [
+        "negar",
+        "abrir_bracos"
+      ],
+      "q": [
+        "a ia vai substituir o contador",
+        "contador vai acabar",
+        "a contabilidade vai acabar",
+        "robô vai tirar emprego do contador"
+      ],
+      "kw": [
+        "substituir contabilidade",
+        "contabilidade acabar",
+        "substituir emprego",
+        "ia emprego"
+      ],
+      "a": "A IA não vai substituir o contador, mas o contador que usa IA vai substituir o que não usa. Tarefas repetitivas, como digitar lançamentos e conciliar extratos, serão automatizadas. Interpretar, planejar, orientar o cliente e assumir responsabilidade técnica continuam humanos e ficam mais valiosos.",
+      "ext": "A história mostra isso: a calculadora, a planilha eletrônica e o SPED também mudaram a profissão, e o contador continuou essencial. A diferença agora é a velocidade da mudança, por isso aprender a usar IA não é opcional."
+    },
+    {
+      "id": "ia_contabilidade",
+      "cat": "IA e Contabilidade",
+      "g": [
+        "enumerar"
+      ],
+      "q": [
+        "como a ia é usada na contabilidade",
+        "ia na contabilidade",
+        "exemplos de ia para contador",
+        "automação contábil"
+      ],
+      "kw": [
+        "ia contabilidade",
+        "automac"
+      ],
+      "a": "Na contabilidade, a IA já lê notas fiscais e recibos automaticamente, classifica lançamentos, faz conciliação bancária, detecta anomalias e possíveis fraudes, prevê fluxo de caixa e responde dúvidas de clientes. Na reforma tributária, ajuda a revisar cadastros de produtos e simular cenários de carga.",
+      "ext": "Ferramentas assim reduzem horas de trabalho manual e diminuem erros de digitação. O tempo economizado pode ser usado para o que gera mais valor: análise, consultoria e relacionamento com o cliente."
+    },
+    {
+      "id": "ia_prompt",
+      "cat": "Inteligência Artificial",
+      "q": [
+        "o que é prompt",
+        "como fazer um bom prompt",
+        "engenharia de prompt"
+      ],
+      "kw": [
+        "prompt"
+      ],
+      "a": "Prompt é a instrução que você dá à IA. Um bom prompt diz o papel, o contexto, a tarefa, o formato da resposta e os limites. Por exemplo: aja como contador tributarista, analise esta nota fiscal, liste os riscos em tópicos e diga quando não tiver certeza.",
+      "ext": "Outra dica é dar exemplos do resultado que você espera e pedir para a IA revisar a própria resposta. Quanto mais contexto você fornece, melhor e mais confiável fica o resultado."
+    },
+    {
+      "id": "ia_lgpd",
+      "cat": "IA e Contabilidade",
+      "g": [
+        "alerta"
+      ],
+      "q": [
+        "ia e lgpd",
+        "posso colocar dados de cliente no chatgpt",
+        "segurança de dados com ia",
+        "ética na ia"
+      ],
+      "kw": [
+        "lgpd",
+        "dado cliente",
+        "seguranca dado",
+        "etica"
+      ],
+      "a": "Cuidado: dados de clientes são protegidos pela LGPD e pelo sigilo profissional do contador. Não cole informações pessoais ou financeiras identificáveis em ferramentas de IA públicas. Prefira soluções corporativas com contrato de proteção de dados, anonimize as informações e mantenha a revisão humana.",
+      "ext": "O contador continua responsável tecnicamente pelo que entrega, mesmo que use IA. Por isso, a regra de ouro é: a IA sugere, o profissional confere e assina."
+    },
+    {
+      "id": "ia_agentes",
+      "cat": "Inteligência Artificial",
+      "q": [
+        "o que são agentes de ia",
+        "agente de inteligência artificial",
+        "ia que executa tarefas"
+      ],
+      "kw": [
+        "agente"
+      ],
+      "a": "Agentes de IA são sistemas que não só respondem, mas executam tarefas em várias etapas: consultam sistemas, preenchem planilhas, conferem documentos e pedem aprovação humana quando necessário. Na contabilidade, já existem agentes que fazem fechamento mensal assistido e conferência fiscal.",
+      "ext": "A tendência é que cada escritório tenha agentes especializados trabalhando em conjunto com a equipe, como um assistente incansável que nunca esquece um prazo, mas que sempre precisa de supervisão humana."
+    },
+    {
+      "id": "ia_rag",
+      "cat": "Inteligência Artificial",
+      "q": [
+        "o que é rag",
+        "como a ia consulta documentos",
+        "base de conhecimento da ia"
+      ],
+      "kw": [
+        "rag",
+        "base conhecimento"
+      ],
+      "a": "RAG significa geração aumentada por recuperação. Antes de responder, a IA busca trechos relevantes em uma base confiável, como leis e manuais, e responde com base neles. Isso reduz alucinações e é parecido com o que eu faço com minha base própria.",
+      "ext": "Eu mesmo funciono de forma parecida: tenho uma base própria de respostas verificadas e, quando a pergunta é nova, consulto um modelo de linguagem com o contexto certo."
+    },
+    {
+      "id": "ia_aprender",
+      "cat": "IA e Contabilidade",
+      "q": [
+        "como aprender ia sendo contador",
+        "por onde começar a estudar ia",
+        "o que estudar de tecnologia na contabilidade"
+      ],
+      "kw": [
+        "aprender ia",
+        "estudar ia",
+        "comecar"
+      ],
+      "a": "Comece pelo uso prático: escreva bons prompts e automatize uma tarefa real do seu dia a dia. Depois aprenda Excel avançado e Power BI, noções de Python e análise de dados. E acompanhe a reforma tributária, porque a combinação de tributos com tecnologia é o perfil mais procurado hoje.",
+      "ext": "Existem muitos cursos gratuitos online, e o melhor laboratório é o seu próprio trabalho. Escolha uma tarefa chata e repetitiva e tente automatizá-la: é assim que se aprende mais rápido."
+    },
+    {
+      "id": "uefs_sobre",
+      "cat": "UEFS",
+      "g": [
+        "abrir_bracos"
+      ],
+      "q": [
+        "o que é a uefs",
+        "fale sobre a uefs",
+        "universidade estadual de feira de santana",
+        "história da uefs"
+      ],
+      "kw": [
+        "uefs"
+      ],
+      "a": "A UEFS, Universidade Estadual de Feira de Santana, é uma universidade pública e gratuita mantida pelo Governo da Bahia. Foi criada por lei estadual em 1970 e começou a funcionar em 1976. Hoje é uma das principais universidades do Nordeste, com cursos de graduação, mestrado e doutorado.",
+      "verificar": true,
+      "follow": [
+        "uefs_contabeis"
+      ],
+      "ext": "A UEFS é referência em ensino, pesquisa e extensão no interior da Bahia, e atrai estudantes de várias regiões do estado. Ela tem papel central no desenvolvimento de Feira de Santana e de todo o território do Portal do Sertão."
+    },
+    {
+      "id": "uefs_contabeis",
+      "cat": "UEFS",
+      "g": [
+        "apontar_publico"
+      ],
+      "q": [
+        "curso de ciências contábeis da uefs",
+        "como é o curso de contabilidade da uefs",
+        "contábeis uefs",
+        "fale sobre o curso de contabilidade"
+      ],
+      "kw": [
+        "contabilidade uefs",
+        "curso contabilidade"
+      ],
+      "a": "O curso de Ciências Contábeis da UEFS é um bacharelado público e gratuito, ligado ao Departamento de Ciências Sociais Aplicadas. Forma profissionais para atuar em contabilidade societária, tributária, auditoria, perícia, setor público e gestão. Além das aulas, os estudantes participam de pesquisa, extensão e eventos como o ITCONT.",
+      "verificar": true,
+      "follow": [
+        "uefs_grade"
+      ],
+      "ext": "É um curso que combina formação técnica sólida com visão de gestão e responsabilidade social. Projetos como o Contador do Amanhã mostram que os estudantes também estão olhando para o futuro, unindo contabilidade e inteligência artificial."
+    },
+    {
+      "id": "uefs_grade",
+      "cat": "UEFS",
+      "g": [
+        "enumerar"
+      ],
+      "q": [
+        "quais matérias tem no curso de contabilidade",
+        "grade curricular contábeis uefs",
+        "disciplinas do curso"
+      ],
+      "kw": [
+        "materia",
+        "grade curricular",
+        "disciplina"
+      ],
+      "a": "O curso combina contabilidade geral e societária, custos, contabilidade tributária, auditoria, perícia, contabilidade pública, análise das demonstrações, controladoria e atuária, com base em direito, economia, administração, matemática financeira e estatística. Termina com estágio e trabalho de conclusão. A grade exata está no projeto pedagógico do colegiado.",
+      "verificar": true,
+      "ext": "Além das disciplinas obrigatórias, há optativas, atividades complementares e a possibilidade de participar de grupos de pesquisa, monitorias e projetos de extensão que levam a contabilidade para a comunidade."
+    },
+    {
+      "id": "uefs_ingresso",
+      "cat": "UEFS",
+      "q": [
+        "como entrar na uefs",
+        "como entrar no curso de contabilidade da uefs",
+        "vestibular da uefs",
+        "uefs usa o sisu"
+      ],
+      "kw": [
+        "ingresso",
+        "ingresso uefs"
+      ],
+      "a": "O ingresso na graduação da UEFS é por processo seletivo, e a universidade adota reserva de vagas para estudantes de escola pública, pretos, pardos, indígenas e outros grupos. As regras, datas e a forma de seleção de cada ano saem no edital oficial no site da UEFS.",
+      "verificar": true,
+      "ext": "A dica é acompanhar o site oficial e as redes da universidade, porque os prazos de inscrição costumam ser curtos. Estudantes de baixa renda também podem pedir isenção da taxa, conforme as regras do edital."
+    },
+    {
+      "id": "uefs_duracao",
+      "cat": "UEFS",
+      "q": [
+        "quanto tempo dura o curso de contabilidade",
+        "duração do curso de ciências contábeis",
+        "quantos semestres tem o curso"
+      ],
+      "kw": [
+        "dura",
+        "duracao",
+        "semestre"
+      ],
+      "a": "Em geral, o bacharelado em Ciências Contábeis dura de quatro a cinco anos, ou oito a dez semestres. A duração e o turno exatos do curso da UEFS estão no projeto pedagógico e no edital de ingresso.",
+      "verificar": true,
+      "ext": "Durante o curso, o estudante também cumpre atividades complementares e estágio supervisionado, e ao final apresenta o trabalho de conclusão de curso."
+    },
+    {
+      "id": "uefs_local",
+      "cat": "UEFS",
+      "q": [
+        "onde fica a uefs",
+        "endereço da uefs",
+        "como chegar na uefs"
+      ],
+      "kw": [
+        "onde fica uefs",
+        "endereco uefs"
+      ],
+      "a": "O campus principal da UEFS fica na Avenida Transnordestina, sem número, bairro Novo Horizonte, em Feira de Santana, Bahia. É um campus amplo, com módulos de aulas, biblioteca central, restaurante universitário e áreas verdes.",
+      "verificar": true,
+      "ext": "O acesso pode ser feito por várias linhas de ônibus urbano, e o campus fica próximo à BR 116. Dentro dele, cada departamento tem seus módulos de salas e laboratórios."
+    },
+    {
+      "id": "uefs_itcont",
+      "cat": "UEFS",
+      "g": [
+        "abrir_bracos"
+      ],
+      "q": [
+        "o que é o itcont",
+        "itcont 2026",
+        "o que é o projeto contador do amanhã",
+        "contador do amanhã"
+      ],
+      "kw": [
+        "itcont",
+        "contador amanha"
+      ],
+      "a": "O ITCONT é um evento que conecta contabilidade, inovação e tecnologia. Eu faço parte do projeto Contador do Amanhã, desenvolvido por estudantes de Ciências Contábeis da UEFS para mostrar como a inteligência artificial pode tornar o contador mais estratégico.",
+      "verificar": true,
+      "ext": "A proposta é mostrar ao público que a tecnologia não substitui o contador, mas amplia o que ele pode fazer. Eu sou uma demonstração disso: um assistente que entende de contabilidade e conversa com as pessoas."
+    },
+    {
+      "id": "uefs_porque",
+      "cat": "Carreira",
+      "g": [
+        "mao_no_peito"
+      ],
+      "q": [
+        "por que cursar contabilidade",
+        "vale a pena fazer ciências contábeis",
+        "contabilidade dá dinheiro",
+        "devo fazer contabilidade"
+      ],
+      "kw": [
+        "vale pena",
+        "por que contabilidade",
+        "da dinheiro"
+      ],
+      "a": "Vale a pena. Toda empresa, órgão público e entidade precisa de contabilidade, então a empregabilidade é alta. Com a reforma tributária e a inteligência artificial, o profissional que une impostos, tecnologia e visão de negócio está entre os mais valorizados do mercado. E estudar na UEFS é ter formação pública de qualidade aqui em Feira.",
+      "ext": "Além disso, a contabilidade abre portas para concursos públicos bem remunerados, para empreender com o próprio escritório e para carreiras em grandes empresas. É uma formação versátil para quem gosta de números, de pessoas e de resolver problemas."
+    },
+    {
+      "id": "uefs_estagio",
+      "cat": "Carreira",
+      "q": [
+        "estágio em contabilidade",
+        "onde fazer estágio",
+        "como conseguir estágio em contabilidade"
+      ],
+      "kw": [
+        "estagio"
+      ],
+      "a": "Estudantes de Contábeis costumam estagiar em escritórios contábeis, empresas, bancos, órgãos públicos e auditorias. Dica: tenha um currículo objetivo, aprenda Excel e um sistema contábil, participe de projetos e eventos e use o LinkedIn. Empresa júnior também conta muito como experiência.",
+      "ext": "Quem estagia cedo aprende na prática a rotina fiscal, contábil e de folha, e muitas vezes é efetivado. Também vale buscar programas de estágio de bancos e órgãos públicos, que costumam abrir seleções regulares."
+    },
+    {
+      "id": "fsa_sobre",
+      "cat": "Feira de Santana",
+      "g": [
+        "abrir_bracos"
+      ],
+      "q": [
+        "fale sobre feira de santana",
+        "o que é feira de santana",
+        "conhece feira de santana"
+      ],
+      "kw": [
+        "feira"
+      ],
+      "a": "Feira de Santana é a segunda maior cidade da Bahia, com cerca de 616 mil habitantes no Censo de 2022. Fica a pouco mais de 100 quilômetros de Salvador e é conhecida como Princesa do Sertão. É o maior entroncamento rodoviário do Norte e Nordeste e um grande polo de comércio, serviços, indústria e educação.",
+      "verificar": true,
+      "follow": [
+        "fsa_historia"
+      ],
+      "ext": "Sua localização estratégica fez dela um centro de distribuição de mercadorias para todo o interior baiano. A cidade também é polo de saúde e de educação, com universidades que formam profissionais para toda a região."
+    },
+    {
+      "id": "fsa_historia",
+      "cat": "Feira de Santana",
+      "q": [
+        "história de feira de santana",
+        "como surgiu feira de santana",
+        "origem do nome feira de santana"
+      ],
+      "kw": [
+        "historia feira",
+        "surgiu",
+        "origem nome"
+      ],
+      "a": "A cidade nasceu no século dezoito, em torno da fazenda Santana dos Olhos d'Água e de uma capela dedicada a Sant'Ana. A feira de gado que se formou ali, no caminho entre o sertão e o Recôncavo, deu origem ao nome. Virou vila em 1833 e foi elevada a cidade em 1873.",
+      "verificar": true,
+      "ext": "Até hoje a vocação comercial está no DNA da cidade, das antigas feiras livres aos grandes centros atacadistas. O Centro de Abastecimento e o comércio do centro mantêm vivo esse espírito de feira."
+    },
+    {
+      "id": "fsa_princesa",
+      "cat": "Feira de Santana",
+      "q": [
+        "por que feira é chamada de princesa do sertão",
+        "princesa do sertão"
+      ],
+      "kw": [
+        "princesa"
+      ],
+      "a": "O apelido Princesa do Sertão é atribuído a Rui Barbosa, que se encantou com a cidade numa visita. Ele traduz a posição de Feira como porta de entrada e capital comercial do sertão baiano.",
+      "verificar": true,
+      "ext": "O apelido virou parte da identidade cultural da cidade e aparece em músicas, nomes de empresas e eventos. Feira também é chamada carinhosamente de Feira, simplesmente, pelos baianos."
+    },
+    {
+      "id": "fsa_rodovias",
+      "cat": "Feira de Santana",
+      "q": [
+        "entroncamento rodoviário de feira",
+        "quais rodovias passam em feira de santana",
+        "logística em feira"
+      ],
+      "kw": [
+        "entroncamento",
+        "rodovia",
+        "logistica",
+        "br 116"
+      ],
+      "a": "Feira de Santana é o maior entroncamento rodoviário do Norte e Nordeste, cortada pelas BR 116, BR 101 e BR 324, além de rodovias estaduais. Por isso concentra centros de distribuição, transportadoras e atacadistas que abastecem boa parte da Bahia.",
+      "ext": "Essa posição atrai empresas de logística, transporte e comércio atacadista, gerando empregos e uma grande movimentação econômica. Para os contadores, isso significa clientes com operações interestaduais e muitas questões tributárias."
+    },
+    {
+      "id": "fsa_economia",
+      "cat": "Feira de Santana",
+      "g": [
+        "enumerar"
+      ],
+      "q": [
+        "economia de feira de santana",
+        "o que move a economia de feira",
+        "centro industrial do subaé"
+      ],
+      "kw": [
+        "economia feira",
+        "subae",
+        "industria"
+      ],
+      "a": "A economia de Feira é puxada pelo comércio e pelos serviços, com forte atacado, o Centro de Abastecimento e o tradicional Feiraguay. Na indústria se destaca o Centro Industrial do Subaé. A cidade também é polo regional de saúde e educação, com universidades públicas e privadas. Tudo isso gera muita demanda por contadores.",
+      "ext": "Com a reforma tributária, o perfil comercial da cidade torna o tema ainda mais importante, porque o comércio atacadista e varejista vai precisar rever preços, créditos e fluxo de caixa."
+    },
+    {
+      "id": "fsa_micareta",
+      "cat": "Feira de Santana",
+      "g": [
+        "comemorar"
+      ],
+      "q": [
+        "micareta de feira",
+        "o que é a micareta",
+        "festas de feira de santana"
+      ],
+      "kw": [
+        "micareta",
+        "festa"
+      ],
+      "a": "A Micareta de Feira de Santana é um dos carnavais fora de época mais tradicionais do Brasil, com origem na década de 1930. Acontece em geral depois da Páscoa e reúne trios elétricos e grandes atrações da música baiana.",
+      "verificar": true,
+      "ext": "A festa movimenta hotéis, bares, restaurantes e o comércio em geral, sendo um evento importante para a economia e para a cultura da cidade."
+    },
+    {
+      "id": "fsa_personalidades",
+      "cat": "Feira de Santana",
+      "q": [
+        "personalidades de feira de santana",
+        "maria quitéria",
+        "pessoas famosas de feira"
+      ],
+      "kw": [
+        "maria quiteria",
+        "personalidade",
+        "famosa"
+      ],
+      "a": "Uma das maiores personalidades ligadas a Feira é Maria Quitéria, heroína da Independência do Brasil na Bahia, nascida na região que hoje pertence ao município. A cidade também é berço de artistas, intelectuais e empreendedores que marcaram a cultura baiana.",
+      "verificar": true,
+      "ext": "Maria Quitéria se vestiu de homem para lutar nas batalhas pela independência na Bahia e é reconhecida como heroína nacional. Ela é um símbolo da coragem do povo feirense."
+    },
+    {
+      "id": "fsa_faculdades",
+      "cat": "Feira de Santana",
+      "q": [
+        "faculdades em feira de santana",
+        "onde estudar contabilidade em feira",
+        "universidades de feira"
+      ],
+      "kw": [
+        "faculdade",
+        "universidade feira",
+        "estudar feira"
+      ],
+      "a": "Feira de Santana é um polo educacional, com a UEFS, que é pública e estadual, um campus do IFBA e várias instituições privadas. Para Ciências Contábeis em universidade pública, a referência na cidade é a UEFS.",
+      "verificar": true,
+      "ext": "Essa concentração de instituições faz de Feira um destino para estudantes de toda a região, movimentando a economia local e formando mão de obra qualificada."
+    },
+    {
+      "id": "fsa_prefeito",
+      "cat": "Feira de Santana",
+      "q": [
+        "quem é o prefeito de feira de santana",
+        "prefeito de feira"
+      ],
+      "kw": [
+        "prefeito"
+      ],
+      "a": "Na gestão iniciada em 2025, o prefeito de Feira de Santana é José Ronaldo. Para informações atualizadas, consulte o site da Prefeitura.",
+      "verificar": true
+    }
+  ]
+}

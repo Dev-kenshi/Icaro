@@ -1,0 +1,30 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "PsWKH035teTJNQwoqLFc5"
+uri = "file://reports/icaro-groq-validacoes.html"
+type = "html"
+title = "50 validações da integração Groq"
+description = "Relatório com os 50 resultados, incluindo a chamada real à Groq e a separação entre texto e voz."
+logical_id = "dc70c2c6-12f7-406c-8624-87a0c7f718a2"
+content_hash = "sha256:b794c5a002ce6af023290cc57965713d5025325b660b49e21ae8715bf84dd04a"
+size = 6922
+mtime_ms = 1790808057508
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:c3e2d7b8-918b-46b2-b84c-6f83c6c77c98/dc70c2c6-12f7-406c-8624-87a0c7f718a2/2722728e-0e42-4baa-82b1-8f7dc8ceae85"
+storage_version_token = "1790808058323682"
+content_type = "text/html"
+
+[[outputs]]
+id = "Jzy5YQLbcZsR5ajFayzDE"
+uri = "file://entregas/icaro-codigo-completo.zip"
+type = "unspecified"
+title = "Código completo do Ícaro"
+description = "Todo o código do projeto (frontend, API e scripts), sem dependências instaladas nem segredos (.env não entra no zip). 721 arquivos."
+logical_id = "5a2c7a99-db35-4019-a236-385220e5200b"
+content_hash = "sha256:47e465d0b56ca2a5f573dea938bc0eb8320c8c4c86f00431d0e2235e14c77a30"
+size = 87960365
+mtime_ms = 1790863175751
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:c3e2d7b8-918b-46b2-b84c-6f83c6c77c98/5a2c7a99-db35-4019-a236-385220e5200b/8997f35b-aa8e-4b1b-ac24-3060c92d187f"
+storage_version_token = "1790863183617163"
+content_type = "application/octet-stream"

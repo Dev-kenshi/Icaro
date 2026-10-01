@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Ícaro Inteligência e Operações"
+description = "Uma plataforma assistida por IA para explorar dados, obter análises e acompanhar resultados e operações. Inclui importação de CSV, painéis analíticos e um assistente Gemini protegido pelo servidor."
+version = "1.0.0"
+id = "artifacts/icaro"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25428
+
+[services.development]
+run = "pnpm --filter @workspace/icaro run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/icaro", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/icaro/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25428"
+BASE_PATH = "/"
