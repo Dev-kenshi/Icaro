@@ -103,6 +103,20 @@ const checks: Array<[string, () => void]> = [
     assert.equal(gate.active, false);
     assert.equal(gate.pending, false);
   }],
+
+  // --- Transcrição visível ("eu falo e não transcreve") ---
+  ['Transcrição ao vivo é exibida na legenda enquanto ele ouve', () => {
+    assert.match(stage, /onTranscript: \(t\) => \{[^}]*setCaption\(t\)/, 'onTranscript precisa mostrar o texto ouvido');
+    assert.match(stage, /hidden=\{!visibleCaption \|\| \(!captionsVisible && !listener\.active\)\}/, 'legenda precisa aparecer durante a escuta ativa');
+  }],
+  ['Frase ouvida após a ativação gera evento de transcrição', () => {
+    const gate = new WakeTurnGate();
+    gate.arm(0);
+    const interim = gate.receive('o que é auditoria', false, 0, 100, false);
+    assert.ok(interim.some((e) => e.type === 'transcript' && e.text.includes('auditoria')), JSON.stringify(interim));
+    const final = gate.receive('o que é auditoria?', true, 0, 600, false);
+    assert.ok(final.some((e) => e.type === 'question'), JSON.stringify(final));
+  }],
 ];
 
 let failed = 0;

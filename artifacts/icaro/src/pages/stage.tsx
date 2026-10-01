@@ -332,7 +332,7 @@ export default function Stage() {
     allowWakeDuringWait: state === 'thinking',
     onQuestion: (question) => handleRef.current(question),
     isEcho: (transcript) => resemblesPlayback(transcript, lastAnswerRef.current),
-    onTranscript: () => { setCaption(''); setCaptionWords(null); },
+    onTranscript: (t) => { window.clearTimeout(captionTimerRef.current); setCaptionWords(null); setCaption(t); },
     onWake: () => {
       setHelpOpen(false);
       streamAbortRef.current?.abort();
@@ -444,7 +444,7 @@ export default function Stage() {
       <button className="menu hbtn disp text-lg" onClick={() => setPanel(true)} aria-label="Abrir painel" data-testid="button-open-panel"><Menu size={18} /></button>
       {state === 'intro' && <button className="hbtn absolute right-4 top-16 z-[6] text-xs" onClick={endIntro} data-testid="button-stop-intro"><X size={14} className="mr-1 inline" />Encerrar apresentação</button>}
 
-      <div className="caption" hidden={!captionsVisible || !visibleCaption} aria-live="polite" aria-atomic="true" data-testid="text-caption">
+      <div className="caption" hidden={!visibleCaption || (!captionsVisible && !listener.active)} aria-live="polite" aria-atomic="true" data-testid="text-caption">
         <span>{captionWords
           ? captionWords.words.map((word, index) => <span key={`${index}-${word}`} className={`caption-word ${index < captionWords.activeIndex ? 'said' : index === captionWords.activeIndex ? 'now' : 'upcoming'}`}>{word}{' '}</span>)
           : visibleCaption}</span>
