@@ -5,22 +5,25 @@ import { Router, type IRouter } from "express";
  * do reconhecimento de voz do navegador para cá. Ficam registradas no log do
  * servidor (e num buffer em memória) para verificar o que o Ícaro realmente ouviu.
  */
-type MicEntry = { at: string; text: string };
+type MicEvent = "transcript" | "wake" | "question" | "answer" | "error";
+type MicEntry = { at: string; type: MicEvent; text: string };
 const entries: MicEntry[] = [];
 const MAX_ENTRIES = 50;
+const EVENT_TYPES = new Set<MicEvent>(["transcript", "wake", "question", "answer", "error"]);
 
 const router: IRouter = Router();
 
 router.post("/mic-test", (req, res) => {
+  const type = typeof req.body?.type === "string" ? req.body.type as MicEvent : "transcript";
   const text = typeof req.body?.text === "string" ? req.body.text.slice(0, 500).trim() : "";
-  if (!text) {
-    res.status(400).json({ error: "Transcrição vazia." });
+  if (!EVENT_TYPES.has(type) || !text) {
+    res.status(400).json({ error: "Informe um tipo e um texto válidos para o teste." });
     return;
   }
-  const entry: MicEntry = { at: new Date().toISOString(), text };
+  const entry: MicEntry = { at: new Date().toISOString(), type, text };
   entries.push(entry);
   if (entries.length > MAX_ENTRIES) entries.shift();
-  req.log.info({ micTest: entry }, "mic-test: transcrição recebida do navegador");
+  req.log.info({ micTest: entry }, `mic-test: ${type}`);
   res.json({ ok: true, total: entries.length });
 });
 

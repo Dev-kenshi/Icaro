@@ -135,6 +135,18 @@ checks.push(
     assert.match(apiMicTest, /router\.post\("\/mic-test"/);
     assert.match(apiMicTest, /router\.get\("\/mic-test"/);
   }],
+  ['Página de teste encaminha uma pergunta autorizada à API real do Ícaro', () => {
+    assert.match(micPage, /gateRef\.current\.receive\(/);
+    assert.match(micPage, /action\.type === 'question'[\s\S]*?askIcaro\(action\.text\)/);
+    assert.match(micPage, /api\/ai\/chat/);
+    assert.match(micPage, /provider: 'groq',[\s\S]*?persona: 'icaro'/);
+  }],
+  ['Resultado da resposta fica visível e é registrado para inspeção', () => {
+    assert.match(micPage, /data-testid="panel-mic-test-answer"/);
+    assert.match(micPage, /recordEvent\('answer', text\)/);
+    assert.match(apiMicTest, /type: MicEvent/);
+    assert.match(apiMicTest, /req\.log\.info\(\{ micTest: entry \}/);
+  }],
 );
 
 let failed = 0;
