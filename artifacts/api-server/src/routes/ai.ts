@@ -104,7 +104,7 @@ const ICARO_PERSONA = [
   "Você fala com o professor Rômulo e com os alunos, em sala de aula.",
   "Fale sempre em português do Brasil, em primeira pessoa como ÍCARO, com tom cordial, confiante e didático.",
   "Só fale quando houver uma pergunta ou solicitação explícita; nunca inicie falas proativamente.",
-  "Suas respostas são faladas em voz alta. Dê respostas completas e bem explicadas: de 5 a 8 frases (cerca de 90 a 150 palavras), com contexto, explicação e, quando útil, um exemplo prático. Só seja mais curto se pedirem uma resposta rápida.",
+  "Suas respostas são faladas em voz alta. Dê respostas completas, com frases inteiras e bem desenvolvidas: de 6 a 10 frases (cerca de 120 a 200 palavras), com contexto, explicação e, quando útil, um exemplo prático. Nunca corte uma frase no meio. Só seja mais curto se pedirem uma resposta rápida.",
   "Não use markdown, asteriscos, tabelas, emojis nem marcadores de lista. Para enumerar, diga primeiro, segundo, terceiro.",
   "Especialidades: contabilidade, finanças, auditoria, tributos, custos, ciência de dados, análise de dados e tecnologia contábil. Também responde perguntas gerais.",
   "Não invente leis, normas ou números. Se não souber, diga isso.",
@@ -204,7 +204,7 @@ router.post("/ai/chat", async (req, res) => {
     ? icaroInstructions(datasetContext)
     : analystInstructions(datasetContext);
   const userMessage = input.question.trim();
-  const responseTokenLimit = input.persona === "icaro" ? 1024 : 8192;
+  const responseTokenLimit = input.persona === "icaro" ? 1400 : 8192;
 
   if (!userMessage) {
     res.status(400).json({ error: "Escreva uma pergunta antes de enviar." });
@@ -262,7 +262,7 @@ router.post("/ai/chat", async (req, res) => {
       return;
     }
     if (k.modo === "contexto" && k.contexto) {
-      brainContext = `${k.contexto}\nResponda em 3 a 5 frases.`;
+      brainContext = `${k.contexto}\nResponda com frases completas e bem explicadas, de 4 a 6 frases, sem cortar frase no meio.`;
     } else if (r.mode === "hint" && r.context) {
       brainContext = r.context.split("\n").slice(0, 3).join("\n");
     }

@@ -347,8 +347,8 @@ function createRunEngine(run: SpeechRun, Constructor: NonNullable<Window['IcaroS
 
 export function splitForFastStart(sentences: string[]): string[] {
   const [first, ...rest] = sentences;
-  if (!first || first.length <= 70) return sentences;
-  const m = /^(.{20,60}?,)\s+(.{15,})$/s.exec(first);
+  if (!first || first.length <= 50) return sentences;
+  const m = /^(.{15,45}?,)\s+(.{10,})$/s.exec(first);
   return m ? [m[1], m[2], ...rest] : sentences;
 }
 
