@@ -42,7 +42,7 @@ export function useWakeListener(options: Options) {
   const gate = useRef(new WakeTurnGate());
   const desired = useRef(true);
   const restart = useRef<(() => void) | null>(null);
-  const pauseRef = useRef<(() => void) | null>(null);
+  const pauseRef = useRef<(() => Promise<void>) | null>(null);
   const completeRef = useRef<((playedAudio?: boolean) => void) | null>(null);
   const activateNow = () => {
     requested.current = false;
@@ -58,6 +58,8 @@ export function useWakeListener(options: Options) {
     let interimTimer = 0;
     let interimCandidate: { index: number; text: string } | null = null;
     let failures = 0;
+    let stopping = false;
+    let stopPromise: Promise<void> = Promise.resolve();
     const clearInterimCommit = () => {
       window.clearTimeout(interimTimer);
       interimTimer = 0;
@@ -83,6 +85,11 @@ export function useWakeListener(options: Options) {
     }, 100);
     const start = () => {
       if (disposed || !desired.current || rec) return;
+      if (stopping) {
+        const waiting = stopPromise;
+        void waiting.then(() => { if (!disposed && desired.current && !rec && !stopping) start(); });
+        return;
+      }
       window.clearTimeout(timer);
       clearInterimCommit();
       const block = wakeAccessBlockReason(
@@ -98,11 +105,10 @@ export function useWakeListener(options: Options) {
       rec = next;
       next.lang = 'pt-BR'; next.interimResults = true; next.continuous = true; next.maxAlternatives = 1;
       gate.current.newRecognitionSession();
-      setError(null);
       setStatus('starting');
       next.onstart = () => {
         if (disposed || rec !== next || !desired.current) return;
-        running.current = true; failures = 0; setError(null); setStatus('listening');
+        running.current = true; setStatus('listening');
         if (requested.current) activateNow();
       };
       next.onresult = (event) => {
@@ -110,6 +116,7 @@ export function useWakeListener(options: Options) {
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const result = event.results[i];
           const transcript = result[0].transcript;
+          if (transcript.trim()) { failures = 0; setError(null); }
           const events = gate.current.receive(
             transcript,
             result.isFinal,
@@ -146,7 +153,7 @@ export function useWakeListener(options: Options) {
       next.onerror = ({ error }) => {
         if (disposed || rec !== next) return;
         running.current = false;
-        if (error !== 'no-speech' && error !== 'aborted') {
+        if (error !== 'no-speech') {
           setError(error);
           console.warn('Reconhecimento de voz indisponível:', error);
         }
@@ -158,7 +165,7 @@ export function useWakeListener(options: Options) {
           latest.current.onStop();
           try { next.abort(); } catch { /* already terminated by the browser */ }
           if (rec === next) rec = null;
-        } else if (error !== 'no-speech' && error !== 'aborted') {
+        } else if (error !== 'no-speech') {
           failures++; setStatus('error');
         }
       };
@@ -187,13 +194,37 @@ export function useWakeListener(options: Options) {
         }
       }
     };
-    restart.current = () => { desired.current = true; failures = 0; start(); };
+    restart.current = () => { desired.current = true; failures = 0; setError(null); start(); };
     pauseRef.current = () => {
       desired.current = false; gate.current.stop(); window.clearTimeout(timer); clearInterimCommit();
       running.current = false; requested.current = false;
       setActive(false); setStatus('paused');
       latest.current.onStop();
-      rec?.abort(); rec = null;
+      const current = rec;
+      if (!current) return stopPromise;
+      rec = null;
+      stopping = true;
+      stopPromise = new Promise<void>((resolve) => {
+        let settled = false;
+        let timeout = 0;
+        const previousOnEnd = current.onend;
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+          window.clearTimeout(timeout);
+          if (current.onend === wrappedOnEnd) current.onend = previousOnEnd;
+          stopping = false;
+          resolve();
+        };
+        const wrappedOnEnd = () => {
+          previousOnEnd?.();
+          finish();
+        };
+        current.onend = wrappedOnEnd;
+        timeout = window.setTimeout(finish, 1000);
+        try { current.abort(); } catch { finish(); }
+      });
+      return stopPromise;
     };
     start();
     return () => {
@@ -211,7 +242,7 @@ export function useWakeListener(options: Options) {
     status, active, error, inFrame: window.self !== window.top,
     supported: status !== 'unsupported',
     enable: () => restart.current?.(),
-    pause: () => pauseRef.current?.(),
+    pause: () => pauseRef.current?.() ?? Promise.resolve(),
     complete: (playedAudio = false) => completeRef.current?.(playedAudio),
     activate: () => {
       completeRef.current?.();

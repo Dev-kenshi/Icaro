@@ -18,6 +18,7 @@ export function wakeAccessErrorMessage(error: string | null): string {
     case 'insecure-context': return 'O microfone exige uma página segura (HTTPS). Abra a versão segura do Ícaro.';
     case 'not-allowed': return 'O navegador bloqueou o microfone. Permita o acesso nas configurações deste site e clique em Retomar microfone.';
     case 'audio-capture': return 'Nenhum microfone disponível. Confira o dispositivo de entrada e se outro aplicativo está usando o microfone.';
+    case 'aborted': return 'O navegador encerrou a escuta de voz sem transcrever. O Ícaro vai tentar novamente; se continuar, abra-o em uma aba própria ou use o modo Servidor (Whisper).';
     case 'service-not-allowed': return 'O navegador bloqueou o serviço de reconhecimento de voz. Experimente Chrome ou Edge e, nesta visualização, abra uma nova aba.';
     case 'network': return 'O serviço de reconhecimento do navegador está sem conexão. A ativação por voz depende desse serviço, não da Groq.';
     case 'start-failed': return 'A escuta falhou ao reiniciar e está tentando novamente automaticamente. Se continuar, abra o Ícaro em uma nova aba.';

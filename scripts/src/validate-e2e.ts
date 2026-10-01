@@ -486,7 +486,20 @@ async function main() {
     await until(() => page.evaluate((s) => (window as any).__rec.started > s && (window as any).__rec.current?.alive, started), 3000, 'reinício após falha temporária');
     await sleep(600); assert((await fullTurn(page, 'o que é provisão')) === 1, 'não respondeu após reinício');
   });
+  await test('Erro aborted fica visível e a escuta tenta se recuperar', async () => {
+    await until(async () => (await state(page)) === 'idle', 10000, 'fim da resposta anterior');
+    const started = await page.evaluate(() => (window as any).__rec.started);
+    await page.evaluate(() => (window as any).__recError('aborted'));
+    await page.waitForSelector('[data-testid="status-listening-error"]', { timeout: 3000 });
+    const errorText = await page.textContent('[data-testid="status-listening-error"]');
+    assert(/encerrou a escuta/i.test(errorText ?? ''), String(errorText));
+    await until(() => page.evaluate((s) => (window as any).__rec.started > s && (window as any).__rec.current?.alive, started), 4000, 'nova tentativa após aborted');
+    await until(async () => (await state(page)) === 'idle', 10000, 'Ícaro em espera depois da retomada');
+    await sleep(600);
+    assert((await fullTurn(page, 'explique o que é provisão')) === 1, 'não respondeu depois da recuperação de aborted');
+  });
   await test('Erro de rede se recupera; microfone negado mostra ajuda', async () => {
+    await fresh();
     const started = await page.evaluate(() => (window as any).__rec.started);
     await page.evaluate(() => (window as any).__recError('network'));
     await until(() => page.evaluate((s) => (window as any).__rec.started > s && (window as any).__rec.current.alive, started), 4000, 'recuperação');
@@ -516,7 +529,7 @@ async function main() {
   const failed = results.filter((r) => !r.ok);
   if (pageErrors.length) failed.push({ n: 0, name: 'erros de página', ok: false, info: pageErrors.join('; ') });
   console.log(`\n${results.filter((r) => r.ok).length}/${results.length} testes aprovados. Erros de página: ${pageErrors.length}${pageErrors.length ? ` (${[...new Set(pageErrors)].join('; ')})` : ''}`);
-  if (results.length !== 51) { console.log(`ERRO: esperados 51 testes, executados ${results.length}`); process.exit(1); }
+  if (results.length !== 52) { console.log(`ERRO: esperados 52 testes, executados ${results.length}`); process.exit(1); }
   process.exit(failed.length ? 1 : 0);
 }
 

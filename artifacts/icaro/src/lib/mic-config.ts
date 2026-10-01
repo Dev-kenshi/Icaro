@@ -226,7 +226,7 @@ export async function diagnoseMicrophone(onLevel?: (level: number) => void): Pro
   stream.getTracks().forEach((track) => track.stop());
   await context.close().catch(() => undefined);
   onLevel?.(0);
-  steps.push(`Volume máximo captado: ${Math.round(peak * 100)}%`);
+  steps.push(`Pico do sinal captado: ${Math.round(peak * 100)}%`);
   if (peak < 0.08) {
     return {
       ok: false,
@@ -290,7 +290,9 @@ export async function diagnoseMicrophone(onLevel?: (level: number) => void): Pro
     steps,
     advice: code === 'network'
       ? 'A rede pode bloquear o serviço de voz do navegador. Use o modo Servidor (Whisper).'
-      : 'O reconhecimento do navegador falhou. Use o modo Servidor (Whisper) ou confira a permissão do microfone.',
+      : code === 'aborted'
+        ? 'O navegador encerrou o reconhecimento antes de transcrever. O sinal do microfone foi captado; abra o Ícaro em uma aba própria e tente novamente. Se persistir, use o modo Servidor (Whisper).'
+        : 'O reconhecimento do navegador falhou. Use o modo Servidor (Whisper) ou confira a permissão do microfone.',
   };
 }
 

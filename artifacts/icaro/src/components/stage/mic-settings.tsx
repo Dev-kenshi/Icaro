@@ -16,13 +16,15 @@ export function MicSettings({
   mode,
   onMode,
   usingServer,
+  busy = false,
   onTestStart,
   onTestEnd,
 }: {
   mode: MicMode;
   onMode: (mode: MicMode) => void;
   usingServer: boolean;
-  onTestStart?: () => void;
+  busy?: boolean;
+  onTestStart?: () => boolean | void | Promise<boolean | void>;
   onTestEnd?: () => void;
 }) {
   const [level, setLevel] = useState(0);
@@ -32,13 +34,19 @@ export function MicSettings({
   const testMicrophone = async () => {
     setTesting(true);
     setDiagnosis(null);
+    let started = false;
     try {
-      onTestStart?.();
+      const allowed = await onTestStart?.();
+      if (allowed === false) {
+        setDiagnosis({ ok: false, steps: [], advice: 'Outro teste de microfone já está em andamento. Aguarde e tente novamente.' });
+        return;
+      }
+      started = true;
       setDiagnosis(await diagnoseMicrophone(setLevel));
     } catch (error) {
       setDiagnosis({ ok: false, steps: [], advice: micErrorMessage(error) });
     } finally {
-      onTestEnd?.();
+      if (started) onTestEnd?.();
       setTesting(false);
     }
   };
@@ -55,6 +63,7 @@ export function MicSettings({
             role="radio"
             aria-checked={mode === value}
             onClick={() => onMode(value)}
+            disabled={testing || busy}
             style={{ borderColor: mode === value ? 'var(--holo)' : undefined }}
             data-testid={`button-mic-mode-${value}`}
           >
@@ -75,10 +84,10 @@ export function MicSettings({
         type="button"
         className="pbtn"
         onClick={() => void testMicrophone()}
-        disabled={testing}
+        disabled={testing || busy}
         data-testid="button-mic-test"
       >
-        {testing ? 'Testando… fale agora' : 'Testar microfone'}
+        {testing ? 'Testando… fale agora' : busy ? 'Outro teste em andamento' : 'Testar microfone'}
       </button>
       <div
         className="h-2 overflow-hidden rounded bg-[color:var(--line)]"

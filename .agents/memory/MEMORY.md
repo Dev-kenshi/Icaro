@@ -7,4 +7,5 @@
 - [Avatar atlas reframing](avatar-atlas-reframing.md) — padding must translate positions, not rescale tile dimensions; preserve original face pixels for sprite registration.
 - [Groq model availability](groq-model-availability.md) — verify a real authenticated request; documentation and a configured key do not prove a model is usable.
 - [Local knowledge matching](knowledge-bank-matching.md) — rank subject specificity above question phrasing so generic local triggers do not swallow questions for the remote provider.
-- [Browser recognition diagnostics](speech-recognition-diagnostics.md) — intentional SpeechRecognition timeouts can emit “aborted”; pause competing wake recognition during one-shot tests.
+- [Browser recognition diagnostics](speech-recognition-diagnostics.md) — ignore aborts from intentional cancellation; surface unexpected `aborted` and back off until a real transcript proves recovery.
+- [Gemini TTS authentication](gemini-tts-auth.md) — configured-key presence and cached audio do not prove live TTS works; probe with a fresh, uncached phrase.

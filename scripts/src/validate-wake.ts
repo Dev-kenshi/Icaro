@@ -222,7 +222,37 @@ checks.push(
     assert.match(wakeAccessErrorMessage('audio-capture'), /dispositivo/);
     assert.match(wakeAccessErrorMessage('iframe-policy'), /nova aba/);
     assert.match(wakeAccessErrorMessage('network'), /não da Groq/);
+    assert.match(wakeAccessErrorMessage('aborted'), /encerrou a escuta/);
     assert.match(wakeAccessErrorMessage('start-failed'), /tentando novamente automaticamente/);
+  }],
+  ['1.000 cenários de ativação enviam uma pergunta única e rejeitam conversa ambiente', () => {
+    const wakeForms = [
+      'Ok, Ícaro',
+      'Okay, Ícaro',
+      'OK Ícaro',
+      'O.K., Ícaro',
+      'O K Icaro',
+      'Okey, Ícaro',
+      'Let’s go, Ícaro',
+      'lets go Icaro',
+    ];
+    for (let index = 0; index < 1000; index++) {
+      const question = `explique o item ${index}?`;
+      const wakeText = `${wakeForms[index % wakeForms.length]}, ${question}`;
+      const parsed = parseWakeCommand(wakeText, false);
+      assert.equal(parsed.wake, true, `ativação ${index}: ${wakeText}`);
+      assert.ok(parsed.question.includes(`item ${index}`), `pergunta perdida ${index}: ${parsed.question}`);
+      assert.equal(parseWakeCommand(`conversa sobre Ícaro número ${index}`, false).wake, false, `ativação ambiente ${index}`);
+
+      const gate = new WakeTurnGate();
+      const now = index * 20_000;
+      assert.equal(gate.receive(wakeForms[index % wakeForms.length], true, 0, now, false).filter((event) => event.type === 'wake').length, 1);
+      const sent = gate.receive(question, true, 1, now + 100, false);
+      assert.equal(sent.filter((event) => event.type === 'question').length, 1, `pergunta não enviada ${index}`);
+      assert.equal(gate.receive(question, true, 1, now + 200, false).filter((event) => event.type === 'question').length, 0, `pergunta duplicada ${index}`);
+      assert.equal(gate.receive(`fala ambiente ${index}`, true, 2, now + 300, true, false, true).length, 0, `fala ambiente autorizada ${index}`);
+      assert.equal(gate.pending, true, `espera cancelada por conversa ambiente ${index}`);
+    }
   }],
 );
 let failures = 0;
