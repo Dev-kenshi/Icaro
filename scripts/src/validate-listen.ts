@@ -147,6 +147,14 @@ checks.push(
     assert.match(apiMicTest, /type: MicEvent/);
     assert.match(apiMicTest, /req\.log\.info\(\{ micTest: entry \}/);
   }],
+  ['Teste permite dizer ativação e pergunta em duas falas', () => {
+    const gate = new WakeTurnGate();
+    const wake = gate.receive('Ok, Ícaro', true, 0, 100, false);
+    assert.ok(wake.some((event) => event.type === 'wake'));
+    assert.equal(wake.some((event) => event.type === 'question'), false);
+    const question = gate.receive('o que é auditoria?', true, 1, 500, false);
+    assert.equal(question.filter((event) => event.type === 'question').length, 1);
+  }],
 );
 
 let failed = 0;

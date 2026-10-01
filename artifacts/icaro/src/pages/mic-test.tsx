@@ -201,6 +201,7 @@ export default function MicTest() {
             <span style={{ opacity: 0.6, marginRight: 8 }}>{l.at}</span>
             {l.text}
             {l.wake && <strong style={{ color: '#5fd0ff', marginLeft: 8 }}>← ativação detectada{l.question ? `: “${l.question}”` : ''}</strong>}
+            {!l.wake && l.question && <strong style={{ color: '#5fd0ff', marginLeft: 8 }}>← pergunta enviada: “{l.question}”</strong>}
             {!l.final && <em style={{ marginLeft: 8, opacity: 0.6 }}>(parcial)</em>}
           </li>
         ))}
