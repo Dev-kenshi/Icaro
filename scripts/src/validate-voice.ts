@@ -268,6 +268,11 @@ check("Facade usa o player do pacote, rota com timestamps e fallback Gemini sem 
   assert.doesNotMatch(speech.match(/export function speak\(text: string, options: SpeakOpts\) \{[\s\S]*?\n\}/)?.[0] || "", /speechSynthesis|pickVoice/);
 });
 
+check("O Secret gemine atualizado prevalece sobre a variável GEMINI_API_KEY antiga", () => {
+  const route = readFileSync(path.resolve(import.meta.dirname, "../../artifacts/api-server/src/routes/ai.ts"), "utf8");
+  assert.match(route, /return process\.env\.gemine \|\| process\.env\.GEMINI_API_KEY \|\| ""/);
+});
+
 check("Rota de timestamps valida texto e responde sem configuração antes de chamar provedor", () => {
   const route = readFileSync(path.resolve(import.meta.dirname, "../../artifacts/api-server/src/routes/tts-timestamps.ts"), "utf8");
   const keyGuard = route.indexOf('if (!apiKey)');

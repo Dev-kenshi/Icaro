@@ -235,7 +235,16 @@ function createRunEngine(run: SpeechRun, Constructor: NonNullable<Window['IcaroS
   const engine = new Constructor({
     avatar: proxy,
     endpoint: `${BASE_URL}api/tts-ts`,
-    fallback: (text) => fetchGeminiAudio(run, text),
+    fallback: async (text) => {
+      try {
+        return await fetchGeminiAudio(run, text);
+      } catch (error) {
+        if (isCurrent(run) && !(error instanceof Error && error.name === 'AbortError')) {
+          run.error = asError(error, 'A voz reserva falhou.');
+        }
+        throw error;
+      }
+    },
     onSentence(text, timeline, clock) {
       if (!isCurrent(run)) return;
       run.sentenceText = text;
@@ -298,6 +307,10 @@ function createRunEngine(run: SpeechRun, Constructor: NonNullable<Window['IcaroS
     try {
       const data = await originalFallback(text);
       if (!isCurrent(run)) return null;
+      if (!data) {
+        if (!run.error) run.error = new Error('A voz reserva não retornou áudio válido.');
+        return null;
+      }
       validateDecoded(data);
       run.usedFallback = true;
       return data;
@@ -341,7 +354,13 @@ async function fetchGeminiAudio(run: SpeechRun, text: string): Promise<ArrayBuff
       signal: controller.signal,
       body: JSON.stringify({ text: spokenText.slice(0, 1200) }),
     });
-    if (!response.ok) throw new Error(`Voz reserva indisponível (${response.status}).`);
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null) as { error?: unknown } | null;
+      const message = typeof payload?.error === 'string'
+        ? payload.error
+        : `Voz reserva indisponível (${response.status}).`;
+      throw new Error(message);
+    }
     const blob = await response.blob();
     if (!blob.size) throw new Error('A voz reserva retornou áudio vazio.');
     const audio = await blob.arrayBuffer();

@@ -352,6 +352,10 @@ async function main() {
     await until(async () => (await state(page)) !== 'listening', 4000, 'processamento');
     await waitState(page, 'idle', 15000);
     assert(ttsFails > fails, 'nenhuma falha de voz foi exercitada (áudio em cache?)');
+    await page.waitForSelector('[data-testid="status-audio-error"]', { timeout: 3000 });
+    const speechError = await page.textContent('[data-testid="status-audio-error"]');
+    assert(/voz indisponível/i.test(speechError ?? ''), `erro original da voz foi ocultado: ${speechError}`);
+    assert(!/a resposta de fala não contém áudio e alinhamento/i.test(speechError ?? ''), `mensagem de alinhamento enganosa: ${speechError}`);
     mode.tts = 'mock'; await sleep(600);
     assert((await fullTurn(page, 'o que é receita líquida')) === 1, 'não se recuperou');
   });

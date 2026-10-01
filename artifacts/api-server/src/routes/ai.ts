@@ -77,7 +77,8 @@ const speech = createSpeechEngine({
 });
 
 function getGeminiKey() {
-  return process.env.GEMINI_API_KEY || process.env.gemine || "";
+  // Prefer the existing `gemine` Secret so a stale uppercase alias cannot mask its update.
+  return process.env.gemine || process.env.GEMINI_API_KEY || "";
 }
 
 function getOpenAiKey() {
