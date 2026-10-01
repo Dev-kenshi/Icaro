@@ -7,3 +7,4 @@
 - [Avatar atlas reframing](avatar-atlas-reframing.md) — padding must translate positions, not rescale tile dimensions; preserve original face pixels for sprite registration.
 - [Groq model availability](groq-model-availability.md) — verify a real authenticated request; documentation and a configured key do not prove a model is usable.
 - [Local knowledge matching](knowledge-bank-matching.md) — rank subject specificity above question phrasing so generic local triggers do not swallow questions for the remote provider.
+- [Browser recognition diagnostics](speech-recognition-diagnostics.md) — intentional SpeechRecognition timeouts can emit “aborted”; pause competing wake recognition during one-shot tests.

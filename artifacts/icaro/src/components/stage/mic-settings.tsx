@@ -19,10 +19,14 @@ export function MicSettings({
   mode,
   onMode,
   usingServer,
+  onTestStart,
+  onTestEnd,
 }: {
   mode: MicMode;
   onMode: (mode: MicMode) => void;
   usingServer: boolean;
+  onTestStart?: () => void;
+  onTestEnd?: () => void;
 }) {
   const [devices, setDevices] = useState<Array<{ id: string; label: string }>>([]);
   const [device, setDevice] = useState(getMicDeviceId);
@@ -44,10 +48,12 @@ export function MicSettings({
     setTesting(true);
     setDiagnosis(null);
     try {
+      onTestStart?.();
       setDiagnosis(await diagnoseMicrophone(setLevel));
     } catch (error) {
       setDiagnosis({ ok: false, steps: [], advice: micErrorMessage(error) });
     } finally {
+      onTestEnd?.();
       setTesting(false);
       refresh();
     }

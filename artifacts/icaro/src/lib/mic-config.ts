@@ -281,25 +281,28 @@ export async function diagnoseMicrophone(onLevel?: (level: number) => void): Pro
     recognition.interimResults = true;
     recognition.continuous = false;
     let heard = '';
-    const done = window.setTimeout(() => {
+    let settled = false;
+    let done = 0;
+    const finish = (value: string) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(done);
+      resolve(value);
+    };
+    done = window.setTimeout(() => {
+      finish(heard ? `ok:${heard}` : 'sem-fala');
       try { recognition.abort(); } catch { /* The recognition may already have stopped. */ }
-      resolve(heard ? `ok:${heard}` : 'sem-fala');
     }, 6000);
     recognition.onresult = (event) => {
       heard = event.results[event.results.length - 1]?.[0]?.transcript || '';
     };
     recognition.onerror = (event) => {
-      window.clearTimeout(done);
-      resolve(`erro:${event.error}`);
+      finish(`erro:${event.error}`);
     };
     recognition.onend = () => {
-      window.clearTimeout(done);
-      resolve(heard ? `ok:${heard}` : 'sem-fala');
+      finish(heard ? `ok:${heard}` : 'sem-fala');
     };
-    try { recognition.start(); } catch {
-      window.clearTimeout(done);
-      resolve('erro:start');
-    }
+    try { recognition.start(); } catch { finish('erro:start'); }
   });
 
   if (result.startsWith('ok:')) {
@@ -308,7 +311,7 @@ export async function diagnoseMicrophone(onLevel?: (level: number) => void): Pro
   }
   if (result === 'sem-fala') {
     steps.push('Reconhecimento do navegador: não captou fala');
-    return { ok: false, steps, advice: 'O microfone recebe som, mas o reconhecimento não entendeu. Fale durante o teste; se continuar, use o modo Servidor (Whisper).' };
+    return { ok: false, steps, advice: 'O microfone recebe som, mas o reconhecimento não entendeu. Fale durante todo o teste; se continuar, confira o microfone padrão do Chrome ou use o modo Servidor (Whisper).' };
   }
   const code = result.slice(5);
   steps.push(`Reconhecimento do navegador: erro "${code}"`);

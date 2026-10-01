@@ -223,6 +223,25 @@ export default function Stage() {
   commandCompleteRef.current = listener.complete;
   const useServerMic = micMode === 'server'
     || (micMode === 'auto' && (listener.status === 'unsupported' || (!!listener.error && SERVER_FALLBACK_ERRORS.has(listener.error))));
+  const micTestRestoreListenerRef = useRef(false);
+  const listenerStatusRef = useRef(listener.status);
+  listenerStatusRef.current = listener.status;
+  const serverMicRef = useRef(useServerMic);
+  serverMicRef.current = useServerMic;
+  const beginMicTest = () => {
+    const canResume = !useServerMic
+      && listener.supported
+      && listener.status !== 'paused'
+      && listener.status !== 'blocked'
+      && listener.status !== 'unsupported';
+    micTestRestoreListenerRef.current = canResume;
+    if (canResume) listener.pause();
+  };
+  const endMicTest = () => {
+    const shouldResume = micTestRestoreListenerRef.current;
+    micTestRestoreListenerRef.current = false;
+    if (shouldResume && !serverMicRef.current && listenerStatusRef.current === 'paused') listener.enable();
+  };
   const chooseMicMode = (mode: MicMode) => {
     setMicMode(mode);
     setMicModeState(mode);
@@ -377,7 +396,7 @@ export default function Stage() {
           {listener.status === 'blocked' && listener.error !== 'iframe-policy' && listener.error !== 'insecure-context' && <button onClick={() => { prime(); listener.enable(); }} data-testid="button-enable-listening">Retomar microfone</button>}
           {listener.supported && <button onClick={() => { prime(); if (listener.status === 'paused') listener.enable(); else listener.pause(); }} data-testid="button-pause-listening">{listener.status === 'paused' ? 'Retomar microfone' : 'Pausar microfone'}</button>}
         </div>
-        <MicSettings mode={micMode} onMode={chooseMicMode} usingServer={useServerMic} />
+        <MicSettings mode={micMode} onMode={chooseMicMode} usingServer={useServerMic} onTestStart={beginMicTest} onTestEnd={endMicTest} />
       </StageHelp>
 
       <button className="menu hbtn disp text-lg" onClick={() => setPanel(true)} aria-label="Abrir painel" data-testid="button-open-panel"><Menu size={18} /></button>
@@ -454,7 +473,7 @@ export default function Stage() {
           )}
           {tab === 'voz' && (
             <div className="space-y-5">
-              <MicSettings mode={micMode} onMode={chooseMicMode} usingServer={useServerMic} />
+              <MicSettings mode={micMode} onMode={chooseMicMode} usingServer={useServerMic} onTestStart={beginMicTest} onTestEnd={endMicTest} />
               <div className="card space-y-2">
                 <div className="mono text-[10px] uppercase tracking-widest text-[color:var(--ok)]">Ativação por voz</div>
                 <p>Diga <strong>“Ok, Ícaro”</strong> ou <strong>“Let’s go, Ícaro”</strong>, seguido da pergunta, ou espere a indicação “Escuta ativa”. Cada ativação autoriza uma pergunta; após responder, o ÍCARO volta à espera. Sem pergunta em 12 segundos, a ativação expira em silêncio. Diga <strong>“Stop, Ícaro”</strong> para interromper.</p>
