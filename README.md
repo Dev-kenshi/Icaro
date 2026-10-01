@@ -1,5 +1,7 @@
 # Ícaro — Assistente holográfico (Contador do Amanhã · UEFS)
 
+**Site:** https://icaro-inteligencia-e-operacoes.replit.app/
+
 Assistente virtual holográfico para o I ITCONT 2026, evento do Projeto de Extensão
 Contador do Amanhã (UEFS). O Ícaro aparece em um palco 3D, ouve por voz ("Ok, Ícaro"),
 responde perguntas sobre contabilidade, reforma tributária, IA e o evento — e fala
