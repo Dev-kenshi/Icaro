@@ -17,6 +17,7 @@
     "validate:stats": "tsx ./src/validate-stats.ts",
     "validate:pipeline": "tsx ./src/validate-voice-pipeline.ts",
     "validate:conhecimento": "tsx ./src/validate-conhecimento.ts",
+    "validate:stream": "tsx ./src/validate-stream.ts",
     "validate:all": "pnpm run validate:auth && pnpm run validate:routing && pnpm run validate:stats && pnpm run validate:pipeline && pnpm run validate:conhecimento"
   },
   "devDependencies": {
