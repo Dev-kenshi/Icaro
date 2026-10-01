@@ -1,0 +1,48 @@
+# ÍCARO · Inteligência e Operações
+Assistente holográfico do projeto Contador do Amanhã (Ciências Contábeis/UEFS, ITCONT 2026). Especialista em contabilidade, reforma tributária, IA, curso de Contábeis da UEFS e Feira de Santana. Deploy: icaro-inteligencia-e-operacoes.replit.app. Comunicação sempre em pt-BR.
+
+## ⛔ Regras absolutas
+1. **Não quebrar:** rosto, voz, microfone, teclado, "Ativar áudio" e legendas. Camadas novas só envolvem o que já existe.
+2. **Chaves só no servidor:** `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID` e a chave do LLM. Nunca no front.
+3. **Rosto:** sem `.mp4` nem troca de clipes. A boca só mexe no estado `speaking`. Manter `previous_text`, divisão em frases e agendamento pelo `AudioContext` (é isso que garante a sincronia).
+4. **Cérebro:** não editar `icaro-cinema/cerebro/icaro-brain.js`. Mudou o `banco-respostas.json`, rodar `node icaro-cinema/cerebro/test.js` (precisa dar TUDO OK). Exemplos ambíguos empatam em 1.00; diferencie as perguntas.
+5. **Pensamentos reais:** os cartões holográficos mostram só eventos reais (`thoughts`). Nunca texto inventado.
+6. **Antes de dizer "pronto":** testar em 375 px e 1440 px, console sem erros, 60 fps no desktop e 30 no celular, e respeitar `prefers-reduced-motion`.
+
+## Fluxo de uma pergunta
+voz/teclado → `POST /api/ask {text, sessionId}` → `IcaroBrain.answer()`:
+- `local` (≥0.62): resposta do banco, sem LLM, áudio pré-gerado em `public/voz/<id>.mp3` + `.json`;
+- `hint` (0.30–0.62): LLM recebe `r.context`;
+- `llm`: LLM normal → cache pela chave `IcaroBrain.cacheKey(text)`.
+
+LLM: máx. 220 tokens, temperatura 0.3, só as 4 últimas trocas, resposta falada em 2 a 4 frases (máx. 70 palavras), sem markdown.
+Resposta da rota: `{mode, id, text, thoughts, gestures, cached}`. Estatísticas em `GET /api/ask/stats`. Curadoria em `/admin/cerebro` (`ADMIN_PASS`): promover perguntas que foram para o LLM ao banco.
+
+## Barramento `icaroBus` (EventTarget)
+`state` (idle|listening|thinking|speaking) · `transcript` · `thought {k,t,c}` · `answer:start` · `word {word,t}` · `answer:end` · `audio:level`. Todas as camadas visuais escutam só ele.
+
+## Onde fica
+- `icaro-humano/avatar/`: motor do rosto (`IcaroAvatar`, `IcaroSpeech`, `IcaroCaptions`, `IcaroVisemes`), servido em `/avatar/`.
+- `icaro-humano/server/tts-timestamps.js`: rota `POST /api/tts-ts` (ElevenLabs com tempos por caractere).
+- `icaro-cinema/cerebro/`: `banco-respostas.json` (80 intenções; campos `q`, `kw`, `a`, `g` = gestos, `follow`, `verificar`), `icaro-brain.js` e `test.js`.
+- `icaro-cinema/PROMPT_*.md`: especificações completas (1 = visual cinema, 2 = modo palestra, 3 = cérebro).
+- `public/models/icaro-body.glb`: avatar de corpo inteiro (blendshapes ARKit + animações Mixamo).
+
+## Visual
+- **Cores:** ciano `#39d5ff` · gelo `#bff4ff` · violeta `#8b7bff` (pensando) · âmbar `#ffb347` (alerta) · fundo `#000308`.
+- **Fontes:** Rajdhani/Orbitron (títulos), JetBrains Mono (dados), Inter (legenda).
+- **Camadas:** estrelas com paralaxe → grade no chão → anéis HUD (o externo vira equalizador na fala) → rosto com scanlines/fresnel → cartões de pensamento orbitando (no celular, coluna com no máx. 3) → waveform → legenda.
+- **Desempenho:** um único `requestAnimationFrame`; qualidade cai sozinha se o frame passar de 22 ms; abertura de 3 s, uma vez por sessão.
+- **Modos:** `?modo=palestra` (three.js, crossFade de 0,4 s, sem deslizar os pés, gestos guiados pelo texto, visemas PT-BR → ARKit; se falhar, volta ao rosto) e `?totem=1` (telão).
+
+## Conferir antes do ITCONT
+Entradas do banco com `verificar: true`: dados do curso de Contábeis da UEFS, MEI, IR até R$ 5 mil, ano-teste da reforma (2026), alíquota estimada, prefeito e população de Feira de Santana.
+
+## Estilo do agente
+Edição cirúrgica, sem reescrever o arquivo inteiro. Sem preâmbulo. Escopo fechado: se algo vizinho parecer necessário, 1 linha e pergunta. Ler só o que for relevante.
+Reporte: `STATUS ✅/⚠️/❌ · Feito · Testado · Corrigido (arquivo:linha) · Riscos · Próximo passo`.
+Todo erro novo vira uma linha em "Erros resolvidos", no formato `erro → causa → regra`.
+
+## Erros resolvidos
+- Voz dizia "UFs" → falta de pronúncia → dicionário UEFS→"Uéfis" no TTS.
+- Boca mexia em "Pensando" e o rosto tinha 96 cortes em 176 s → clipes de vídeo → rosto só por canvas e boca só em `speaking`.

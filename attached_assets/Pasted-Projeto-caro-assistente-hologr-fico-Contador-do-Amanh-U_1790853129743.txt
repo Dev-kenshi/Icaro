@@ -1,0 +1,46 @@
+Projeto Ícaro (assistente holográfico, Contador do Amanhã/UEFS). A pasta icaro-cinema/ está na raiz. Não quebre rosto, voz, microfone, teclado nem legendas. Chaves só no servidor.
+
+1. CÉREBRO (economia de tokens)
+- Crie POST /api/ask {text, sessionId}. Use icaro-cinema/cerebro/icaro-brain.js + banco-respostas.json (não edite o .js). Use IcaroBrain.create(bank), com uma instância por sessão.
+- Use r = brain.answer(text):
+  - mode 'local': devolve r.text (sem LLM).
+  - mode 'hint': LLM com r.context como referência.
+  - mode 'llm': LLM normal.
+- Guarde em cache as respostas do LLM pela chave IcaroBrain.cacheKey(text).
+- No LLM: máx. 220 tokens, temperatura 0.3, só as 4 últimas trocas. System: "Você é o Ícaro, especialista em contabilidade, reforma tributária (EC 132/2023, LC 214/2025) e IA, criado por estudantes de Contábeis da UEFS. Responda falado, em 2 a 4 frases, máx. 70 palavras, sem markdown. Se não tiver certeza, diga e cite a fonte oficial."
+- Pré-gere o áudio TTS das respostas do banco (public/voz/<id>.mp3 + timestamps) e toque-o quando mode='local'.
+- Devolva {mode, id, text, thoughts, gestures, cached}.
+- Valide com: node icaro-cinema/cerebro/test.js (deve dar TUDO OK).
+
+2. VISUAL CINEMA
+- Crie o barramento icaroBus (EventTarget) com os eventos: state (idle/listening/thinking/speaking), thought, word, answer:start, answer:end, audio:level.
+- Fundo de estrelas com paralaxe e grade holográfica no chão.
+- 3 anéis HUD em SVG ao redor do rosto. Cada estado tem cor e giro próprios. Durante a fala, o anel externo vira equalizador radial com o áudio real.
+- Rosto: scanlines, brilho nas bordas, flicker raro. Mantenha o centro nítido.
+- PENSAMENTOS HOLOGRÁFICOS: cada thought vira um cartão de vidro ciano (texto mono com efeito decode).
+  - Ele nasce na testa e orbita o rosto em 3D, ligado por filamentos de luz.
+  - Hipóteses aparecem com barra de confiança.
+  - No answer:start, o vencedor vira feixe até a boca e os outros viram pó.
+  - Intervalo de 140 ms entre cartões, máx. ~900 ms no total.
+  - No celular: coluna acima do rosto, máx. 3 cartões.
+  - Botão "Pensamentos" para ligar e desligar.
+- Abertura de 3 s, pulável, uma vez por sessão.
+- Responsivo de 360 px a 4K, sem rolagem horizontal. Respeite prefers-reduced-motion.
+- Um único requestAnimationFrame. Se ficar lento, reduza a qualidade automaticamente. Meta: 60 fps no desktop, 30 no celular.
+
+3. MODO PALESTRA (botão Palestra/Rosto, ?modo=palestra)
+- three.js carregando public/models/icaro-body.glb (avatar com blendshapes ARKit + animações Mixamo).
+- Entra andando (walk "in place" + mover a raiz, sem deslizar os pés), para no centro e acena.
+- Estados: idle, ouvindo, pensando (mão no queixo), falando.
+- Troque animações só com crossFadeTo de 0,4 s.
+- Gestos: use r.gestures ou regras do texto, iniciando 200 ms antes da palavra:
+  - números → contar nos dedos;
+  - "mas" → duas mãos;
+  - "você" → apontar;
+  - "eu" → mão no peito.
+- Em respostas longas, caminha até outra marca do palco enquanto fala.
+- Lábios pelos visemas PT-BR (timestamps do TTS) mapeados em jawOpen/mouthFunnel/mouthPucker/mouthClose. Boca parada fora da fala.
+- Material holográfico (fresnel + scanlines) e câmera com cortes suaves wide/medium/close.
+- Se o modelo ou o WebGL falhar, volte ao modo rosto.
+
+Entregue: arquivos alterados + resultado do teste.

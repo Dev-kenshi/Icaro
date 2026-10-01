@@ -1,0 +1,25 @@
+Ícaro: corrigir o atraso de ~37 s entre o fim da pergunta e o início da fala. Mudanças cirúrgicas, sem reescrever arquivos inteiros. Não quebre rosto, legendas, microfone nem a palavra de ativação.
+
+DIAGNÓSTICO (medido no vídeo e no código atual): Web Speech → POST /api/ai/chat (espera a resposta inteira) → só depois ns() chama a voz /api/tts-ts. Entre 8,9 s e 44,7 s a tela fica parada. Provável causa: /api/tts-ts esperava até 30 s pela ElevenLabs e só então usava a voz reserva /api/ai/tts.
+
+0. MEDIR: registre os tempos fimFala, chatEnviado, chatPrimeiroByte, chatFim, ttsPrimeiraFrase e vozIniciou. Mostre-os no console e num painel com ?debug=1. Me mostre a tabela antes e depois.
+
+1. VOZ (/api/tts-ts): já substituí icaro-humano/server/tts-timestamps.js (limite de 8 s, ou TTS_TIMEOUT_MS). Garanta que a rota usa esse arquivo. No front, se uma frase falhar no tts-ts, as demais frases daquela resposta vão direto para a voz reserva, sem tentar o tts-ts de novo. Use ELEVENLABS_MODEL=eleven_flash_v2_5.
+
+2. RETORNO IMEDIATO: assim que a pergunta sair, mude a tela de verdade para "pensando" (anéis girando, rosto pulsando, texto "Pensando…") e, em até 300 ms, toque uma frase curta pré-gravada sorteada ("Certo.", "Boa pergunta.", "Um instante.", "Deixa eu ver."). Gere esses áudios uma vez pelo tts-ts e guarde em public/voz/.
+
+3. CÉREBRO ANTES DA IA: no servidor, antes de chamar o provedor, rode IcaroBrain.create(banco) de icaro-cinema/cerebro (uma instância por sessão):
+- mode 'local': devolva r.text na hora, sem chamar a IA;
+- mode 'puzzle': devolva as partes gravadas e chame a IA só para a lacuna, com r.parts[].prompt e no máximo 90 tokens;
+- hint/llm: chame a IA com r.context (no máximo 3 trechos), nunca a base inteira.
+Rode node icaro-cinema/cerebro/test.js e confirme TUDO OK.
+
+4. STREAMING FRASE POR FRASE: transforme /api/ai/chat em streaming (SSE, via stream do provedor: Groq, Gemini, OpenAI ou Claude). No front, junte os tokens e, a cada frase fechada (. ! ? seguido de espaço, ou mais de 140 caracteres numa vírgula), mande a frase na hora para o IcaroSpeech, que já sintetiza por frase com previous_text e enfileira no AudioContext. Não espere a resposta inteira. Para voz, use o provedor mais rápido (Groq) com max_tokens de 300 e histórico de 4 trocas.
+
+5. SERVIDOR QUENTE: se o deploy for Autoscale, troque para Reserved VM. No boot, faça uma chamada curta ao provedor e uma frase no tts-ts para aquecer.
+
+ACEITE (10 perguntas por voz, medido no painel):
+- "fale sobre contabilidade tributária" → resposta do banco, voz em até 1,5 s após o fim da fala, sem chamar a IA;
+- pergunta nova → frase de espera em até 0,5 s e voz real em até 3 s;
+- nenhuma pausa maior que 0,5 s entre frases;
+- a tela nunca fica parada enquanto ele pensa.

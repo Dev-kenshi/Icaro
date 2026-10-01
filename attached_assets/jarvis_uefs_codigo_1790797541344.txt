@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07111f">
+  <title>JARVIS | Assistente de Aula</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #06101d;
+      --panel: rgba(13, 31, 49, .78);
+      --line: rgba(116, 213, 247, .2);
+      --cyan: #66e8ff;
+      --blue: #278fff;
+      --text: #eefaff;
+      --muted: #91aebf;
+      --success: #67f1c2;
+      --warn: #ffd889;
+    }
+    * { box-sizing: border-box; }
+    html { min-height: 100%; }
+    body {
+      min-height: 100vh; margin: 0; color: var(--text);
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at 50% 16%, #153963 0, transparent 32%),
+        radial-gradient(circle at 100% 85%, #0a3254 0, transparent 32%),
+        linear-gradient(145deg, #050b16, var(--bg) 60%, #030b15);
+      overflow-x: hidden;
+    }
+    body::before {
+      content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .18;
+      background-image: linear-gradient(rgba(77, 181, 255, .11) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(77, 181, 255, .11) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 75%, transparent);
+    }
+    .app { position: relative; max-width: 1440px; min-height: 100vh; margin: auto; padding: 22px clamp(16px, 3vw, 46px) 34px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-mark { display: grid; place-items: center; width: 48px; height: 48px; border: 1px solid var(--cyan); border-radius: 14px; color: var(--cyan); font-size: 27px; font-weight: 200; box-shadow: inset 0 0 20px #36b6ff40, 0 0 24px #36b6ff33; }
+    .brand strong { display: block; font-size: 22px; letter-spacing: .26em; font-weight: 650; line-height: 1; }
+    .brand small, .eyebrow { color: var(--cyan); font-size: 10px; letter-spacing: .2em; text-transform: uppercase; }
+    .header-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: end; }
+    .tag, button, input { font: inherit; }
+    .tag { color: var(--muted); border: 1px solid var(--line); background: #08192a99; border-radius: 999px; padding: 7px 12px; font-size: 12px; }
+    button { cursor: pointer; color: var(--text); background: #15324d; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; transition: transform .2s, border-color .2s, background .2s, box-shadow .2s; }
+    button:hover { transform: translateY(-2px); border-color: var(--cyan); background: #1a4666; }
+    button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+    button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+    .grid { display: grid; grid-template-columns: minmax(330px, 1.03fr) minmax(370px, .97fr); gap: 20px; }
+    .panel { border: 1px solid var(--line); border-radius: 24px; background: var(--panel); box-shadow: 0 25px 60px #0005, inset 0 1px #b8efff10; backdrop-filter: blur(18px); }
+    .core-panel { position: relative; min-height: 670px; padding: clamp(22px, 3vw, 36px); overflow: hidden; display: flex; flex-direction: column; }
+    .core-panel::before { content: ""; position: absolute; top: -120px; right: -110px; width: 350px; height: 350px; border: 1px solid #57bfff18; border-radius: 50%; box-shadow: 0 0 0 65px #57bfff08, 0 0 0 130px #57bfff05; pointer-events: none; }
+    .eyebrow { margin: 0 0 8px; }
+    h1 { margin: 0; font-size: clamp(25px, 2.8vw, 39px); font-weight: 500; line-height: 1.1; letter-spacing: -.025em; }
+    .lead { color: var(--muted); margin: 10px 0 0; max-width: 490px; font-size: 14px; }
+    .visual { flex: 1; min-height: 310px; position: relative; display: grid; place-items: center; perspective: 800px; }
+    .halo { position: absolute; width: min(310px, 75%); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, #52d6ff22, transparent 64%); filter: blur(12px); }
+    .ring { position: absolute; width: 270px; height: 270px; max-width: 75vw; max-height: 75vw; border-radius: 50%; border: 1px solid #6be6ff72; box-shadow: inset 0 0 38px #2fbcff38, 0 0 28px #4acaff24; animation: spin 20s linear infinite; }
+    .ring::before, .ring::after { content: ""; position: absolute; inset: 12px; border-radius: 50%; border: 2px dashed #5cdbff65; }
+    .ring::after { inset: -18px; border: 1px solid #7bdfff4a; border-left: 3px solid var(--cyan); border-right: 3px solid var(--cyan); box-shadow: 0 0 22px #41caff46; }
+    .ring-b { transform: rotateX(64deg) rotateZ(22deg); animation: orbit 13s linear infinite; border-color: #268ef7ad; }
+    .ring-c { width: 216px; height: 216px; transform: rotateY(68deg); animation: orbit-reverse 16s linear infinite; border-color: #8aeeff8a; }
+    .core {
+      z-index: 1; width: 158px; height: 158px; display: grid; place-items: center; border-radius: 50%;
+      border: 2px solid #adf4ff; background: radial-gradient(circle at 50% 45%, #78e9ff, #1980bb 42%, #092d55 70%);
+      box-shadow: inset 0 0 45px #a2faff99, 0 0 24px #67e7ffbb, 0 0 85px #2f97ff77;
+      transition: transform .3s, box-shadow .3s;
+    }
+    .core span { font-size: 52px; font-weight: 200; text-shadow: 0 0 15px #d4ffff; }
+    .listening .core { transform: scale(1.08); box-shadow: inset 0 0 50px #e9ffffcc, 0 0 35px #67e7ff, 0 0 120px #2f97ff; animation: pulse 1.1s ease-in-out infinite alternate; }
+    .status-wrap { display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid var(--line); border-radius: 14px; background: #061728bd; padding: 13px 16px; }
+    .status { display: flex; align-items: center; gap: 9px; color: var(--success); font-size: 13px; font-weight: 650; }
+    .status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 12px currentColor; }
+    .status.listening-status { color: var(--cyan); }
+    .status.error-status { color: var(--warn); }
+    #clock { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 13px; }
+    .main-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+    .primary { color: #031321; background: linear-gradient(135deg, #88f1ff, #4daeff); border-color: #b1f9ff; font-weight: 700; box-shadow: 0 8px 30px #3dbbff38; }
+    .primary:hover { background: linear-gradient(135deg, #adf7ff, #65c8ff); }
+    .work-panel { display: flex; flex-direction: column; min-height: 670px; overflow: hidden; }
+    .work-header { padding: 22px 24px 15px; border-bottom: 1px solid var(--line); }
+    .work-header h2, .section-title { margin: 0; font-size: 17px; font-weight: 600; }
+    .work-header p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+    .messages { height: 280px; overflow-y: auto; padding: 18px 24px; display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth; }
+    .message { max-width: 94%; padding: 11px 14px; border: 1px solid var(--line); border-radius: 13px 13px 13px 3px; background: #0a243a; font-size: 13px; overflow-wrap: anywhere; }
+    .message.user { align-self: flex-end; border-radius: 13px 13px 3px 13px; background: #145077; border-color: #59c8ff70; }
+    .message .who { color: var(--cyan); display: block; font-size: 10px; letter-spacing: .13em; text-transform: uppercase; margin-bottom: 4px; }
+    .message.user .who { color: #bcecff; }
+    .message a { display: inline-block; margin-top: 8px; color: #031321; background: #8aeaff; border-radius: 8px; padding: 6px 10px; text-decoration: none; font-weight: 700; }
+    .composer { display: flex; gap: 8px; margin: 0 24px 19px; }
+    .composer input { min-width: 0; flex: 1; padding: 12px 14px; border: 1px solid var(--line); outline: none; border-radius: 12px; background: #061929; color: var(--text); }
+    .composer input::placeholder { color: #7394a7; }
+    .composer input:focus { border-color: var(--cyan); }
+    .subsection { border-top: 1px solid var(--line); padding: 17px 24px 20px; }
+    .section-title { font-size: 12px; color: var(--cyan); letter-spacing: .14em; text-transform: uppercase; margin-bottom: 12px; }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip { padding: 8px 10px; border-radius: 9px; font-size: 12px; background: #0a2b46; }
+    .notes { max-height: 118px; overflow-y: auto; margin: 0; padding-left: 18px; font-size: 12px; color: #d3eaf4; }
+    .notes li { margin: 3px 0; overflow-wrap: anywhere; }
+    .empty { color: var(--muted); font-size: 12px; margin: 0; }
+    .timer-line { margin-top: auto; display: flex; justify-content: space-between; align-items: center; gap: 12px; color: var(--muted); font-size: 12px; }
+    #timerValue { font-size: 20px; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: .1em; }
+    .progress { height: 5px; background: #173a50; border-radius: 99px; overflow: hidden; margin-top: 9px; }
+    .progress span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #298af9, #7bf1ff); transition: width .2s; }
+    footer { margin-top: 15px; color: #7b9bad; font-size: 11px; text-align: center; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes orbit { to { transform: rotateX(64deg) rotateZ(382deg); } }
+    @keyframes orbit-reverse { to { transform: rotateY(68deg) rotateZ(-360deg); } }
+    @keyframes pulse { to { filter: brightness(1.28); } }
+    @media (max-width: 850px) {
+      .grid { grid-template-columns: 1fr; }
+      .core-panel, .work-panel { min-height: auto; }
+      .core-panel { min-height: 570px; }
+      .messages { height: 320px; }
+    }
+    @media (max-width: 520px) {
+      header { align-items: flex-start; }
+      .tag { display: none; }
+      .brand strong { font-size: 18px; }
+      .core-panel { min-height: 535px; }
+      .visual { min-height: 270px; }
+      .ring { width: 220px; height: 220px; }
+      .ring-c { width: 175px; height: 175px; }
+      .core { width: 130px; height: 130px; }
+      .core span { font-size: 44px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header>
+      <div class="brand"><div class="brand-mark" aria-hidden="true">◉</div><div><strong>JARVIS</strong><small>Assistente de aula · UEFS</small></div></div>
+      <div class="header-actions"><span class="tag">PROTÓTIPO INTERATIVO · ITCONT 2026</span><button id="voiceToggle" type="button" aria-pressed="true" title="Ativar ou desativar voz">🔊 Voz ligada</button></div>
+    </header>
+
+    <main class="grid">
+      <section class="panel core-panel" aria-labelledby="heroTitle">
+        <p class="eyebrow">SISTEMA PRONTO // PT-BR</p>
+        <h1 id="heroTitle">Olá, professor Rômulo.<br>Como posso ajudar?</h1>
+        <p class="lead">Diga um comando ou digite abaixo. O microfone só é ativado quando você tocar no botão.</p>
+        <div class="visual" id="visual" aria-hidden="true"><div class="halo"></div><div class="ring"></div><div class="ring ring-b"></div><div class="ring ring-c"></div><div class="core"><span>J</span></div></div>
+        <div class="status-wrap"><span id="status" class="status" role="status">Aguardando comando</span><span id="clock"></span></div>
+        <div class="main-actions"><button class="primary" id="micButton" type="button">🎙 Iniciar escuta</button><button id="stopButton" type="button">■ Parar voz / tempo</button></div>
+      </section>
+
+      <section class="panel work-panel" aria-labelledby="consoleTitle">
+        <div class="work-header"><h2 id="consoleTitle">Console de comandos</h2><p>Comandos locais, sem chave de API.</p></div>
+        <div class="messages" id="messages" role="log" aria-label="Histórico de conversa" aria-live="polite"></div>
+        <form class="composer" id="commandForm"><input id="commandInput" type="text" autocomplete="off" maxlength="500" placeholder="Ex.: Jarvis, temporizador de 5 minutos" aria-label="Digite um comando"><button class="primary" type="submit">Enviar</button></form>
+        <div class="subsection"><h3 class="section-title">Experimente</h3><div class="chips">
+          <button class="chip" type="button" data-command="Que horas são?">Que horas são?</button>
+          <button class="chip" type="button" data-command="Calcule 25 vezes 4">Calcule 25 × 4</button>
+          <button class="chip" type="button" data-command="Temporizador de 5 minutos">Temporizador: 5 min</button>
+          <button class="chip" type="button" data-command="Anotar revisar os slides do ITCONT">Criar anotação</button>
+          <button class="chip" type="button" data-command="Pesquisar inteligência artificial na contabilidade">Pesquisar na web</button>
+          <button class="chip" type="button" data-command="Ajuda">Ver comandos</button>
+        </div></div>
+        <div class="subsection"><h3 class="section-title">Anotações salvas neste navegador</h3><p class="empty" id="emptyNotes">Nenhuma anotação ainda.</p><ol class="notes" id="notesList"></ol></div>
+        <div class="subsection timer-line"><div><span class="section-title" style="display:block;margin:0 0 4px">TEMPORIZADOR</span><span id="timerLabel">Inativo</span></div><strong id="timerValue">00:00</strong></div>
+        <div class="progress" aria-label="Progresso do temporizador"><span id="timerProgress"></span></div>
+      </section>
+    </main>
+    <footer>Comandos por texto disponíveis sem microfone · Reconhecimento de voz conforme suporte do navegador · Anotações somente neste dispositivo</footer>
+  </div>
+
+  <script>
+  (() => {
+    'use strict';
+    const $ = (selector) => document.querySelector(selector);
+    const els = {
+      app: $('#app'), visual: $('#visual'), status: $('#status'), clock: $('#clock'),
+      messages: $('#messages'), form: $('#commandForm'), input: $('#commandInput'),
+      mic: $('#micButton'), stop: $('#stopButton'), voice: $('#voiceToggle'),
+      notes: $('#notesList'), emptyNotes: $('#emptyNotes'),
+      timerLabel: $('#timerLabel'), timerValue: $('#timerValue'), timerProgress: $('#timerProgress')
+    };
+    const STORAGE_KEY = 'jarvis_uefs_notes_v1';
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+    let listening = false;
+    let voiceEnabled = true;
+    let timer = null;
+    let notes = loadNotes();
+
+    function loadNotes() {
+      try { const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); return Array.isArray(value) ? value.filter(x => typeof x === 'string').slice(-100) : []; }
+      catch { return []; }
+    }
+    function saveNotes() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(notes)); }
+      catch { addMessage('jarvis', 'Não consegui salvar no armazenamento deste navegador.'); }
+    }
+    function renderNotes() {
+      els.notes.replaceChildren();
+      els.emptyNotes.hidden = notes.length > 0;
+      notes.forEach((note) => { const li = document.createElement('li'); li.textContent = note; els.notes.append(li); });
+    }
+    function setStatus(label, kind = '') {
+      els.status.textContent = label;
+      els.status.className = 'status' + (kind ? ' ' + kind : '');
+      els.visual.classList.toggle('listening', kind === 'listening-status');
+    }
+    function addMessage(who, text, link) {
+      const card = document.createElement('div');
+      card.className = 'message' + (who === 'user' ? ' user' : '');
+      const label = document.createElement('span');
+      label.className = 'who'; label.textContent = who === 'user' ? 'VOCÊ' : 'JARVIS';
+      const content = document.createElement('span'); content.textContent = text;
+      card.append(label, content);
+      if (link) {
+        const anchor = document.createElement('a');
+        anchor.href = link.href; anchor.textContent = link.label;
+        anchor.target = '_blank'; anchor.rel = 'noopener noreferrer';
+        card.append(anchor);
+      }
+      els.messages.append(card); els.messages.scrollTop = els.messages.scrollHeight;
+    }
+    function speak(text) {
+      if (!voiceEnabled || !('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'pt-BR'; utterance.rate = 1; utterance.pitch = .95;
+      const voice = window.speechSynthesis.getVoices().find(v => v.lang.toLowerCase().startsWith('pt-br'));
+      if (voice) utterance.voice = voice;
+      window.speechSynthesis.speak(utterance);
+    }
+    function reply(text, link) { addMessage('jarvis', text, link); speak(text); }
+    function normalize(text) { return text.toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim(); }
+    function timeNow() { return new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date()); }
+    function updateClock() { els.clock.textContent = timeNow() + ' · Brasília'; }
+
+    // Avaliador matemático restrito: aceita números e operadores, sem eval ou código arbitrário.
+    function calculate(raw) {
+      let expression = normalize(raw)
+        .replace(/^(jarvis[,!?.\s]*)?(calcule|calcular|quanto (e|eh))\s*/i, '')
+        .replace(/(\d+(?:[,.]\d+)?)\s*(?:por cento|%)\s*de\s*/g, '($1/100)*')
+        .replace(/\b(mais)\b/g, '+').replace(/\b(menos)\b/g, '-')
+        .replace(/\b(multiplicado por|vezes|x)\b/g, '*')
+        .replace(/\b(dividido por|dividido|sobre)\b/g, '/')
+        .replace(/\b(elevado a)\b/g, '^').replace(/\b(raiz de)\b/g, 'sqrt')
+        .replace(/,/g, '.').replace(/[×]/g, '*').replace(/[÷]/g, '/').replace(/[−]/g, '-')
+        .replace(/[?=]/g, '').trim();
+      if (!expression || expression.length > 120 || !/^[\d\s.+*/()^\-]+$/.test(expression)) return null;
+      const tokens = expression.match(/\d+(?:\.\d+)?|[()+*/^\-]/g);
+      if (!tokens || tokens.join('') !== expression.replace(/\s/g, '')) return null;
+      let i = 0;
+      function factor() {
+        const token = tokens[i++];
+        if (token === '-') return -factor();
+        if (token === '+') return factor();
+        if (token === '(') {
+          const value = sum();
+          if (tokens[i++] !== ')') throw Error('Parêntese');
+          return value;
+        }
+        if (!token || !/^\d+(?:\.\d+)?$/.test(token)) throw Error('Número');
+        return Number(token);
+      }
+      function power() {
+        const base = factor();
+        return tokens[i] === '^' ? (i++, Math.pow(base, power())) : base;
+      }
+      function product() {
+        let value = power();
+        while (tokens[i] === '*' || tokens[i] === '/') {
+          const op = tokens[i++]; const next = power();
+          if (op === '/' && next === 0) throw Error('Divisão por zero');
+          value = op === '*' ? value * next : value / next;
+        }
+        return value;
+      }
+      function sum() {
+        let value = product();
+        while (tokens[i] === '+' || tokens[i] === '-') {
+          const op = tokens[i++]; const next = product(); value = op === '+' ? value + next : value - next;
+        }
+        return value;
+      }
+      try {
+        const answer = sum();
+        if (i !== tokens.length || !Number.isFinite(answer)) return null;
+        return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 8 }).format(answer);
+      } catch { return null; }
+    }
+
+    function updateTimer() {
+      if (!timer) return;
+      const remaining = Math.max(0, Math.ceil((timer.endsAt - Date.now()) / 1000));
+      const minutes = Math.floor(remaining / 60);
+      const seconds = remaining % 60;
+      els.timerValue.textContent = String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+      els.timerProgress.style.width = (100 * (1 - remaining / timer.totalSeconds)).toFixed(1) + '%';
+      if (remaining === 0) {
+        clearInterval(timer.intervalId); timer = null; els.timerLabel.textContent = 'Concluído';
+        reply('Tempo encerrado.');
+      }
+    }
+    function startTimer(seconds) {
+      if (!Number.isFinite(seconds) || seconds < 1 || seconds > 86400) {
+        reply('Escolha um período entre um segundo e 24 horas.'); return;
+      }
+      if (timer) clearInterval(timer.intervalId);
+      timer = { totalSeconds: seconds, endsAt: Date.now() + seconds * 1000, intervalId: null };
+      timer.intervalId = setInterval(updateTimer, 200);
+      els.timerLabel.textContent = 'Em andamento'; updateTimer();
+      reply('Temporizador iniciado por ' + seconds + ' segundos.');
+    }
+    function stopTimer() {
+      if (timer) clearInterval(timer.intervalId);
+      timer = null; els.timerLabel.textContent = 'Inativo';
+      els.timerValue.textContent = '00:00'; els.timerProgress.style.width = '0%';
+    }
+    function processCommand(raw) {
+      const spoken = raw.trim(); if (!spoken) return;
+      addMessage('user', spoken);
+      let command = normalize(spoken).replace(/^jarvis\s*[,.:!?]?\s*/, '').trim();
+      if (/^(oi|ola|bom dia|boa tarde|boa noite)\b/.test(command)) {
+        reply('Olá! Estou pronto para ajudar. Diga ajuda para conhecer os comandos.'); return;
+      }
+      if (/\b(ajuda|comandos|o que voce faz)\b/.test(command)) {
+        reply('Posso informar hora e data, calcular, iniciar um temporizador, guardar e listar anotações, preparar uma pesquisa e ativar a tela cheia. Exemplos: calcule 25 vezes 4; temporizador de 5 minutos; anotar revisar slides; pesquisar IA na contabilidade.'); return;
+      }
+      if (/\b(que horas|hora atual|horario)\b/.test(command)) {
+        reply('Agora são ' + timeNow() + ', horário de Brasília.'); return;
+      }
+      if (/\b(que dia|data de hoje|qual a data|hoje e que dia)\b/.test(command)) {
+        const date = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
+        reply('Hoje é ' + date + '.'); return;
+      }
+      if (/\b(parar temporizador|cancelar temporizador|parar tempo)\b/.test(command)) {
+        stopTimer(); reply('Temporizador cancelado.'); return;
+      }
+      if (/\b(temporizador|contagem regressiva|conte)\b/.test(command)) {
+        const match = command.match(/(\d+(?:[,.]\d+)?)\s*(segundos?|secs?|s|minutos?|mins?|min|horas?|h)\b/);
+        if (!match) { reply('Informe o período. Por exemplo: temporizador de 5 minutos.'); return; }
+        const n = Number(match[1].replace(',', '.'));
+        const unit = match[2];
+        const multiplier = /^(h|hora)/.test(unit) ? 3600 : /^(s|seg)/.test(unit) ? 1 : 60;
+        startTimer(Math.round(n * multiplier)); return;
+      }
+      if (/^(anotar|anote|nota|lembre-se de)\b/.test(command)) {
+        const note = spoken.replace(/^\s*(jarvis\s*[,.:!?]?\s*)?(anotar|anote|nota|lembre-se de)\s*[:,-]?\s*/i, '').trim();
+        if (!note) { reply('Diga o que deseja anotar.'); return; }
+        notes.push(note.slice(0, 300)); notes = notes.slice(-100); saveNotes(); renderNotes(); reply('Anotado: ' + note); return;
+      }
+      if (/\b(minhas notas|listar notas|mostrar notas|anotacoes)\b/.test(command)) {
+        reply(notes.length ? 'Você tem ' + notes.length + ' anotações. A lista está no painel.' : 'Você ainda não tem anotações.'); return;
+      }
+      if (/\b(limpar notas|apagar notas)\b/.test(command)) {
+        notes = []; saveNotes(); renderNotes(); reply('Anotações removidas deste navegador.'); return;
+      }
+      if (/\b(pesquise|pesquisar|busque|buscar|procure)\b/.test(command)) {
+        const query = spoken.replace(/^\s*(jarvis\s*[,.:!?]?\s*)?(pesquise|pesquisar|busque|buscar|procure)\s*(por\s*)?/i, '').trim();
+        if (!query) { reply('Diga o que deseja pesquisar.'); return; }
+        reply('Pesquisa preparada para: ' + query + '. Abra pelo botão abaixo.', { href: 'https://www.google.com/search?q=' + encodeURIComponent(query), label: 'Abrir pesquisa ↗' }); return;
+      }
+      if (/\b(tela cheia|modo apresentacao)\b/.test(command)) {
+        if (!document.fullscreenEnabled) { reply('Este navegador não permite tela cheia aqui. Use F11 para ampliar a janela.'); return; }
+        document.documentElement.requestFullscreen().then(() => reply('Modo apresentação ativado.')).catch(() => reply('Toque na página e tente novamente, ou use F11.')); return;
+      }
+      if (/^(calcule|calcular|quanto e|quanto eh)\b/.test(command) || /^[\d(\-+]/.test(command)) {
+        const result = calculate(command);
+        reply(result === null ? 'Não entendi a expressão. Exemplo: calcule 25 vezes 4, ou calcule 30% de 200.' : 'O resultado é ' + result + '.'); return;
+      }
+      reply('Ainda não tenho esse comando. Diga ajuda para ver o que posso fazer nesta versão.');
+    }
+
+    function initSpeech() {
+      if (!Recognition) {
+        els.mic.disabled = true; els.mic.title = 'Reconhecimento de voz indisponível neste navegador';
+        setStatus('Voz de entrada indisponível · use o teclado', 'error-status'); return;
+      }
+      recognition = new Recognition(); recognition.lang = 'pt-BR';
+      recognition.interimResults = false; recognition.continuous = false; recognition.maxAlternatives = 1;
+      recognition.onstart = () => { listening = true; els.mic.textContent = '◉ Ouvindo...'; setStatus('Ouvindo comando', 'listening-status'); };
+      recognition.onresult = (event) => {
+        const transcript = event.results[0]?.[0]?.transcript;
+        if (transcript) processCommand(transcript);
+      };
+      recognition.onerror = (event) => {
+        const messages = { 'not-allowed': 'Microfone bloqueado. Autorize o acesso nas permissões do navegador.', 'no-speech': 'Não detectei sua fala. Tente novamente.', 'network': 'Reconhecimento indisponível no momento. Use o teclado.', 'audio-capture': 'Nenhum microfone disponível.' };
+        setStatus('Falha na escuta', 'error-status');
+        addMessage('jarvis', messages[event.error] || 'Não foi possível reconhecer a fala. Use o teclado.');
+      };
+      recognition.onend = () => { listening = false; els.mic.textContent = '🎙 Iniciar escuta'; if (!els.status.classList.contains('error-status')) setStatus('Aguardando comando'); };
+    }
+    els.mic.addEventListener('click', () => {
+      if (!recognition) return;
+      if (listening) { recognition.stop(); return; }
+      window.speechSynthesis?.cancel();
+      try { recognition.start(); } catch { addMessage('jarvis', 'Aguarde um instante e tente ativar o microfone novamente.'); }
+    });
+    els.stop.addEventListener('click', () => {
+      if (listening) recognition.stop(); window.speechSynthesis?.cancel(); stopTimer();
+      setStatus('Aguardando comando'); addMessage('jarvis', 'Voz e temporizador interrompidos.');
+    });
+    els.voice.addEventListener('click', () => {
+      voiceEnabled = !voiceEnabled;
+      els.voice.textContent = voiceEnabled ? '🔊 Voz ligada' : '🔇 Voz desligada';
+      els.voice.setAttribute('aria-pressed', String(voiceEnabled));
+      if (!voiceEnabled) window.speechSynthesis?.cancel();
+    });
+    els.form.addEventListener('submit', (event) => { event.preventDefault(); const value = els.input.value; els.input.value = ''; processCommand(value); els.input.focus(); });
+    document.querySelectorAll('[data-command]').forEach(button => button.addEventListener('click', () => processCommand(button.dataset.command)));
+    updateClock(); setInterval(updateClock, 1000); renderNotes(); initSpeech();
+    addMessage('jarvis', 'Sistema iniciado. Toque em um comando de exemplo, digite no console ou ative o microfone.');
+  })();
+  </script>
+</body>
+</html>
