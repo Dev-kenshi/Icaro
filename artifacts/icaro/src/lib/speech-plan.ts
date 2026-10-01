@@ -5,6 +5,13 @@
  * ÍCARO starts speaking quickly; the rest is grouped into large chunks.
  */
 export const SERVER_TEXT_LIMIT = 1200;
+export const TIMESTAMP_SAFE_CHUNK_LIMIT = 550;
+
+export interface SpeechQueueEngine {
+  unlock(): unknown;
+  _enqueue(text: string): void;
+  flush(): Promise<unknown>;
+}
 
 export function cleanSpeechText(text: string): string {
   return text.replace(/[*#_`>]+/g, '').replace(/\s+/g, ' ').trim();
@@ -50,4 +57,21 @@ export function planSpeechChunks(text: string, opts: { groupMax?: number; hardMa
   }
   if (cur) chunks.push(cur);
   return chunks;
+}
+
+/** Feed grouped items directly to the player queue; `say()` would split them back into sentences. */
+export function queueSpeechChunks(
+  engine: SpeechQueueEngine,
+  text: string,
+  opts: { groupMax?: number; hardMax?: number } = {},
+): Promise<unknown> {
+  const chunks = planSpeechChunks(text, {
+    groupMax: opts.groupMax ?? TIMESTAMP_SAFE_CHUNK_LIMIT,
+    hardMax: opts.hardMax ?? TIMESTAMP_SAFE_CHUNK_LIMIT,
+  });
+  if (!chunks.length) return Promise.resolve();
+
+  engine.unlock();
+  for (const chunk of chunks) engine._enqueue(chunk);
+  return engine.flush();
 }

@@ -1,7 +1,7 @@
 /**
- * Validação de ponta a ponta do Ícaro: 10 checagens reais da API + 41 cenários
+ * Validação de ponta a ponta do Ícaro: 10 checagens reais da API + 44 cenários
  * em Chromium headless com microfone (SpeechRecognition) simulado.
- * Total: exatamente 51 testes. Uso: pnpm --filter @workspace/scripts run validate:e2e
+ * Total: exatamente 54 testes. Uso: pnpm --filter @workspace/scripts run validate:e2e
  */
 import { chromium, type Page, type Route } from 'playwright-core';
 
@@ -9,9 +9,10 @@ const BASE = process.env.ICARO_URL ?? 'http://localhost:80/';
 const API = new URL('api/', BASE).toString();
 const CHROME = process.env.CHROMIUM_PATH ?? '/repl/tools/bin/chromium';
 
-type Mode = { chat: 'mock' | 'real' | 'fail'; chatDelay: number; tts: 'mock' | 'real' | 'fail' };
-const mode: Mode = { chat: 'mock', chatDelay: 150, tts: 'mock' };
+type Mode = { chat: 'mock' | 'real' | 'fail'; chatDelay: number; tts: 'mock' | 'real' | 'fail'; ttsRetryAfterSeconds: number };
+const mode: Mode = { chat: 'mock', chatDelay: 150, tts: 'mock', ttsRetryAfterSeconds: 0 };
 const chatCalls: string[] = [];
+const ttsCalls: string[] = [];
 let ttsFails = 0;
 const pageErrors: string[] = [];
 const ANSWER = 'Ativo são bens e direitos da empresa. Passivo são as obrigações com terceiros.';
@@ -185,9 +186,14 @@ async function main() {
   await ctx.addInitScript(INIT);
   await ctx.route('**/api/tts-ts', (route) => route.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"sem ElevenLabs"}' }));
   await ctx.route('**/api/ai/tts', async (route: Route) => {
-    if (mode.tts === 'real') return route.continue();
-    if (mode.tts === 'fail') { ttsFails++; return route.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"voz indisponível"}' }); }
     const text = String(route.request().postDataJSON()?.text ?? '');
+    ttsCalls.push(text);
+    if (mode.tts === 'real') return route.continue();
+    if (mode.tts === 'fail') {
+      ttsFails++;
+      const headers = mode.ttsRetryAfterSeconds > 0 ? { 'Retry-After': String(mode.ttsRetryAfterSeconds) } : undefined;
+      return route.fulfill({ status: 503, contentType: 'application/json', headers, body: '{"error":"voz indisponível","code":"SPEECH_UNAVAILABLE"}' });
+    }
     await sleep(120);
     return route.fulfill({ status: 200, contentType: 'audio/wav', body: wav(Math.min(2.2, Math.max(0.6, text.length * 0.03))) });
   });
@@ -203,7 +209,8 @@ async function main() {
   let page!: Page;
   async function fresh() {
     if (page) await page.close();
-    Object.assign(mode, { chat: 'mock', chatDelay: 150, tts: 'mock' });
+    Object.assign(mode, { chat: 'mock', chatDelay: 150, tts: 'mock', ttsRetryAfterSeconds: 0 });
+    ttsCalls.length = 0;
     page = await ctx.newPage();
     page.on('pageerror', (e) => pageErrors.push(e.message));
     await page.goto(BASE, { waitUntil: 'domcontentloaded' });
@@ -258,6 +265,14 @@ async function main() {
     assert(m.captions.length > 0, 'nenhuma legenda');
     assert(m.captions.every((c) => !c.toLowerCase().includes('diferença entre ativo') && !/ícaro,/i.test(c)), `legenda com transcrição: ${m.captions.join(' | ')}`);
     assert(m.captions.some((c) => ANSWER.includes(c.split(' ')[0])), 'legenda não corresponde à resposta');
+  });
+  await test('Resposta de três frases usa no máximo duas chamadas de voz', async () => {
+    await fresh();
+    const before = ttsCalls.length;
+    await fullTurn(page, 'explique uma regra contábil');
+    const calls = ttsCalls.slice(before);
+    assert(calls.length > 0 && calls.length <= 2, `chamadas de voz: ${calls.length}`);
+    assert(calls.every((text) => text.length <= 550), `chunk ultrapassou limite seguro: ${calls.map((text) => text.length)}`);
   });
   await test('Uma pergunta por ativação: fala seguinte é ignorada', async () => {
     const before = chatCalls.length; await sleep(600);
@@ -358,6 +373,20 @@ async function main() {
     assert(!/a resposta de fala não contém áudio e alinhamento/i.test(speechError ?? ''), `mensagem de alinhamento enganosa: ${speechError}`);
     mode.tts = 'mock'; await sleep(600);
     assert((await fullTurn(page, 'o que é receita líquida')) === 1, 'não se recuperou');
+  });
+  await test('Retry-After evita novas chamadas durante o cooldown e permite recuperação', async () => {
+    await fresh();
+    mode.tts = 'fail'; mode.ttsRetryAfterSeconds = 1;
+    await speakLike(page, 'Ok Ícaro, explique uma resposta com várias frases');
+    await until(async () => (await state(page)) !== 'listening', 4000, 'processamento');
+    await waitState(page, 'idle', 15000);
+    assert(ttsCalls.length === 1, `tentativas durante cooldown: ${ttsCalls.length}`);
+    await page.waitForSelector('[data-testid="status-audio-error"]', { timeout: 3000 });
+    const speechError = await page.textContent('[data-testid="status-audio-error"]');
+    assert(/tente novamente em 1 s/i.test(speechError ?? ''), `Retry-After não foi exibido: ${speechError}`);
+    mode.tts = 'mock'; mode.ttsRetryAfterSeconds = 0;
+    await sleep(1100);
+    assert((await fullTurn(page, 'o que é receita líquida')) === 1, 'não se recuperou após o cooldown');
   });
   await test('Parcial estável é enviada uma única vez (sem final)', async () => {
     await sleep(600); await say(page, 'Ok Ícaro', true); await waitState(page, 'listening');
@@ -533,7 +562,7 @@ async function main() {
   const failed = results.filter((r) => !r.ok);
   if (pageErrors.length) failed.push({ n: 0, name: 'erros de página', ok: false, info: pageErrors.join('; ') });
   console.log(`\n${results.filter((r) => r.ok).length}/${results.length} testes aprovados. Erros de página: ${pageErrors.length}${pageErrors.length ? ` (${[...new Set(pageErrors)].join('; ')})` : ''}`);
-  if (results.length !== 52) { console.log(`ERRO: esperados 52 testes, executados ${results.length}`); process.exit(1); }
+  if (results.length !== 54) { console.log(`ERRO: esperados 54 testes, executados ${results.length}`); process.exit(1); }
   process.exit(failed.length ? 1 : 0);
 }
 

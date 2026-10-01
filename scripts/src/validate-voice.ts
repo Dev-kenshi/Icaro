@@ -23,7 +23,12 @@ import {
   type SpeechEngineConfig,
 } from "../../artifacts/api-server/src/lib/tts";
 import { applyTtsPronunciation } from "../../artifacts/api-server/src/lib/tts-timestamps";
-import { cleanSpeechText } from "../../artifacts/icaro/src/lib/speech-plan";
+import {
+  cleanSpeechText,
+  planSpeechChunks,
+  queueSpeechChunks,
+  TIMESTAMP_SAFE_CHUNK_LIMIT,
+} from "../../artifacts/icaro/src/lib/speech-plan";
 
 type Call = { url: string; body: unknown };
 const PCM = Buffer.alloc(4800, 7);
@@ -134,6 +139,8 @@ check("Gemini TTS usa os modelos ativos e o contrato atual de voz", () => {
   assert.deepEqual(DEFAULT_GEMINI_TTS_MODELS, [
     "gemini-3.8-flash-tts",
     "gemini-3.8-flash-lite-tts",
+    "gemini-3.1-flash-tts-preview",
+    "gemini-2.5-flash-preview-tts",
   ]);
   assert.deepEqual(geminiTtsBody("Olá, Ícaro.", "Charon"), {
     contents: [{ role: "user", parts: [{ text: "Olá, Ícaro." }] }],
@@ -287,6 +294,110 @@ check("Rota de timestamps valida texto e responde sem configuração antes de ch
 
 check("Limpeza de texto remove marcação e normaliza espaços", () => {
   assert.equal(cleanSpeechText("  **Olá,   professor!**  "), "Olá, professor!");
+});
+
+check("Agrupa várias frases em menos chamadas e conserva a resposta", () => {
+  const text = [
+    "A primeira frase explica o resultado com contexto suficiente.",
+    "A segunda frase detalha a causa e mantém a voz natural.",
+    "A terceira frase apresenta uma recomendação prática.",
+    "A quarta frase conclui a resposta.",
+  ].join(" ");
+  const chunks = planSpeechChunks(text, {
+    groupMax: TIMESTAMP_SAFE_CHUNK_LIMIT,
+    hardMax: TIMESTAMP_SAFE_CHUNK_LIMIT,
+  });
+  assert.ok(chunks.length < 4, `chunks=${chunks.length}`);
+  assert.equal(cleanSpeechText(chunks.join(" ")), cleanSpeechText(text));
+});
+
+check("Chunks longos respeitam o limite seguro do serviço de timestamps", () => {
+  const text = Array.from({ length: 18 }, (_, i) =>
+    `Etapa ${i} descreve uma orientação contábil com detalhes suficientes para preservar o sentido da explicação.`,
+  ).join(" ");
+  const chunks = planSpeechChunks(text, {
+    groupMax: TIMESTAMP_SAFE_CHUNK_LIMIT,
+    hardMax: TIMESTAMP_SAFE_CHUNK_LIMIT,
+  });
+  assert.ok(chunks.length > 1);
+  assert.ok(chunks.every((chunk) => chunk.length <= TIMESTAMP_SAFE_CHUNK_LIMIT));
+  assert.equal(cleanSpeechText(chunks.join(" ")), cleanSpeechText(text));
+});
+
+check("Player recebe os chunks planejados sem voltar a dividir por frase", async () => {
+  const text = [
+    "A primeira frase explica o resultado com contexto suficiente.",
+    "A segunda frase detalha a causa e mantém a voz natural.",
+    "A terceira frase apresenta uma recomendação prática.",
+    "A quarta frase conclui a resposta.",
+  ].join(" ");
+  const expected = planSpeechChunks(text, {
+    groupMax: TIMESTAMP_SAFE_CHUNK_LIMIT,
+    hardMax: TIMESTAMP_SAFE_CHUNK_LIMIT,
+  });
+  const events: string[] = [];
+  const engine = {
+    unlock: () => { events.push("unlock"); },
+    _enqueue: (chunk: string) => { events.push(`enqueue:${chunk}`); },
+    flush: async () => { events.push("flush"); },
+  };
+  await queueSpeechChunks(engine, text);
+  assert.deepEqual(events, ["unlock", ...expected.map((chunk) => `enqueue:${chunk}`), "flush"]);
+});
+
+check("A fila espera o término do player e ignora texto vazio", async () => {
+  let finish!: () => void;
+  let completed = false;
+  const events: string[] = [];
+  const engine = {
+    unlock: () => { events.push("unlock"); },
+    _enqueue: (chunk: string) => { events.push(`enqueue:${chunk}`); },
+    flush: () => {
+      events.push("flush");
+      return new Promise<void>((resolve) => { finish = resolve; });
+    },
+  };
+  const pending = queueSpeechChunks(engine, "Uma resposta com conteúdo suficiente para ser falada.");
+  void pending.then(() => { completed = true; });
+  await Promise.resolve();
+  assert.equal(completed, false);
+  assert.equal(events[0], "unlock");
+  assert.equal(events.at(-1), "flush");
+  finish();
+  await pending;
+  assert.equal(completed, true);
+
+  const emptyEvents: string[] = [];
+  await queueSpeechChunks({
+    unlock: () => { emptyEvents.push("unlock"); },
+    _enqueue: () => { emptyEvents.push("enqueue"); },
+    flush: async () => { emptyEvents.push("flush"); },
+  }, "   ");
+  assert.deepEqual(emptyEvents, []);
+});
+
+check("Planejamento de voz passa 100/100 respostas variadas", () => {
+  let passed = 0;
+  for (let i = 0; i < 100; i++) {
+    const sentenceCount = 1 + (i % 9);
+    const sentences = Array.from({ length: sentenceCount }, (_, j) => {
+      const details = "detalhe ".repeat((i + j) % 12);
+      return `Resposta ${i}, etapa ${j}, explica o próximo passo com clareza ${details}.`;
+    });
+    const text = sentences.join(" ");
+    const chunks = planSpeechChunks(text, {
+      groupMax: TIMESTAMP_SAFE_CHUNK_LIMIT,
+      hardMax: TIMESTAMP_SAFE_CHUNK_LIMIT,
+    });
+    assert.ok(chunks.length > 0, `resposta ${i} sem chunks`);
+    assert.ok(
+      chunks.every((chunk) => chunk.length <= TIMESTAMP_SAFE_CHUNK_LIMIT),
+      `resposta ${i} excedeu ${TIMESTAMP_SAFE_CHUNK_LIMIT} caracteres`,
+    );
+    assert.equal(cleanSpeechText(chunks.join(" ")), cleanSpeechText(text), `resposta ${i} perdeu texto`);
+    passed++;
+  }
+  assert.equal(passed, 100);
 });
 
 let failed = 0;

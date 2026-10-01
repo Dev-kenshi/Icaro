@@ -6,6 +6,7 @@ import {
   type IcaroWord,
   loadIcaroAvatarLibrary,
 } from './icaro-avatar';
+import { queueSpeechChunks, type SpeechQueueEngine } from './speech-plan';
 
 export const VOICE_RE = /antonio.*natural|donato|fabio|humberto|julio|nicolau|valerio|leandro|daniel|felipe|google.*portugu/i;
 
@@ -46,6 +47,7 @@ let outputAnalyser: AnalyserNode | null = null;
 let micAnalyser: AnalyserNode | null = null;
 let micSource: MediaStreamAudioSourceNode | null = null;
 let ttsLevel = 0;
+let fallbackCooldownUntil = 0;
 let token = 0;
 let currentRun: SpeechRun | null = null;
 let outputMeterRaf = 0;
@@ -303,7 +305,7 @@ function createRunEngine(run: SpeechRun, Constructor: NonNullable<Window['IcaroS
 
   const originalFallback = engine._fallback.bind(engine);
   engine._fallback = async (text) => {
-    if (!isCurrent(run)) return null;
+    if (!isCurrent(run) || run.error) return null;
     try {
       const data = await originalFallback(text);
       if (!isCurrent(run)) return null;
@@ -342,6 +344,10 @@ async function fetchGeminiAudio(run: SpeechRun, text: string): Promise<ArrayBuff
     run.usedFallback = true;
     return cached.audio.slice(0);
   }
+  const cooldownMs = fallbackCooldownUntil - Date.now();
+  if (cooldownMs > 0) {
+    throw new Error(`A voz neural está temporariamente indisponível. Tente novamente em ${Math.ceil(cooldownMs / 1000)} s.`);
+  }
   const controller = new AbortController();
   run.aborts.add(controller);
   fallbackRequests.add(controller);
@@ -355,12 +361,20 @@ async function fetchGeminiAudio(run: SpeechRun, text: string): Promise<ArrayBuff
       body: JSON.stringify({ text: spokenText.slice(0, 1200) }),
     });
     if (!response.ok) {
-      const payload = await response.json().catch(() => null) as { error?: unknown } | null;
-      const message = typeof payload?.error === 'string'
-        ? payload.error
-        : `Voz reserva indisponível (${response.status}).`;
+      const payload = await response.json().catch(() => null) as { code?: unknown; error?: unknown } | null;
+      const retryAfter = Number(response.headers.get('Retry-After'));
+      const retryAfterSeconds = Number.isFinite(retryAfter) && retryAfter > 0 ? Math.ceil(retryAfter) : 0;
+      if (response.status === 503 && retryAfterSeconds > 0 && payload?.code !== 'SPEECH_PROVIDER_AUTH') {
+        fallbackCooldownUntil = Math.max(fallbackCooldownUntil, Date.now() + retryAfterSeconds * 1000);
+      }
+      const message = response.status === 503 && retryAfterSeconds > 0 && payload?.code !== 'SPEECH_PROVIDER_AUTH'
+        ? `A voz neural está temporariamente indisponível. Tente novamente em ${retryAfterSeconds} s.`
+        : typeof payload?.error === 'string'
+          ? payload.error
+          : `Voz reserva indisponível (${response.status}).`;
       throw new Error(message);
     }
+    fallbackCooldownUntil = 0;
     const blob = await response.blob();
     if (!blob.size) throw new Error('A voz reserva retornou áudio vazio.');
     const audio = await blob.arrayBuffer();
@@ -527,7 +541,7 @@ export function speak(text: string, options: SpeakOpts) {
       currentRun = run;
       player = engine;
       try {
-        const done = engine.say(text);
+        const done = queueSpeechChunks(engine as unknown as SpeechQueueEngine, text);
         void done.catch((error: unknown) => {
           if (!isCurrent(run)) return;
           run.error = asError(error, 'A reprodução da fala falhou.');

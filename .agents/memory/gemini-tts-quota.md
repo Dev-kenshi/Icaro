@@ -5,6 +5,6 @@ description: Why the ÍCARO voice turned robotic and the constraints any TTS cha
 
 Gemini TTS free tier allows ~10 requests per minute **per model** (429 with a retryDelay of ~30 s). Quotas are separate per model, so rotating across TTS models that share the same prebuilt voice keeps the voice identical. Observed 2026-09-30: gemini-2.5-flash-preview-tts, gemini-3.1-flash-tts-preview, gemini-3.8-flash-tts and gemini-3.8-flash-lite-tts work with Charon; gemini-2.5-pro-preview-tts has limit 0. The 3.8 models return a ready WAV; the others return raw PCM L16 24 kHz.
 
-**Why:** One request per sentence exhausted the quota and the client fell back to the robotic browser voice. The user approved the Gemini Charon voice and explicitly dislikes the voice changing mid-conversation.
+**Why:** One request per sentence exhausted the quota and the client fell back to the robotic browser voice. Production logs showed that answer-level chunk planning alone did not reduce requests when the player split the text back into sentences before fetching audio. The user approved the Gemini Charon voice and explicitly dislikes the voice changing mid-conversation.
 
-**How to apply:** Never add cross-family voice fallback. Keep requests per answer low (group sentences), keep caching, and keep the cache key independent of the model so rotation reuses cached audio.
+**How to apply:** Never add cross-family voice fallback. Connect chunk planning to the actual player queue that starts provider requests; a planner that is bypassed or undone downstream will not conserve quota. Keep chunks under the tightest downstream text limit, keep caching, and keep the cache key independent of the model so rotation reuses cached audio.
