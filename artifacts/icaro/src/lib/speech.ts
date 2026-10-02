@@ -35,11 +35,13 @@ export interface SpeakOpts {
 }
 
 const BASE_URL = import.meta.env.BASE_URL;
+const DEFAULT_GEMINI_VOICE = 'Orus';
 const FALLBACK_CACHE_MAX_ENTRIES = 24;
 const FALLBACK_CACHE_MAX_BYTES = 10 * 1024 * 1024;
 const fallbackAudioCache = new Map<string, { audio: ArrayBuffer; size: number }>();
 const fallbackRequests = new Set<AbortController>();
 let fallbackCacheBytes = 0;
+let fallbackVoice = DEFAULT_GEMINI_VOICE;
 let avatar: IcaroAvatarInstance | null = null;
 let player: IcaroSpeechInstance | null = null;
 let audioContext: AudioContext | null = null;
@@ -181,8 +183,8 @@ function revealAudioStart(run: SpeechRun) {
   if (!timeline) return;
   run.started = true;
   run.avatar.speak(timeline, clock);
-  run.options.onProvider?.(run.usedFallback ? 'Gemini Charon' : 'ElevenLabs');
-  lastProvider = run.usedFallback ? 'Gemini Charon' : 'ElevenLabs';
+  run.options.onProvider?.(run.usedFallback ? 'Gemini Orus' : 'ElevenLabs');
+  lastProvider = run.usedFallback ? 'Gemini Orus' : 'ElevenLabs';
   run.options.onStart();
 }
 
@@ -337,10 +339,11 @@ function createRunEngine(run: SpeechRun, Constructor: NonNullable<Window['IcaroS
 
 async function fetchGeminiAudio(run: SpeechRun, text: string): Promise<ArrayBuffer> {
   if (!isCurrent(run)) throw new DOMException('Fala cancelada.', 'AbortError');
-  const cached = fallbackAudioCache.get(text);
+  const cacheKey = JSON.stringify([fallbackVoice, text]);
+  const cached = fallbackAudioCache.get(cacheKey);
   if (cached) {
-    fallbackAudioCache.delete(text);
-    fallbackAudioCache.set(text, cached);
+    fallbackAudioCache.delete(cacheKey);
+    fallbackAudioCache.set(cacheKey, cached);
     run.usedFallback = true;
     return cached.audio.slice(0);
   }
@@ -374,6 +377,7 @@ async function fetchGeminiAudio(run: SpeechRun, text: string): Promise<ArrayBuff
           : `Voz reserva indisponível (${response.status}).`;
       throw new Error(message);
     }
+    fallbackVoice = response.headers.get('X-Speech-Voice')?.trim() || fallbackVoice;
     fallbackCooldownUntil = 0;
     const blob = await response.blob();
     if (!blob.size) throw new Error('A voz reserva retornou áudio vazio.');
@@ -381,8 +385,9 @@ async function fetchGeminiAudio(run: SpeechRun, text: string): Promise<ArrayBuff
     if (controller.signal.aborted || !isCurrent(run)) throw new DOMException('Fala cancelada.', 'AbortError');
     run.usedFallback = true;
     const entry = { audio, size: blob.size };
-    fallbackAudioCache.delete(text);
-    fallbackAudioCache.set(text, entry);
+    const resolvedCacheKey = JSON.stringify([fallbackVoice, text]);
+    fallbackAudioCache.delete(resolvedCacheKey);
+    fallbackAudioCache.set(resolvedCacheKey, entry);
     fallbackCacheBytes += entry.size;
     while (fallbackAudioCache.size > FALLBACK_CACHE_MAX_ENTRIES || fallbackCacheBytes > FALLBACK_CACHE_MAX_BYTES) {
       const oldestKey = fallbackAudioCache.keys().next().value;
