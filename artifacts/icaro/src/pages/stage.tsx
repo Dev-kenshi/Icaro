@@ -552,7 +552,7 @@ export default function Stage() {
                     </button>
                   );
                 })}
-              <p className="text-xs leading-5 text-[color:var(--dim)]">Groq gera as respostas de texto. A voz continua no Gemini, com Charon, e depende da cota de áudio. O plano gratuito da Groq tem limites de uso. As chaves ficam nos Secrets e nunca aparecem na tela. Não há troca automática para outro provedor.</p>
+              <p className="text-xs leading-5 text-[color:var(--dim)]">Groq gera as respostas de texto. A voz continua no Gemini, com Orus, e depende da cota de áudio. O plano gratuito da Groq tem limites de uso. As chaves ficam nos Secrets e nunca aparecem na tela. Não há troca automática para outro provedor.</p>
               <Link href="/assistant" className="mono inline-flex items-center gap-1 text-xs text-[color:var(--holo)]" data-testid="link-assistant">Abrir chat completo <ExternalLink size={12} /></Link>
             </div>
           )}

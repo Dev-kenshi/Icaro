@@ -264,8 +264,8 @@ check("TTS permanece isolado do serviço Groq e usa a família de voz existente"
   const tts = route.slice(route.indexOf('router.post("/ai/tts"'), route.indexOf('router.post("/ai/chat"'));
   expectSource(tts, /speech\.synthesize\(speechText\)/, "rota TTS continua chamando o mecanismo de voz");
   expectSource(tts, /^(?![\s\S]*(?:groq|generateAnswer))[\s\S]*$/i, "rota TTS não encaminha texto ao Groq");
-  expectSource(route, /geminiVoice:\s*process\.env\.GEMINI_TTS_VOICE\s*\|\|\s*"Charon"/,
-    "voz Gemini Charon continua configurada");
+  expectSource(route, /geminiVoice:\s*process\.env\.GEMINI_TTS_VOICE\s*\|\|\s*"Orus"/,
+    "voz Gemini Orus continua configurada");
   expectSource(route, /DEFAULT_GEMINI_TTS_MODELS/, "modelos Gemini de TTS continuam disponíveis");
 });
 check("Contrato da API inclui Groq entre provedores de entrada e resposta e status", () => {

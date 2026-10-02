@@ -164,12 +164,12 @@ async function main() {
     assert(r.status === 400, `status ${r.status}`);
   });
   await test('API rejeita pergunta vazia (400)', async () => { const { r } = await chat(''); assert(r.status === 400, `status ${r.status}`); });
-  await test('API voz neural real (Gemini Charon)', async () => {
+  await test('API voz neural real (Gemini Orus)', async () => {
     const t = Date.now();
     const { r, body } = await api('ai/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: 'Olá, turma. Eu sou o Ícaro.' }) });
     assert(r.status === 200, `status ${r.status} ${JSON.stringify(body).slice(0, 100)}`);
     assert(Buffer.isBuffer(body) && body.length > 2000, 'áudio vazio');
-    const voice = r.headers.get('x-speech-voice'); assert(/charon/i.test(voice ?? ''), `voz ${voice}`);
+    const voice = r.headers.get('x-speech-voice'); assert(/orus/i.test(voice ?? ''), `voz ${voice}`);
     return `${Date.now() - t} ms · ${r.headers.get('content-type')} · ${voice} · ${r.headers.get('x-speech-model')} · cache ${r.headers.get('x-speech-cache')}`;
   });
   await test('API voz rejeita texto inválido (400)', async () => {

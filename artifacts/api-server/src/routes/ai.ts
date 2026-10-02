@@ -67,7 +67,7 @@ const speech = createSpeechEngine({
       ...DEFAULT_GEMINI_TTS_MODELS,
     ]),
   ],
-  geminiVoice: process.env.GEMINI_TTS_VOICE || "Charon",
+  geminiVoice: process.env.GEMINI_TTS_VOICE || "Orus",
   openAiModel: process.env.OPENAI_TTS_MODEL || "gpt-4o-mini-tts",
   openAiVoice: process.env.OPENAI_TTS_VOICE || "onyx",
   elevenLabsModel: process.env.ELEVENLABS_MODEL || "eleven_flash_v2_5",

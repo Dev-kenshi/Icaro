@@ -70,7 +70,7 @@ function harness(opts: {
     elevenLabsKey: () => keys.elevenlabs ?? "",
     elevenLabsVoiceId: () => "",
     geminiModels: ["model-a", "model-b"],
-    geminiVoice: opts.voice ?? "Charon",
+    geminiVoice: opts.voice ?? "Orus",
     openAiModel: "gpt-4o-mini-tts",
     openAiVoice: "onyx",
     elevenLabsModel: opts.elevenModel ?? "eleven_flash_v2_5",
@@ -142,11 +142,11 @@ check("Gemini TTS usa os modelos ativos e o contrato atual de voz", () => {
     "gemini-3.1-flash-tts-preview",
     "gemini-2.5-flash-preview-tts",
   ]);
-  assert.deepEqual(geminiTtsBody("Olá, Ícaro.", "Charon"), {
+  assert.deepEqual(geminiTtsBody("Olá, Ícaro.", "Orus"), {
     contents: [{ role: "user", parts: [{ text: "Olá, Ícaro." }] }],
     generationConfig: {
       responseModalities: ["AUDIO"],
-      speechConfig: { voiceConfig: { voice: "Charon" } },
+      speechConfig: { voiceConfig: { voice: "Orus" } },
     },
   });
 });
@@ -172,7 +172,7 @@ check("Cota esgotada num modelo troca de modelo mantendo a MESMA voz", async () 
   for (const c of h.calls) {
     const voice = (c.body as { generationConfig: { speechConfig: { voiceConfig: { voice: string } } } })
       .generationConfig.speechConfig.voiceConfig.voice;
-    assert.equal(voice, "Charon");
+    assert.equal(voice, "Orus");
   }
 });
 
@@ -224,8 +224,8 @@ check("Frases já faladas sobrevivem ao reinício do servidor (cache em disco)",
 });
 
 check("Cache nunca mistura vozes diferentes", async () => {
-  assert.notEqual(speechCacheKey("gemini", "Charon", "Oi"), speechCacheKey("gemini", "Puck", "Oi"));
-  assert.notEqual(speechCacheKey("gemini", "Charon", "Oi"), speechCacheKey("elevenlabs", "Charon", "Oi"));
+  assert.notEqual(speechCacheKey("gemini", "Orus", "Oi"), speechCacheKey("gemini", "Puck", "Oi"));
+  assert.notEqual(speechCacheKey("gemini", "Orus", "Oi"), speechCacheKey("elevenlabs", "Orus", "Oi"));
   const dataDir = mkdtempSync(path.join(os.tmpdir(), "icaro-voice-"));
   await harness({ dataDir, handler: () => geminiOk() }).engine.synthesize("Oi");
   const other = harness({ dataDir, voice: "Puck", handler: () => geminiOk() });
