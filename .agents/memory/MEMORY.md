@@ -9,3 +9,4 @@
 - [Local knowledge matching](knowledge-bank-matching.md) — rank subject specificity above question phrasing so generic local triggers do not swallow questions for the remote provider.
 - [Browser recognition diagnostics](speech-recognition-diagnostics.md) — ignore aborts from intentional cancellation; surface unexpected `aborted` and back off until a real transcript proves recovery.
 - [Gemini TTS authentication](gemini-tts-auth.md) — configured-key presence and cached audio do not prove live TTS works; probe with a fresh, uncached phrase.
+- [Patch application behavior](patch-application.md) — failed multi-file patches can leave other targets changed; inspect each file before retrying.

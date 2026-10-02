@@ -7,9 +7,9 @@ import {
 } from '@/lib/mic-config';
 
 const MODES: Array<[MicMode, string, string]> = [
-  ['auto', 'Automático', 'Usa o navegador; no caso de falha compatível, oferece a transcrição pelo servidor.'],
-  ['browser', 'Navegador', 'Escuta contínua com “Ok, Ícaro” ou “Let’s go, Ícaro”. Depende do serviço de voz do navegador.'],
-  ['server', 'Servidor (Whisper)', 'Toque no microfone, fale e pare: transcreve no servidor.'],
+  ['auto', 'Automático', 'Usa detecção local; se ela não estiver disponível, o servidor só grava após tocar no microfone.'],
+  ['browser', 'Navegador', 'Detecta “Ok, Ícaro” no dispositivo, sem enviar áudio a um serviço de reconhecimento. Requer navegador e pacote local compatíveis.'],
+  ['server', 'Servidor (Whisper)', 'Só começa a gravar após tocar no microfone; envia o áudio ao servidor para transcrição.'],
 ];
 
 export function MicSettings({
@@ -75,7 +75,7 @@ export function MicSettings({
         ))}
       </div>
       <p className="text-xs text-[color:var(--holo)]" data-testid="text-mic-engine">
-        Em uso agora: {usingServer ? 'servidor (Whisper)' : 'reconhecimento do navegador'}
+        Em uso agora: {usingServer ? 'servidor (Whisper), após toque' : 'reconhecimento local do navegador'}
       </p>
       <p className="text-xs text-[color:var(--dim)]" data-testid="text-mic-default-device">
         Entrada fixa: microfone padrão do Chrome/Windows. Para trocar de aparelho, altere a entrada nas configurações do navegador ou do sistema.

@@ -39,3 +39,9 @@ After a normal `SpeechRecognition.onend`, wait at least 150 ms before restarting
 **Why:** Restarting after 30 ms can race the browser's recognizer teardown. Treating that race as `not-allowed` disables the listener until the user manually resumes it.
 
 **How to apply:** Keep automatic recognition enabled across transient end/start failures and test an injected `InvalidStateError`; still surface denied permission as blocked with clear recovery guidance.
+
+Standby wake recognition must be on-device only. Require `processLocally = true` and an available Portuguese language pack before starting; never silently switch wake listening to a remote speech service. If local support or the pack is missing, keep the listener stopped and offer installation or a manual activation path.
+
+**Why:** The user chose hands-free local wake detection to avoid sending ambient audio or transcripts to a speech-recognition service, while accepting that the device microphone must remain active locally to hear the wake phrase.
+
+**How to apply:** Check local recognition support and pack availability before starting the listener, offer installation from an explicit control, and keep the post-wake one-question window at 10 seconds. Server transcription remains user-initiated.

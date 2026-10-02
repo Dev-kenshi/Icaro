@@ -9,6 +9,11 @@ export const SERVER_FALLBACK_ERRORS = new Set([
   'service-not-allowed',
   'language-not-supported',
   'unsupported',
+  'local-unavailable',
+  'local-pack-required',
+  'local-pack-install-failed',
+  'local-policy',
+  'local-check-failed',
 ]);
 
 export function getMicMode(): MicMode {

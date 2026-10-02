@@ -358,8 +358,9 @@ export default function Stage() {
   const listenLabel = useServerMic
     ? (recording ? 'Gravando… pare de falar para enviar' : 'Microfone pelo servidor · toque no microfone e fale')
     : {
-    starting: 'Conectando microfone…', listening: listener.active ? 'Escuta ativa' : 'Em espera · palavra de ativação',
-    blocked: 'Escuta indisponível', unsupported: 'Voz não suportada',
+    starting: listener.installingLocal ? 'Instalando reconhecimento local…' : 'Conectando reconhecimento local…',
+    listening: listener.active ? 'Escuta ativa' : 'Em espera · detector local',
+    blocked: 'Escuta local indisponível', unsupported: 'Voz local não suportada',
     error: 'Reconectando reconhecimento…', paused: 'Microfone pausado',
   }[listener.status];
   const showListenerError = !!listener.error && !useServerMic;
@@ -402,13 +403,20 @@ export default function Stage() {
         <h3>Microfone</h3>
         <p role="status" data-testid="status-listening">{listenLabel}</p>
         {showListenerError && <p role="alert" data-testid="status-listening-error">{wakeAccessErrorMessage(listener.error!)}</p>}
-        {useServerMic && micMode === 'auto' && listener.error && <p data-testid="status-mic-fallback">O reconhecimento do navegador falhou ({listener.error}); use o microfone para falar pelo servidor.</p>}
+        {useServerMic && micMode === 'auto' && listener.error && <p data-testid="status-mic-fallback">A detecção local não está disponível ({listener.error}). Para usar o servidor, toque no microfone; o áudio só será captado após esse toque.</p>}
         <div className="sh-row"><button onClick={() => void activateVoice()} data-testid="button-audio-activate-help">Ativar e testar áudio do Ícaro</button></div>
         {speechError && <p role="alert" data-testid="status-audio-error-help">{speechError}</p>}
-        {(listener.inFrame || listener.error === 'iframe-policy') && <a className="hbtn mt-2" href={import.meta.env.BASE_URL} target="_blank" rel="noopener noreferrer" data-testid="link-open-stage-tab">Abrir Ícaro em uma nova aba</a>}
-        {listener.status === 'unsupported' && <p>Reconhecimento de voz indisponível neste navegador. Use o teclado para digitar.</p>}
+        {(listener.inFrame || listener.error === 'iframe-policy' || listener.error === 'local-policy') && <a className="hbtn mt-2" href={import.meta.env.BASE_URL} target="_blank" rel="noopener noreferrer" data-testid="link-open-stage-tab">Abrir Ícaro em uma nova aba</a>}
+        {listener.status === 'unsupported' && <p>{listener.error === 'local-unsupported' ? 'Reconhecimento local indisponível. Use o microfone para ativar manualmente ou digite sua pergunta.' : 'Reconhecimento de voz indisponível neste navegador. Use o teclado para digitar.'}</p>}
+        {listener.localInstallAvailable && (listener.installingLocal || listener.error === 'local-pack-required' || listener.error === 'local-pack-install-failed') && (
+          <div className="sh-row">
+            <button onClick={() => void listener.installLocalPack()} disabled={listener.installingLocal} data-testid="button-install-local-speech">
+              {listener.installingLocal ? 'Instalando pacote local…' : 'Instalar pacote local de português'}
+            </button>
+          </div>
+        )}
         <div className="sh-row">
-          {listener.status === 'blocked' && listener.error !== 'iframe-policy' && listener.error !== 'insecure-context' && <button onClick={() => { prime(); listener.enable(); }} data-testid="button-enable-listening">Retomar microfone</button>}
+          {listener.status === 'blocked' && !['iframe-policy', 'insecure-context', 'local-unavailable', 'local-pack-required', 'local-pack-install-failed', 'local-policy'].includes(listener.error ?? '') && <button onClick={() => { prime(); listener.enable(); }} data-testid="button-enable-listening">Retomar microfone</button>}
           {listener.supported && <button onClick={() => { prime(); if (listener.status === 'paused') listener.enable(); else listener.pause(); }} data-testid="button-pause-listening">{listener.status === 'paused' ? 'Retomar microfone' : 'Pausar microfone'}</button>}
         </div>
         <MicSettings mode={micMode} onMode={chooseMicMode} usingServer={useServerMic} busy={micTestActive} onTestStart={beginMicTest} onTestEnd={endMicTest} />
@@ -492,8 +500,8 @@ export default function Stage() {
               <div className="card space-y-2">
                 <div className="mono text-[10px] uppercase tracking-widest text-[color:var(--ok)]">Ativação por voz</div>
                 <p>Diga <strong>“Ok, Ícaro”</strong> ou <strong>“Let’s go, Ícaro”</strong>, seguido da pergunta, ou espere a indicação “Escuta ativa”. Cada ativação autoriza uma pergunta; após responder, o ÍCARO volta à espera. Sem pergunta em 10 segundos, a ativação expira em silêncio. Diga <strong>“Stop, Ícaro”</strong> para interromper.</p>
-                <p className="privacy-note text-xs text-[color:var(--dim)]">O microfone fica aberto enquanto a escuta está ligada. A fala é transcrita pelo serviço do navegador; só perguntas após a ativação são enviadas ao ÍCARO. Use “Pausar microfone” para desligar totalmente.</p>
-                <p className="text-xs text-[color:var(--warn)]">Requer permissão do navegador e a página aberta. Chrome ou Edge são recomendados; outros navegadores podem não oferecer escuta contínua.</p>
+                <p className="privacy-note text-xs text-[color:var(--dim)]">Em espera, o reconhecimento local mantém o microfone ativo no dispositivo; áudio e transcrição não são enviados a um serviço de voz. Após ativar, a pergunta autorizada é enviada ao ÍCARO. O teste de microfone só captura após clique; a validação falada pode usar o serviço do navegador. No modo Servidor, o áudio é enviado para transcrição após tocar.</p>
+                <p className="text-xs text-[color:var(--warn)]">Requer permissão e um navegador recente com reconhecimento local em português (Chrome ou Edge). Se o pacote local não estiver instalado, instale-o pelo aviso; sem suporte local, a escuta fica desligada.</p>
               </div>
               <div className="card space-y-3">
                 <div className="mono text-[10px] uppercase tracking-widest text-[color:var(--dim)]">Motor de voz</div>

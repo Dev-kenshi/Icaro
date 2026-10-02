@@ -222,7 +222,9 @@ checks.push(
     assert.match(wakeAccessErrorMessage('not-allowed'), /Permita o acesso/);
     assert.match(wakeAccessErrorMessage('audio-capture'), /dispositivo/);
     assert.match(wakeAccessErrorMessage('iframe-policy'), /nova aba/);
-    assert.match(wakeAccessErrorMessage('network'), /não da Groq/);
+    assert.match(wakeAccessErrorMessage('network'), /reconhecimento local falhou/);
+    assert.match(wakeAccessErrorMessage('local-pack-required'), /pacote de português/);
+    assert.match(wakeAccessErrorMessage('local-unsupported'), /não oferece reconhecimento local/);
     assert.match(wakeAccessErrorMessage('aborted'), /encerrou a escuta/);
     assert.match(wakeAccessErrorMessage('start-failed'), /tentando novamente automaticamente/);
   }],

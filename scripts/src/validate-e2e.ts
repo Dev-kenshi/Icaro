@@ -31,10 +31,16 @@ function wav(seconds: number) {
 
 const INIT = `
 (() => {
-  window.__rec = { current: null, results: [], started: 0, failStarts: 0 };
+  window.__rec = {
+    current: null, results: [], started: 0, failStarts: 0, localInstallCalls: 0,
+    lastLocalCheck: null,
+    localAvailability: sessionStorage.getItem('icaro.localRecognitionAvailability') || 'available',
+  };
   class FakeRec {
-    constructor() { this.lang=''; this.interimResults=false; this.continuous=false; this.maxAlternatives=1; this.onstart=this.onend=this.onerror=this.onresult=null; this.alive=false; }
-    start() { if(window.__rec.failStarts>0){window.__rec.failStarts--;throw new DOMException('recognizer restarting','InvalidStateError');} window.__rec.current=this; window.__rec.results=[]; window.__rec.started++; this.alive=true; setTimeout(() => { if (this.alive && this.onstart) this.onstart(); }, 20); }
+    constructor() { this.lang=''; this.interimResults=false; this.continuous=false; this.maxAlternatives=1; this.processLocally=false; this.onstart=this.onend=this.onerror=this.onresult=null; this.alive=false; }
+    static available(options) { window.__rec.lastLocalCheck=options; return Promise.resolve(options.processLocally ? window.__rec.localAvailability : 'available'); }
+    static install() { window.__rec.localInstallCalls++; window.__rec.localAvailability='available'; sessionStorage.setItem('icaro.localRecognitionAvailability', 'available'); return Promise.resolve(true); }
+    start() { if (this.processLocally !== true) throw new DOMException('local recognition required','NotSupportedError'); if(window.__rec.failStarts>0){window.__rec.failStarts--;throw new DOMException('recognizer restarting','InvalidStateError');} window.__rec.current=this; window.__rec.results=[]; window.__rec.started++; this.alive=true; setTimeout(() => { if (this.alive && this.onstart) this.onstart(); }, 20); }
     abort() { if (!this.alive) return; this.alive=false; setTimeout(() => this.onend && this.onend(), 10); }
     stop() { this.abort(); }
   }
@@ -558,11 +564,30 @@ async function main() {
     await page.click('[data-testid="button-close-help"]');
   });
 
+  await test('Pacote local de português é instalado antes de abrir a escuta', async () => {
+    await page.evaluate(() => {
+      sessionStorage.setItem('icaro.localRecognitionAvailability', 'downloadable');
+      localStorage.setItem('icaro.micMode', 'auto');
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('[data-testid="button-install-local-speech"]', { timeout: 6000 });
+    const activeBeforeInstall = await page.evaluate(() => !!(window as any).__rec.current?.alive);
+    assert(!activeBeforeInstall, 'abriu a escuta antes de instalar o pacote local');
+    const localCheck = await page.evaluate(() => (window as any).__rec.lastLocalCheck?.processLocally === true);
+    assert(localCheck, 'não pediu explicitamente reconhecimento local ao verificar o pacote');
+    await page.click('[data-testid="button-install-local-speech"]');
+    await until(async () => page.evaluate(() => {
+      const rec = (window as any).__rec;
+      return rec.localInstallCalls === 1 && rec.current?.alive === true && rec.current?.processLocally === true;
+    }), 5000, 'instalação do pacote local e início da escuta local');
+    await page.evaluate(() => sessionStorage.removeItem('icaro.localRecognitionAvailability'));
+  });
+
   await browser.close();
   const failed = results.filter((r) => !r.ok);
   if (pageErrors.length) failed.push({ n: 0, name: 'erros de página', ok: false, info: pageErrors.join('; ') });
   console.log(`\n${results.filter((r) => r.ok).length}/${results.length} testes aprovados. Erros de página: ${pageErrors.length}${pageErrors.length ? ` (${[...new Set(pageErrors)].join('; ')})` : ''}`);
-  if (results.length !== 54) { console.log(`ERRO: esperados 54 testes, executados ${results.length}`); process.exit(1); }
+  if (results.length !== 55) { console.log(`ERRO: esperados 55 testes, executados ${results.length}`); process.exit(1); }
   process.exit(failed.length ? 1 : 0);
 }
 
