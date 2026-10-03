@@ -16,3 +16,15 @@ The first generated Feira/Bahia voice set was rejected by the user as stereotype
 **Why:** The user chose account-owned voices for testing, requested male Brazilian Portuguese options with Bahia/Feira de Santana and Emanuel matches, and asked to preserve the current default. No public search result verified a specifically Bahian or Feira de Santana voice.
 
 **How to apply:** For a replacement voice, use a natural, educated male researcher from Feira de Santana: conversational contemporary Brazilian Portuguese with subtle local prosody, no forced slang, catchphrases, drawl, comic delivery, or caricature. Keep the existing server voice as default; present preview audio and let the user choose before saving a new voice to their account. Keep the selected test voice local to the browser. Do not source public/shared voices or clone a real person without explicit approval.
+
+The user approved keeping all three researcher-style options available, rather than choosing a single favorite. Avatar selection must not automatically force one voice.
+
+**Why:** The user explicitly wants to choose and alternate voices independently.
+
+**How to apply:** Preserve all approved options and the existing server default; do not infer a preferred voice from approval of a group.
+
+Provider voice-language filters must use ISO language codes rather than human-readable names.
+
+**Why:** ElevenLabs accepted a human-readable Portuguese language filter with HTTP 200 but returned an empty catalogue, hiding valid account voices.
+
+**How to apply:** Check filtered results against known account voices; successful HTTP status alone does not prove a catalogue filter is correct.
