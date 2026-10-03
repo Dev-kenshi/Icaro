@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { StageHelp } from '@/components/stage/stage-help';
 import { shouldActivateStageShortcut } from '@/lib/stage-shortcuts';
-import { Mic, X, BarChart3, ExternalLink, Trash2, Menu, Keyboard, Play, Maximize, Volume2, VolumeX, Eye, EyeOff, Orbit, Globe2, Radio, SkipForward } from 'lucide-react';
+import { Mic, X, BarChart3, ExternalLink, Trash2, Menu, Keyboard, Play, Maximize, Volume2, VolumeX, Eye, EyeOff, Orbit, Globe2, Radio, SkipForward, Layers } from 'lucide-react';
 import { getGetAiStatusQueryKey, getGetCosmosFeedsQueryKey, useGetAiStatus, useGetCosmosFeeds, useSendAiMessage, type AiChatResponse } from '@workspace/api-client-react';
 import { requestAiChatStream } from '@/lib/ai-chat-stream';
 import { interpret, formatDuration } from '@/lib/commands';
@@ -89,6 +89,7 @@ export default function Stage() {
   const panelRef = useRef(false); panelRef.current = panel;
   const [tab, setTab] = useState<'conversa' | 'voz' | 'ferramentas' | 'conexao' | 'sobre'>('conversa');
   const [scene, setScene] = useState<CosmosScene>('galaxy');
+  const [sceneMode, setSceneMode] = useState<'all' | 'single'>('all');
   const [quality, setQuality] = useState<VisualQuality>(readQuality);
   const [avatarLayout, setAvatarLayout] = useState(readAvatarLayout);
   const [avatarControlsOpen, setAvatarControlsOpen] = useState(false);
@@ -151,6 +152,7 @@ export default function Stage() {
     return () => observer.disconnect();
   }, []);
   useEffect(() => {
+    if (sceneMode === 'all') return;
     const id = window.setInterval(() => {
       setScene((current) => current === 'galaxy' ? 'system' : current === 'system' ? 'earth' : 'galaxy');
       setFeiraTarget(false);
@@ -158,7 +160,7 @@ export default function Stage() {
       window.setTimeout(() => setSceneFade(false), 1000);
     }, 90000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [sceneMode]);
   useEffect(() => {
     try { localStorage.setItem(QUALITY_KEY, quality); } catch { /* storage can be disabled */ }
   }, [quality]);
@@ -272,10 +274,11 @@ export default function Stage() {
       case 'scene':
         setFeiraTarget(false);
         setScene(r.scene);
+        setSceneMode('single');
         setSceneFade(true); window.setTimeout(() => setSceneFade(false), 1000);
         return sayRef.current(r.text);
       case 'flyFeira':
-        setScene('earth'); setFeiraTarget(true);
+        setScene('earth'); setSceneMode('single'); setFeiraTarget(true);
         setSceneFade(true); window.setTimeout(() => setSceneFade(false), 1000);
         return sayRef.current(r.text);
       case 'say': return sayRef.current(r.text);
@@ -659,6 +662,7 @@ export default function Stage() {
   const selectScene = (next: CosmosScene) => {
     setFeiraTarget(false);
     setScene(next);
+    setSceneMode('single');
     setSceneFade(true);
     window.setTimeout(() => setSceneFade(false), 1000);
   };
@@ -724,18 +728,47 @@ export default function Stage() {
   };
 
   return (
-    <div ref={stageRef} className="stage" data-state={state} data-voice-active={listener.active} data-voice-enabled={voiceOn} onPointerDown={prime}>
-      <CosmosRenderer
-        scene={scene}
-        quality={quality}
-        visible={sceneVisible}
-        feeds={feeds.data}
-        targetCity={feiraTarget}
-        state={state}
-        getAudioLevel={getLevel}
-        onFps={setRenderFps}
-        onAssetsStatus={setAssetsStatus}
-      />
+    <div ref={stageRef} className="stage" data-state={state} data-scene-mode={sceneMode} data-voice-active={listener.active} data-voice-enabled={voiceOn} onPointerDown={prime}>
+      {sceneMode === 'all' ? (
+        <div className="cosmos-overview" role="group" aria-label="Terra, Galáxia e Sistema Solar" data-testid="cosmos-overview">
+          {([
+            ['galaxy', 'Galáxia'],
+            ['system', 'Sistema Solar'],
+            ['earth', 'Terra ao vivo'],
+          ] as const).map(([panelScene, label]) => (
+            <section
+              key={panelScene}
+              className="cosmos-panel"
+              aria-label={`Painel ${label}`}
+              data-testid={`panel-scene-${panelScene}`}
+            >
+              <span className="cosmos-panel__label" data-testid={`label-scene-${panelScene}`}>{label}</span>
+              <CosmosRenderer
+                scene={panelScene}
+                quality={quality}
+                visible={sceneVisible}
+                feeds={feeds.data}
+                targetCity={panelScene === 'earth' && feiraTarget}
+                state={state}
+                getAudioLevel={getLevel}
+                navigationLabel={`Controles de ${label}`}
+              />
+            </section>
+          ))}
+        </div>
+      ) : (
+        <CosmosRenderer
+          scene={scene}
+          quality={quality}
+          visible={sceneVisible}
+          feeds={feeds.data}
+          targetCity={feiraTarget}
+          state={state}
+          getAudioLevel={getLevel}
+          onFps={setRenderFps}
+          onAssetsStatus={setAssetsStatus}
+        />
+      )}
       <div className={`scene-fade ${sceneFade ? 'scene-fade--active' : ''}`} aria-hidden="true" />
       <NeuralWeb state={state} scene={scene} emotion={emotion} longListening={longListening} thoughtTitle={state === 'thinking' ? 'SÍNTESE EM CURSO' : ''} />
       <FutureScene />
@@ -750,13 +783,23 @@ export default function Stage() {
           <span className="stage-brand__mark" aria-hidden="true">ᛟ</span>
           <div><div className="stage-brand__name">ÍCARO</div><div className="stage-brand__sub">CENTRO DE OPERAÇÕES · UEFS</div></div>
         </div>
-        <div className="scene-switcher" role="group" aria-label="Cenas do palco">
+        <div className="scene-switcher" role="group" aria-label="Visualização das cenas">
+          <button
+            type="button"
+            className="scene-button"
+            aria-label="Mostrar as três cenas"
+            aria-pressed={sceneMode === 'all'}
+            onClick={() => setSceneMode('all')}
+            data-testid="button-scene-all"
+          >
+            <Layers size={14} aria-hidden="true" /><span>Todas</span>
+          </button>
           {([
             ['galaxy', 'Galáxia', <Orbit size={14} key="g" />],
             ['system', 'Sistema solar', <Radio size={14} key="s" />],
             ['earth', 'Terra ao vivo', <Globe2 size={14} key="e" />],
           ] as const).map(([value, label, icon]) => (
-            <button key={value} className="scene-button" aria-pressed={scene === value} onClick={() => selectScene(value)} data-testid={`button-scene-${value}`}>
+            <button key={value} className="scene-button" aria-pressed={sceneMode === 'single' && scene === value} onClick={() => selectScene(value)} data-testid={`button-scene-${value}`}>
               {icon}<span>{label}</span>
             </button>
           ))}

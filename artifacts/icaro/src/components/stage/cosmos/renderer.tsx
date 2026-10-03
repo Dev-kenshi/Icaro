@@ -48,6 +48,7 @@ type Props = {
   getAudioLevel: () => number;
   onFps?: (fps: number) => void;
   onAssetsStatus?: (status: string) => void;
+  navigationLabel?: string;
 };
 
 type NavigationApi = {
@@ -259,6 +260,7 @@ export function CosmosRenderer({
   getAudioLevel,
   onFps,
   onAssetsStatus,
+  navigationLabel,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const navigationRef = useRef<NavigationApi | null>(null);
@@ -1255,20 +1257,20 @@ export function CosmosRenderer({
     <>
       <div ref={hostRef} className="cosmos-viewport" data-scene={scene} aria-hidden="true" />
       {visible && (
-        <div className="cosmos-navigation" role="group" aria-label="Navegação das cenas">
+        <div className="cosmos-navigation" role="group" aria-label={navigationLabel ?? 'Navegação das cenas'}>
           <span className="cosmos-navigation__hint">
             {simpleNavigation
               ? 'Arraste para mover · use +/− para zoom'
               : `Arraste para girar · ${mobileViewport ? 'pinça para zoom' : 'roda para zoom'}`}
           </span>
           <div className="cosmos-navigation__buttons">
-            <button type="button" aria-label="Afastar" title="Afastar" onClick={() => navigationRef.current?.zoomOut()}>
+            <button type="button" aria-label="Afastar" title="Afastar" onClick={() => navigationRef.current?.zoomOut()} data-testid={`button-cosmos-zoom-out-${scene}`}>
               <Minus size={15} aria-hidden="true" />
             </button>
-            <button type="button" aria-label="Aproximar" title="Aproximar" onClick={() => navigationRef.current?.zoomIn()}>
+            <button type="button" aria-label="Aproximar" title="Aproximar" onClick={() => navigationRef.current?.zoomIn()} data-testid={`button-cosmos-zoom-in-${scene}`}>
               <Plus size={15} aria-hidden="true" />
             </button>
-            <button type="button" aria-label="Restaurar vista" title="Restaurar vista" onClick={() => navigationRef.current?.reset()}>
+            <button type="button" aria-label="Restaurar vista" title="Restaurar vista" onClick={() => navigationRef.current?.reset()} data-testid={`button-cosmos-reset-${scene}`}>
               <RotateCcw size={13} aria-hidden="true" />
             </button>
           </div>
