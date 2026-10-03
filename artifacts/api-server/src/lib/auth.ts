@@ -30,7 +30,7 @@ export type LoginResult = { ok: true; role: Role } | { ok: false; reason: "inval
 export function checkCredentials(username: string, password: string): LoginResult {
   const acc = Object.hasOwn(ACCOUNTS, username) ? ACCOUNTS[username] : undefined;
   if (!acc) return { ok: false, reason: "invalid" };
-  const expected = process.env[acc.env] || process.env[acc.legacyEnv];
+  const expected = (process.env[acc.env] || process.env[acc.legacyEnv] || "").trim();
   if (!expected) return { ok: false, reason: "unconfigured" };
   return safeEqual(password, expected) ? { ok: true, role: acc.role } : { ok: false, reason: "invalid" };
 }
