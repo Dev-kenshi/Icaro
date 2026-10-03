@@ -1,6 +1,6 @@
 /**
  * Valida a integração de texto Groq, sua rota e a seleção de provedor no ÍCARO.
- * As verificações locais usam fetch injetado; somente a validação 50 acessa a API local.
+ * As verificações locais usam fetch injetado; somente a validação 53 acessa a API local.
  *
  * Uso: pnpm --filter @workspace/scripts run validate:groq
  */
@@ -29,7 +29,13 @@ const input = {
 const ok = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 function harness(
   handler: (call: Call) => Response | Promise<Response>,
-  options: { getApiKey?: () => string; getModel?: () => string; timeoutMs?: number } = {},
+  options: {
+    getApiKey?: () => string;
+    getModel?: () => string;
+    timeoutMs?: number;
+    invalidResponseRetries?: number;
+    invalidResponseRetryDelayMs?: number;
+  } = {},
 ) {
   const calls: Call[] = [];
   const fetchImpl = (async (input: string | URL | Request, init?: RequestInit) => {
@@ -43,6 +49,8 @@ function harness(
       getApiKey: options.getApiKey ?? (() => "mock-groq-key"),
       getModel: options.getModel ?? (() => "mock-model"),
       timeoutMs: options.timeoutMs,
+      invalidResponseRetries: options.invalidResponseRetries,
+      invalidResponseRetryDelayMs: options.invalidResponseRetryDelayMs,
       fetchImpl,
     }),
   };
@@ -87,6 +95,34 @@ check("GROQ_MODEL vazio usa o modelo padrão", () => {
 check("Serviço devolve resposta e modelo retornados pelo provedor", async () => {
   const h = harness(() => ok({ model: "llama-response", choices: [{ message: { content: "Olá, Ícaro." } }] }));
   assert.deepEqual(await h.service.generateAnswer(input), { answer: "Olá, Ícaro.", model: "llama-response" });
+});
+check("Conteúdo em blocos de texto compatíveis com OpenAI é lido corretamente", async () => {
+  const h = harness(() => ok({
+    choices: [{ message: { content: [{ type: "text", text: "Olá, " }, { type: "text", text: "Ícaro." }] } }],
+  }));
+  assert.deepEqual(await h.service.generateAnswer(input), { answer: "Olá, Ícaro.", model: "mock-model" });
+});
+check("Resposta vazia na primeira tentativa é recuperada por uma repetição limitada", async () => {
+  let attempts = 0;
+  const h = harness(() => {
+    attempts++;
+    return attempts === 1
+      ? ok({ choices: [{ message: { content: "" } }] })
+      : ok({ choices: [{ message: { content: "Resposta recuperada." } }] });
+  }, { invalidResponseRetries: 1, invalidResponseRetryDelayMs: 0 });
+  assert.deepEqual(await h.service.generateAnswer(input), { answer: "Resposta recuperada.", model: "mock-model" });
+  assert.equal(h.calls.length, 2);
+});
+check("JSON inválido na primeira tentativa é recuperado por uma repetição limitada", async () => {
+  let attempts = 0;
+  const h = harness(() => {
+    attempts++;
+    return attempts === 1
+      ? new Response("{not-json", { status: 200 })
+      : ok({ choices: [{ message: { content: "Resposta recuperada." } }] });
+  }, { invalidResponseRetries: 1, invalidResponseRetryDelayMs: 0 });
+  assert.deepEqual(await h.service.generateAnswer(input), { answer: "Resposta recuperada.", model: "mock-model" });
+  assert.equal(h.calls.length, 2);
 });
 check("Requisição usa endpoint oficial de chat completions Groq", async () => {
   const h = harness(() => ok({ choices: [{ message: { content: "ok" } }] }));
@@ -157,6 +193,7 @@ check("Texto da resposta é removido de espaços externos", async () => {
 check("Conteúdo vazio do provedor é rejeitado como resposta inválida", async () => {
   const h = harness(() => ok({ choices: [{ message: { content: "" } }] }));
   await rejectsKind(() => h.service.generateAnswer(input), "invalid_response");
+  assert.equal(h.calls.length, 2, "resposta vazia deve receber só uma repetição");
 });
 check("Conteúdo só com espaços do provedor é rejeitado", async () => {
   const h = harness(() => ok({ choices: [{ message: { content: " \n\t " } }] }));
@@ -301,7 +338,7 @@ check("Assistant inicia com Groq e expõe seleção/status condizentes com dispo
     "envio do Assistant usa o provedor selecionado, inclusive Groq");
 });
 
-assert.equal(checks.length, 49, `Esperadas 49 verificações locais; encontradas ${checks.length}.`);
+assert.equal(checks.length, 52, `Esperadas 52 verificações locais; encontradas ${checks.length}.`);
 const results: Array<{ number: number; name: string; passed: boolean; detail?: string }> = [];
 let failed = 0;
 for (const [index, [name, fn]] of checks.entries()) {
@@ -357,21 +394,21 @@ try {
 }
 const livePassed = liveError === undefined;
 results.push({
-  number: 50,
+  number: 53,
   name: "Única chamada real: chat local Groq com persona Ícaro, histórico vazio e dataset nulo",
   passed: livePassed,
   ...(liveError ? { detail: liveError } : {}),
 });
 if (!livePassed) failed++;
 console.log(
-  `50. ${livePassed ? "✓" : "✗"} chamada local · status=${liveStatus ?? "sem resposta"} · provider=${liveProvider ?? "ausente"} · model=${liveModel ?? "ausente"}`,
+  `53. ${livePassed ? "✓" : "✗"} chamada local · status=${liveStatus ?? "sem resposta"} · provider=${liveProvider ?? "ausente"} · model=${liveModel ?? "ausente"}`,
 );
 writeFileSync("/tmp/icaro-groq-validation.json", JSON.stringify({
-  total: 50,
-  passed: 50 - failed,
+  total: 53,
+  passed: 53 - failed,
   failed,
   checks: results,
   live: { passed: livePassed, status: liveStatus, provider: liveProvider, model: liveModel, ...(liveError ? { error: liveError } : {}) },
 }, null, 2) + "\n");
-console.log(`\n${50 - failed}/50 validações Groq passaram. Relatório: /tmp/icaro-groq-validation.json`);
+console.log(`\n${53 - failed}/53 validações Groq passaram. Relatório: /tmp/icaro-groq-validation.json`);
 process.exit(failed ? 1 : 0);

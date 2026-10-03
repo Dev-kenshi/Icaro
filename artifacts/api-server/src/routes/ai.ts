@@ -448,12 +448,16 @@ router.post("/ai/chat", async (req, res) => {
       const kind = error instanceof GroqServiceError ? error.kind : "request_failed";
       const upstreamStatus = error instanceof GroqServiceError ? error.upstreamStatus : undefined;
       const errorCode = error instanceof GroqServiceError ? error.errorCode : undefined;
+      const invalidResponseReason = error instanceof GroqServiceError
+        ? error.invalidResponseReason
+        : undefined;
       req.log.error({
         provider: "groq",
         model: getGroqModel(),
         kind,
         ...(upstreamStatus ? { upstreamStatus } : {}),
         ...(errorCode ? { errorCode } : {}),
+        ...(invalidResponseReason ? { invalidResponseReason } : {}),
       }, "Groq request failed");
       if (kind === "rate_limit" || upstreamStatus === 429) {
         res.status(429).json({

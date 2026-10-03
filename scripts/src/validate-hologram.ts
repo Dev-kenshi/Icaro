@@ -132,9 +132,8 @@ check("Retrato expandido preserva posições da boca, dos olhos e os sprites ori
 });
 
 check("AO VIVO: servidor entrega o retrato expandido e atlas com MIME correto", async () => {
-  const configuredDomain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(",")[0];
   const base = process.env.ICARO_URL
-    || (configuredDomain ? `https://${configuredDomain}` : `http://localhost:${process.env.ICARO_PORT || 25428}`);
+    || `http://localhost:${process.env.ICARO_PORT || 80}`;
   const root = new URL("/avatar-portrait/", base.endsWith("/") ? base : `${base}/`);
   const requests = [
     { file: "atlas.json", type: /application\/json/ },

@@ -120,6 +120,9 @@ async function fresh() {
   page.on('pageerror', (error) => pageErrors.push(error.message));
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.stage');
+  if (await page.locator('dialog.stage-help[open]').count()) {
+    await page.getByTestId('button-close-help').click({ timeout: 3_000 });
+  }
   await until(() => page.evaluate(() => !!(window as any).__audioAudit && !!(window as any).IcaroAvatar), 15_000, 'avatar e instrumentação');
   await until(() => page.evaluate(() => (window as any).__recReady === true || !!(window as any).SpeechRecognition), 3_000, 'reconhecimento inicializado');
 }
