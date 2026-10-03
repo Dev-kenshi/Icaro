@@ -14,4 +14,10 @@ export interface AiSpeechInput {
      */
   text: string;
   emotion?: AiSpeechInputEmotion;
+  /**
+     * @minLength 1
+     * @maxLength 128
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  voice_id?: string;
 }

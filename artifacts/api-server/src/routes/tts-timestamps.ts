@@ -10,6 +10,10 @@ import {
   TimestampedSpeechError,
   TTS_TIMESTAMP_MAX_TEXT,
 } from "../lib/tts-timestamps";
+import {
+  ElevenLabsVoiceCatalogError,
+  isAccountElevenLabsVoice,
+} from "../lib/elevenlabs-voice-catalog";
 
 const router: IRouter = Router();
 const WINDOW_MS = 10 * 60 * 1000;
@@ -73,10 +77,26 @@ router.post("/tts-ts", async (req, res): Promise<void> => {
     return;
   }
 
-  const voiceId = process.env.ELEVENLABS_VOICE_ID?.trim() || "";
+  const requestedVoiceId = parsed.data.voice_id?.trim() || "";
+  const voiceId = requestedVoiceId || process.env.ELEVENLABS_VOICE_ID?.trim() || "";
   if (!voiceId) {
     res.status(503).json({ error: "O serviço de áudio com marcação de tempo não está configurado." });
     return;
+  }
+  if (requestedVoiceId) {
+    try {
+      if (!await isAccountElevenLabsVoice(apiKey, requestedVoiceId)) {
+        res.status(400).json({ error: "A voz selecionada não está disponível na conta ElevenLabs." });
+        return;
+      }
+    } catch (error) {
+      req.log.warn(
+        { status: error instanceof ElevenLabsVoiceCatalogError ? error.status : null },
+        "Selected ElevenLabs voice could not be verified",
+      );
+      res.status(502).json({ error: "Não foi possível verificar a voz selecionada." });
+      return;
+    }
   }
   if (req.aborted || res.destroyed) return;
 

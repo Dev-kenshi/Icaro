@@ -3,7 +3,7 @@ import { Link } from 'wouter';
 import { StageHelp } from '@/components/stage/stage-help';
 import { shouldActivateStageShortcut } from '@/lib/stage-shortcuts';
 import { Mic, X, BarChart3, ExternalLink, Trash2, Menu, Keyboard, Play, Maximize, Volume2, VolumeX, Eye, EyeOff, Orbit, Globe2, Radio, SkipForward, Layers } from 'lucide-react';
-import { getGetAiStatusQueryKey, getGetCosmosFeedsQueryKey, useGetAiStatus, useGetCosmosFeeds, useSendAiMessage, type AiChatResponse } from '@workspace/api-client-react';
+import { getGetAiStatusQueryKey, getGetAiVoicesQueryKey, getGetCosmosFeedsQueryKey, useGetAiStatus, useGetAiVoices, useGetCosmosFeeds, useSendAiMessage, type AiChatResponse, type AiVoiceCatalog } from '@workspace/api-client-react';
 import { requestAiChatStream } from '@/lib/ai-chat-stream';
 import { interpret, formatDuration } from '@/lib/commands';
 import { speak, stopSpeaking, ensureAudio, activateAudio, connectMic, getAnalyser, getLevel, getMicRms, getOutputRms, setListeningActivity, releaseSpeechCache } from '@/lib/speech';
@@ -48,6 +48,16 @@ const PROVIDER_NAMES: Record<Provider, string> = {
 };
 const media = (f: string) => `${import.meta.env.BASE_URL}media/${f}`;
 const NOTES_KEY = 'icaro.notes';
+const VOICE_SELECTION_KEY = 'icaro.voice-test.selection';
+type StoredVoiceSelection = Pick<AiVoiceCatalog['voices'][number], 'voiceId' | 'name'>;
+const readVoiceSelection = (): StoredVoiceSelection | null => {
+  try {
+    const value = JSON.parse(localStorage.getItem(VOICE_SELECTION_KEY) || 'null');
+    return value && typeof value.voiceId === 'string' && typeof value.name === 'string'
+      ? { voiceId: value.voiceId, name: value.name }
+      : null;
+  } catch { return null; }
+};
 const QUALITY_KEY = 'icaro.stage.quality';
 const QUALITY_OPTIONS: { value: VisualQuality; label: string }[] = [
   { value: 'auto', label: 'Auto' }, { value: 'high', label: 'Alta' }, { value: 'medium', label: 'Média' }, { value: 'low', label: 'Baixa' },
@@ -119,6 +129,23 @@ export default function Stage() {
   const [now, setNow] = useState(Date.now());
   const [searchLink, setSearchLink] = useState<string | null>(null);
   const [engine, setEngine] = useState<string | null>(null);
+  const [voiceSearch, setVoiceSearch] = useState('');
+  const [debouncedVoiceSearch, setDebouncedVoiceSearch] = useState('');
+  const [selectedVoice, setSelectedVoice] = useState<StoredVoiceSelection | null>(readVoiceSelection);
+  const voiceCatalog = useGetAiVoices(
+    { search: debouncedVoiceSearch },
+    {
+      query: {
+        queryKey: getGetAiVoicesQueryKey({ search: debouncedVoiceSearch }),
+        enabled: tab === 'voz',
+        staleTime: 60_000,
+        retry: 1,
+      },
+    },
+  );
+  const voiceOptions = voiceCatalog.data?.voices ?? [];
+  const selectedVoiceMetadata = voiceOptions.find((voice) => voice.voiceId === selectedVoice?.voiceId);
+  const selectedVoiceName = selectedVoiceMetadata?.name ?? selectedVoice?.name;
 
   const stageRef = useRef<HTMLDivElement>(null);
   const dockRef = useRef<HTMLDivElement>(null);
@@ -187,6 +214,16 @@ export default function Stage() {
 
   useEffect(() => { const id = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(id); }, []);
   useEffect(() => {
+    const id = window.setTimeout(() => setDebouncedVoiceSearch(voiceSearch.trim()), 300);
+    return () => window.clearTimeout(id);
+  }, [voiceSearch]);
+  useEffect(() => {
+    try {
+      if (selectedVoice) localStorage.setItem(VOICE_SELECTION_KEY, JSON.stringify(selectedVoice));
+      else localStorage.removeItem(VOICE_SELECTION_KEY);
+    } catch { /* voice selection still applies for the current page */ }
+  }, [selectedVoice]);
+  useEffect(() => {
     const dock = dockRef.current;
     if (!dock) return;
     const update = () => stageRef.current?.style.setProperty('--dock-height', `${dock.getBoundingClientRect().height}px`);
@@ -221,7 +258,7 @@ export default function Stage() {
     setState('thinking');
     let playedAudio = false;
     speak(t, {
-      pitch, rate, voiceURI, neural: true, emotionMarks, onEmotion: setEmotion,
+      pitch, rate, voiceURI, voiceId: selectedVoice?.voiceId, neural: true, emotionMarks, onEmotion: setEmotion,
       onProvider: setEngine,
       onChunk: (c) => { if (turnRef.current === turn) setCaption(c); },
       onWords: (words, activeIndex) => { if (turnRef.current === turn) setCaptionWords({ words, activeIndex }); },
@@ -234,7 +271,7 @@ export default function Stage() {
         captionTimerRef.current = window.setTimeout(() => { if (turnRef.current === turn) { setCaption(''); setCaptionWords(null); } }, 2000);
       },
     });
-  }, [voiceOn]);
+  }, [voiceOn, selectedVoice]);
   const sayRef = useRef(say); sayRef.current = say;
 
   // timer
@@ -972,14 +1009,80 @@ export default function Stage() {
                 <p className="privacy-note text-xs text-[color:var(--dim)]">Em espera, o reconhecimento local mantém o microfone ativo no dispositivo; áudio e transcrição não são enviados a um serviço de voz. Após ativar, a pergunta autorizada é enviada ao ÍCARO. O teste de microfone só captura após clique; a validação falada pode usar o serviço do navegador. No modo Servidor, o áudio é enviado para transcrição após tocar.</p>
                 <p className="text-xs text-[color:var(--warn)]">Requer permissão e um navegador recente com reconhecimento local em português (Chrome ou Edge). Se o pacote local não estiver instalado, instale-o pelo aviso; sem suporte local, a escuta fica desligada.</p>
               </div>
+              <div className="card space-y-3" data-testid="card-voice-options">
+                <div className="mono text-[10px] uppercase tracking-widest text-[color:var(--ok)]">Vozes para teste</div>
+                <label className="setting-label" htmlFor="voice-account-search">Buscar nome ou sotaque na conta</label>
+                <input
+                  id="voice-account-search"
+                  type="search"
+                  value={voiceSearch}
+                  onChange={(event) => setVoiceSearch(event.target.value)}
+                  placeholder="Emanuel, Bahia, Feira de Santana…"
+                  autoComplete="off"
+                  data-testid="input-voice-search"
+                  className="w-full rounded-md border border-[color:var(--edge)] bg-[color:var(--panel)] px-3 py-2 text-sm"
+                />
+                <label className="setting-label" htmlFor="voice-test-selection">Voz para testar</label>
+                <select
+                  id="voice-test-selection"
+                  value={selectedVoice?.voiceId ?? ''}
+                  onChange={(event) => {
+                    const voice = voiceOptions.find((option) => option.voiceId === event.target.value);
+                    if (!event.target.value) setSelectedVoice(null);
+                    else if (voice) setSelectedVoice({ voiceId: voice.voiceId, name: voice.name });
+                  }}
+                  data-testid="select-test-voice"
+                >
+                  <option value="">Usar a voz padrão atual do Ícaro</option>
+                  {selectedVoice && !voiceOptions.some((voice) => voice.voiceId === selectedVoice.voiceId) && (
+                    <option value={selectedVoice.voiceId}>{selectedVoice.name} · selecionada</option>
+                  )}
+                  {voiceOptions.map((voice) => {
+                    const tags = [voice.labels.language, voice.labels.accent, voice.labels.gender].filter(Boolean).join(' · ');
+                    return <option key={voice.voiceId} value={voice.voiceId}>{tags ? `${voice.name} — ${tags}` : voice.name}</option>;
+                  })}
+                </select>
+                {selectedVoiceMetadata?.description && (
+                  <p className="text-xs text-[color:var(--dim)]" data-testid="text-selected-voice-description">
+                    {selectedVoiceMetadata.description}
+                  </p>
+                )}
+                {voiceCatalog.isLoading && <p className="text-xs text-[color:var(--dim)]">Carregando vozes masculinas da conta…</p>}
+                {voiceCatalog.isError && <p role="alert" className="text-xs text-[color:var(--bad)]">Não foi possível carregar as vozes da conta ElevenLabs.</p>}
+                {voiceCatalog.data && voiceOptions.length === 0 && (
+                  <p className="text-xs text-[color:var(--dim)]">
+                    {debouncedVoiceSearch
+                      ? 'Nenhuma voz masculina da conta correspondeu. A busca depende do nome e das etiquetas cadastradas na ElevenLabs.'
+                      : 'A conta não retornou vozes masculinas identificadas como português.'}
+                  </p>
+                )}
+                <p className="text-xs text-[color:var(--dim)]">
+                  A lista vem da conta ElevenLabs. Pesquise “Emanuel”, “Bahia” ou “Feira de Santana”; a região só aparece se estiver identificada nos dados da voz.
+                  Enquanto escolhida, essa voz será usada em todas as falas deste navegador. A seleção fica salva neste dispositivo e não altera a voz padrão do servidor.
+                </p>
+                <button
+                  className="pbtn w-full"
+                  onClick={() => setSelectedVoice(null)}
+                  disabled={!selectedVoice}
+                  data-testid="button-voice-default"
+                >
+                  Voltar à voz padrão
+                </button>
+              </div>
               <div className="card space-y-3">
                 <div className="mono text-[10px] uppercase tracking-widest text-[color:var(--dim)]">Motor de voz</div>
-                <div className="text-[color:var(--holo)]" data-testid="text-voice-engine">{status.data?.speechAvailable ? 'Voz neural do servidor · voz fixa' : 'Voz neural indisponível'}</div>
+                <div className="text-[color:var(--holo)]" data-testid="text-voice-engine">
+                  {selectedVoiceName
+                    ? `Voz de teste ativa · ${selectedVoiceName}`
+                    : status.data?.speechAvailable || voiceCatalog.data
+                      ? 'Voz neural do servidor · padrão atual'
+                      : 'Voz neural indisponível'}
+                </div>
                 {engine && <div className="mono text-[11px] text-[color:var(--dim)]" data-testid="text-voice-last">Última fala: {engine === 'browser' ? 'navegador' : engine}</div>}
                 <p className="text-xs text-[color:var(--dim)]">O rosto usa os recortes originais do pacote, sem vídeo em loop. A boca fica fechada quando não há áudio de resposta.</p>
                 <p className="text-xs text-[color:var(--dim)]">{engine === 'ElevenLabs' ? 'Sincronia por tempos de caracteres fornecidos pela voz.' : 'Com a voz atual, os tempos dos lábios e das palavras são estimados e seguem o relógio do áudio.'}</p>
                 <p className="text-xs text-[color:var(--dim)]">Sem troca automática para voz robótica do navegador. UEFS aparece na legenda e é pronunciada “Uéfis”.</p>
-                {!status.data?.speechAvailable && <p className="text-xs text-[color:var(--dim)]">Nenhum provedor de voz neural configurado no servidor.</p>}
+                {!status.data?.speechAvailable && !voiceCatalog.data && <p className="text-xs text-[color:var(--dim)]">Nenhum provedor de voz neural configurado no servidor.</p>}
               </div>
               <div className="flex gap-2">
                 <button className="pbtn" onClick={() => say('Olá, professor Rômulo. Esta é a minha voz.')} data-testid="button-voice-test">Testar voz</button>

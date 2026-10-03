@@ -260,10 +260,9 @@ export function createSpeechEngine(cfg: SpeechEngineConfig) {
     return voiceId;
   }
 
-  async function elevenLabs(text: string, deadline: number): Promise<ProviderAudio> {
-    const voiceId = elevenLabsVoiceId();
+  async function elevenLabs(text: string, deadline: number, voiceId = elevenLabsVoiceId()): Promise<ProviderAudio> {
     const r = await fetchImpl(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
+      `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json", "xi-api-key": cfg.elevenLabsKey(), Accept: "audio/mpeg" },
@@ -347,7 +346,13 @@ export function createSpeechEngine(cfg: SpeechEngineConfig) {
     return { audio, contentType: "audio/mpeg", model: cfg.openAiModel };
   }
 
-  async function run(f: VoiceFamily, voice: string, key: string, text: string): Promise<SpeechResult> {
+  async function run(
+    f: VoiceFamily,
+    voice: string,
+    key: string,
+    text: string,
+    voiceIdOverride?: string,
+  ): Promise<SpeechResult> {
     const fromDisk = await disk.get(key);
     if (fromDisk) {
       memory.set(key, fromDisk);
@@ -355,7 +360,7 @@ export function createSpeechEngine(cfg: SpeechEngineConfig) {
     }
     const deadline = now() + (cfg.deadlineMs ?? 70_000);
     const out = f === "gemini" ? await gemini(text, deadline)
-      : f === "elevenlabs" ? await elevenLabs(text, deadline)
+      : f === "elevenlabs" ? await elevenLabs(text, deadline, voiceIdOverride)
         : await openAi(text, deadline);
     const audio = { audio: out.audio, contentType: out.contentType };
     memory.set(key, audio);
@@ -363,16 +368,19 @@ export function createSpeechEngine(cfg: SpeechEngineConfig) {
     return { ...audio, family: f, voice, model: out.model, cache: "miss" };
   }
 
-  async function synthesize(text: string): Promise<SpeechResult> {
-    const f = family();
+  async function synthesize(text: string, voiceIdOverride?: string): Promise<SpeechResult> {
+    const requestedVoiceId = voiceIdOverride?.trim() || undefined;
+    const f = requestedVoiceId
+      ? (cfg.elevenLabsKey() ? "elevenlabs" : null)
+      : family();
     if (!f) throw new SpeechUnavailableError("no speech provider configured");
-    const voice = voiceLabel(f);
+    const voice = requestedVoiceId || voiceLabel(f);
     const key = speechCacheKey(f, voice, text);
     const hit = memory.get(key);
     if (hit) return { ...hit, family: f, voice, model: "cache", cache: "memory" };
     const pending = inflight.get(key);
     if (pending) return pending;
-    const p = run(f, voice, key, text).finally(() => inflight.delete(key));
+    const p = run(f, voice, key, text, requestedVoiceId).finally(() => inflight.delete(key));
     inflight.set(key, p);
     return p;
   }

@@ -25,6 +25,7 @@ export interface SpeakOpts {
   pitch: number;
   rate: number;
   voiceURI: string | null;
+  voiceId?: string;
   neural?: boolean;
   emotionMarks?: readonly SpeechEmotionMark[];
   onEmotion?: (emotion: SpeechEmotion) => void;
@@ -40,10 +41,9 @@ const BASE_URL = import.meta.env.BASE_URL;
 const DEFAULT_GEMINI_VOICE = 'Orus';
 const FALLBACK_CACHE_MAX_ENTRIES = 24;
 const FALLBACK_CACHE_MAX_BYTES = 10 * 1024 * 1024;
-const fallbackAudioCache = new Map<string, { audio: ArrayBuffer; size: number }>();
+const fallbackAudioCache = new Map<string, { audio: ArrayBuffer; size: number; provider: string }>();
 const fallbackRequests = new Set<AbortController>();
 let fallbackCacheBytes = 0;
-let fallbackVoice = DEFAULT_GEMINI_VOICE;
 let avatar: IcaroAvatarInstance | null = null;
 let player: IcaroSpeechInstance | null = null;
 let audioContext: AudioContext | null = null;
@@ -65,6 +65,7 @@ interface SpeechRun {
   started: boolean;
   completed: boolean;
   usedFallback: boolean;
+  fallbackProvider: string | null;
   error: Error | null;
   pendingTimeline: IcaroTimeline | null;
   pendingClock: (() => number) | null;
@@ -185,8 +186,11 @@ function revealAudioStart(run: SpeechRun) {
   if (!timeline) return;
   run.started = true;
   run.avatar.speak(timeline, clock);
-  run.options.onProvider?.(run.usedFallback ? 'Gemini Orus' : 'ElevenLabs');
-  lastProvider = run.usedFallback ? 'Gemini Orus' : 'ElevenLabs';
+  const provider = run.usedFallback
+    ? run.fallbackProvider ?? (run.options.voiceId ? 'ElevenLabs' : `Gemini ${DEFAULT_GEMINI_VOICE}`)
+    : 'ElevenLabs';
+  run.options.onProvider?.(provider);
+  lastProvider = provider;
   run.options.onStart();
 }
 
@@ -247,6 +251,7 @@ function createRunEngine(run: SpeechRun, Constructor: NonNullable<Window['IcaroS
   const engine = new Constructor({
     avatar: proxy,
     endpoint: `${BASE_URL}api/tts-ts`,
+    voiceId: run.options.voiceId,
     fallback: async (text, emotion) => {
       try {
         return await fetchGeminiAudio(run, text, emotion);
@@ -348,11 +353,13 @@ function createRunEngine(run: SpeechRun, Constructor: NonNullable<Window['IcaroS
 
 async function fetchGeminiAudio(run: SpeechRun, text: string, emotion?: SpeechEmotion): Promise<ArrayBuffer> {
   if (!isCurrent(run)) throw new DOMException('Fala cancelada.', 'AbortError');
-  const cacheKey = JSON.stringify(['clean-fallback-voice-v1', fallbackVoice, text]);
+  const cacheVoice = run.options.voiceId || 'server-default';
+  const cacheKey = JSON.stringify(['clean-fallback-voice-v2', cacheVoice, text]);
   const cached = fallbackAudioCache.get(cacheKey);
   if (cached) {
     fallbackAudioCache.delete(cacheKey);
     fallbackAudioCache.set(cacheKey, cached);
+    run.fallbackProvider = cached.provider;
     run.usedFallback = true;
     return cached.audio.slice(0);
   }
@@ -370,7 +377,11 @@ async function fetchGeminiAudio(run: SpeechRun, text: string, emotion?: SpeechEm
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       signal: controller.signal,
-      body: JSON.stringify({ text: spokenText.slice(0, 1200), emotion }),
+      body: JSON.stringify({
+        text: spokenText.slice(0, 1200),
+        emotion,
+        voice_id: run.options.voiceId || undefined,
+      }),
     });
     if (!response.ok) {
       const payload = await response.json().catch(() => null) as { code?: unknown; error?: unknown } | null;
@@ -386,17 +397,24 @@ async function fetchGeminiAudio(run: SpeechRun, text: string, emotion?: SpeechEm
           : `Voz reserva indisponível (${response.status}).`;
       throw new Error(message);
     }
-    fallbackVoice = response.headers.get('X-Speech-Voice')?.trim() || fallbackVoice;
+    const providerHeader = response.headers.get('X-Speech-Provider')?.trim().toLowerCase();
+    const voiceHeader = response.headers.get('X-Speech-Voice')?.trim();
+    const provider = providerHeader === 'elevenlabs' ? 'ElevenLabs'
+      : providerHeader === 'gemini' ? `Gemini ${voiceHeader || DEFAULT_GEMINI_VOICE}`
+        : providerHeader === 'openai' ? 'OpenAI'
+          : run.options.voiceId ? 'ElevenLabs' : `Gemini ${DEFAULT_GEMINI_VOICE}`;
     fallbackCooldownUntil = 0;
     const blob = await response.blob();
     if (!blob.size) throw new Error('A voz reserva retornou áudio vazio.');
     const audio = await blob.arrayBuffer();
     if (controller.signal.aborted || !isCurrent(run)) throw new DOMException('Fala cancelada.', 'AbortError');
+    run.fallbackProvider = provider;
     run.usedFallback = true;
-    const entry = { audio, size: blob.size };
-    const resolvedCacheKey = JSON.stringify(['clean-fallback-voice-v1', fallbackVoice, text]);
-    fallbackAudioCache.delete(resolvedCacheKey);
-    fallbackAudioCache.set(resolvedCacheKey, entry);
+    const entry = { audio, size: blob.size, provider };
+    const previousEntry = fallbackAudioCache.get(cacheKey);
+    if (previousEntry) fallbackCacheBytes -= previousEntry.size;
+    fallbackAudioCache.delete(cacheKey);
+    fallbackAudioCache.set(cacheKey, entry);
     fallbackCacheBytes += entry.size;
     while (fallbackAudioCache.size > FALLBACK_CACHE_MAX_ENTRIES || fallbackCacheBytes > FALLBACK_CACHE_MAX_BYTES) {
       const oldestKey = fallbackAudioCache.keys().next().value;
@@ -567,6 +585,7 @@ export function speak(text: string, options: SpeakOpts) {
         started: false,
         completed: false,
         usedFallback: false,
+        fallbackProvider: null,
         error: null,
         pendingTimeline: null,
         pendingClock: null,

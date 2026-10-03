@@ -25,10 +25,12 @@ import type {
   AiProviderHealth,
   AiProviderStatus,
   AiSpeechInput,
+  AiVoiceCatalog,
   AskStats,
   CerebroCandidate,
   CerebroCandidateApprovalInput,
   CosmosFeedsResponse,
+  GetAiVoicesParams,
   HealthStatus,
   TtsTimestampsInput,
   TtsTimestampsResult
@@ -304,6 +306,90 @@ export const useSpeakAiText = <TError = ErrorType<void>,
       > => {
       return useMutation(getSpeakAiTextMutationOptions(options));
     }
+
+export const getGetAiVoicesUrl = (params?: GetAiVoicesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/ai/voices?${stringifiedParams}` : `/api/ai/voices`
+}
+
+/**
+ * @summary List male Portuguese voices available in the configured ElevenLabs account
+ */
+export const getAiVoices = async (params?: GetAiVoicesParams, options?: Parameters<typeof customFetch>[1]): Promise<AiVoiceCatalog> => {
+
+  return customFetch<AiVoiceCatalog>(getGetAiVoicesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAiVoicesQueryKey = (params?: GetAiVoicesParams,) => {
+    return [
+    `/api/ai/voices`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAiVoicesQueryOptions = <TData = Awaited<ReturnType<typeof getAiVoices>>, TError = ErrorType<void>>(params?: GetAiVoicesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAiVoices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAiVoicesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAiVoices>>> = ({ signal }) => getAiVoices(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAiVoices>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAiVoicesQueryResult = NonNullable<Awaited<ReturnType<typeof getAiVoices>>>
+export type GetAiVoicesQueryError = ErrorType<void>
+
+
+/**
+ * @summary List male Portuguese voices available in the configured ElevenLabs account
+ */
+
+export function useGetAiVoices<TData = Awaited<ReturnType<typeof getAiVoices>>, TError = ErrorType<void>>(
+ params?: GetAiVoicesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAiVoices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAiVoicesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getSynthesizeTtsTimestampsUrl = () => {
 

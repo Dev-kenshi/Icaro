@@ -73,6 +73,31 @@ paths:
           description: Too many speech requests in a short period
         "503":
           description: No speech provider available or all providers failed
+  /ai/voices:
+    get:
+      operationId: getAiVoices
+      tags: [ai]
+      summary: List male Portuguese voices available in the configured ElevenLabs account
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 80
+      responses:
+        "200":
+          description: Voices available to the configured account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiVoiceCatalog"
+        "400":
+          description: Search term is invalid
+        "502":
+          description: ElevenLabs voice catalog is unavailable
+        "503":
+          description: ElevenLabs is not configured
   /tts-ts:
     post:
       operationId: synthesizeTtsTimestamps
@@ -288,6 +313,11 @@ components:
         emotion:
           type: string
           enum: [entusiasmo, sério, curioso, alerta, sorriso]
+        voice_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: "^[A-Za-z0-9_-]+$"
     TtsTimestampsInput:
       type: object
       additionalProperties: false
@@ -304,6 +334,37 @@ components:
         emotion:
           type: string
           enum: [entusiasmo, sério, curioso, alerta, sorriso]
+        voice_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: "^[A-Za-z0-9_-]+$"
+    AiVoiceCatalog:
+      type: object
+      additionalProperties: false
+      required: [voices]
+      properties:
+        voices:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiVoiceOption"
+    AiVoiceOption:
+      type: object
+      additionalProperties: false
+      required: [voiceId, name, labels]
+      properties:
+        voiceId:
+          type: string
+        name:
+          type: string
+        category:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
+        labels:
+          type: object
+          additionalProperties:
+            type: string
     TtsCharacterAlignment:
       type: object
       additionalProperties: false

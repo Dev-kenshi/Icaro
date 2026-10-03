@@ -16,4 +16,10 @@ export interface TtsTimestampsInput {
   /** @maxLength 1200 */
   previous_text?: string;
   emotion?: TtsTimestampsInputEmotion;
+  /**
+     * @minLength 1
+     * @maxLength 128
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  voice_id?: string;
 }

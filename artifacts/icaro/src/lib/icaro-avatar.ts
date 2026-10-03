@@ -22,6 +22,7 @@ export interface IcaroAvatarInstance {
 export interface IcaroSpeechOptions {
   avatar: IcaroAvatarInstance;
   endpoint: string;
+  voiceId?: string;
   fallback: (text: string, emotion?: SpeechEmotion) => Promise<ArrayBuffer>;
   onSentence: (text: string, timeline: IcaroTimeline, clock: () => number, emotion?: SpeechEmotion) => void;
   onEmotion?: (emotion: SpeechEmotion) => void;

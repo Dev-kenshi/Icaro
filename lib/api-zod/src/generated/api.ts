@@ -60,14 +60,41 @@ export const GetCosmosFeedsResponse = zod.object({
  */
 export const speakAiTextBodyTextMax = 1200;
 
+export const speakAiTextBodyVoiceIdMax = 128;
+
+
+export const speakAiTextBodyVoiceIdRegExp = new RegExp('^[A-Za-z0-9_-]+$');
 
 
 export const SpeakAiTextBody = zod.object({
   "text": zod.string().min(1).max(speakAiTextBodyTextMax),
-  "emotion": zod.enum(['entusiasmo', 'sério', 'curioso', 'alerta', 'sorriso']).optional()
+  "emotion": zod.enum(['entusiasmo', 'sério', 'curioso', 'alerta', 'sorriso']).optional(),
+  "voice_id": zod.string().min(1).max(speakAiTextBodyVoiceIdMax).regex(speakAiTextBodyVoiceIdRegExp).optional()
 })
 
 export const SpeakAiTextResponse = zod.unknown()
+
+
+/**
+ * @summary List male Portuguese voices available in the configured ElevenLabs account
+ */
+export const getAiVoicesQuerySearchMax = 80;
+
+
+
+export const GetAiVoicesQueryParams = zod.object({
+  "search": zod.coerce.string().max(getAiVoicesQuerySearchMax).optional()
+})
+
+export const GetAiVoicesResponse = zod.object({
+  "voices": zod.array(zod.object({
+  "voiceId": zod.string(),
+  "name": zod.string(),
+  "category": zod.string().nullish(),
+  "description": zod.string().nullish(),
+  "labels": zod.record(zod.string(), zod.string())
+}))
+})
 
 
 /**
@@ -77,12 +104,17 @@ export const synthesizeTtsTimestampsBodyTextMax = 600;
 
 export const synthesizeTtsTimestampsBodyPreviousTextMax = 1200;
 
+export const synthesizeTtsTimestampsBodyVoiceIdMax = 128;
+
+
+export const synthesizeTtsTimestampsBodyVoiceIdRegExp = new RegExp('^[A-Za-z0-9_-]+$');
 
 
 export const SynthesizeTtsTimestampsBody = zod.object({
   "text": zod.string().min(1).max(synthesizeTtsTimestampsBodyTextMax),
   "previous_text": zod.string().max(synthesizeTtsTimestampsBodyPreviousTextMax).optional(),
-  "emotion": zod.enum(['entusiasmo', 'sério', 'curioso', 'alerta', 'sorriso']).optional()
+  "emotion": zod.enum(['entusiasmo', 'sério', 'curioso', 'alerta', 'sorriso']).optional(),
+  "voice_id": zod.string().min(1).max(synthesizeTtsTimestampsBodyVoiceIdMax).regex(synthesizeTtsTimestampsBodyVoiceIdRegExp).optional()
 })
 
 export const SynthesizeTtsTimestampsResponse = zod.object({

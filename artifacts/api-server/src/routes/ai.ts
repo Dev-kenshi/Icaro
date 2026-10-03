@@ -3,6 +3,8 @@ import { fileURLToPath } from "node:url";
 import { Router, type IRouter } from "express";
 import {
   GetAiStatusResponse,
+  GetAiVoicesQueryParams,
+  GetAiVoicesResponse,
   SendAiMessageBody,
   SendAiMessageResponse,
   SpeakAiTextBody,
@@ -10,6 +12,11 @@ import {
 import { logger } from "../lib/logger";
 import { createSpeechEngine, DEFAULT_GEMINI_TTS_MODELS, SpeechUnavailableError } from "../lib/tts";
 import { applyTtsPronunciation } from "../lib/tts-timestamps";
+import {
+  ElevenLabsVoiceCatalogError,
+  isAccountElevenLabsVoice,
+  listAccountElevenLabsVoices,
+} from "../lib/elevenlabs-voice-catalog";
 import { normalizeAnswerText } from "../lib/answer-text";
 import { createEmotionTagStream } from "../lib/emotion-tags";
 import { createProviderRouter, isAutoProviderId } from "../lib/provider-router";
@@ -191,6 +198,36 @@ async function rewriteContextualFollowUp(
 
 let speechProviderAuthRejected = false;
 
+router.get("/ai/voices", async (req, res) => {
+  const apiKey = getElevenLabsKey();
+  if (!apiKey) {
+    res.status(503).json({ error: "A lista de vozes ElevenLabs não está configurada." });
+    return;
+  }
+
+  const rawSearch = req.query.search;
+  if (rawSearch !== undefined && typeof rawSearch !== "string") {
+    res.status(400).json({ error: "O filtro de vozes é inválido." });
+    return;
+  }
+  const parsed = GetAiVoicesQueryParams.safeParse({ search: rawSearch });
+  if (!parsed.success) {
+    res.status(400).json({ error: "O filtro de vozes é inválido." });
+    return;
+  }
+
+  try {
+    const voices = await listAccountElevenLabsVoices(apiKey, parsed.data.search || "");
+    res.json(GetAiVoicesResponse.parse({ voices }));
+  } catch (error) {
+    req.log.warn(
+      { status: error instanceof ElevenLabsVoiceCatalogError ? error.status : null },
+      "ElevenLabs voice catalog unavailable",
+    );
+    res.status(502).json({ error: "Não foi possível carregar as vozes da conta ElevenLabs." });
+  }
+});
+
 router.get("/ai/status", (_req, res) => {
   const speechConfigured = Boolean(
     (getElevenLabsKey() && getElevenLabsVoiceId()) || getGeminiKey() || getOpenAiKey(),
@@ -272,10 +309,31 @@ router.post("/ai/tts", async (req, res) => {
   }
 
   const text = parsed.data.text.trim();
+  const voiceId = parsed.data.voice_id?.trim() || undefined;
+  if (voiceId) {
+    const apiKey = getElevenLabsKey();
+    if (!apiKey) {
+      res.status(503).json({ error: "A voz de teste requer o ElevenLabs configurado no servidor." });
+      return;
+    }
+    try {
+      if (!await isAccountElevenLabsVoice(apiKey, voiceId)) {
+        res.status(400).json({ error: "A voz selecionada não está disponível na conta ElevenLabs." });
+        return;
+      }
+    } catch (error) {
+      req.log.warn(
+        { status: error instanceof ElevenLabsVoiceCatalogError ? error.status : null },
+        "Selected ElevenLabs voice could not be verified",
+      );
+      res.status(502).json({ error: "Não foi possível verificar a voz selecionada." });
+      return;
+    }
+  }
   try {
-    const spokenText = speech.family() === "gemini" ? applyTtsPronunciation(text) : text;
+    const spokenText = !voiceId && speech.family() === "gemini" ? applyTtsPronunciation(text) : text;
     // Emotion is used by the avatar UI; do not prepend directions to spoken text.
-    const result = await speech.synthesize(spokenText);
+    const result = await speech.synthesize(spokenText, voiceId);
     if (result.family === "gemini" && result.cache === "miss") speechProviderAuthRejected = false;
     res.setHeader("Content-Type", result.contentType);
     res.setHeader("X-Speech-Provider", result.family);

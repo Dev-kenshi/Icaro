@@ -23,6 +23,12 @@ export interface AiSpeechInput {
      */
   text: string;
   emotion?: AiSpeechInputEmotion;
+  /**
+     * @minLength 1
+     * @maxLength 128
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  voice_id?: string;
 }
 
 export type TtsTimestampsInputEmotion = typeof TtsTimestampsInputEmotion[keyof typeof TtsTimestampsInputEmotion];
@@ -45,6 +51,28 @@ export interface TtsTimestampsInput {
   /** @maxLength 1200 */
   previous_text?: string;
   emotion?: TtsTimestampsInputEmotion;
+  /**
+     * @minLength 1
+     * @maxLength 128
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  voice_id?: string;
+}
+
+export type AiVoiceOptionLabels = {[key: string]: string};
+
+export interface AiVoiceOption {
+  voiceId: string;
+  name: string;
+  /** @nullable */
+  category?: string | null;
+  /** @nullable */
+  description?: string | null;
+  labels: AiVoiceOptionLabels;
+}
+
+export interface AiVoiceCatalog {
+  voices: AiVoiceOption[];
 }
 
 export interface TtsCharacterAlignment {
@@ -345,4 +373,11 @@ export interface CosmosFeedsResponse {
   iss: CosmosFeedsResponseIss;
   earthquakes: CosmosEarthquake[];
 }
+
+export type GetAiVoicesParams = {
+/**
+ * @maxLength 80
+ */
+search?: string;
+};
 

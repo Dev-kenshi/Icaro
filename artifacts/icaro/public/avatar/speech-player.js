@@ -89,7 +89,12 @@
       try {
         const r = await fetch(this.o.endpoint, {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ac.signal,
-          body: JSON.stringify({ text: item.text, previous_text: item.prev || undefined, emotion: item.emotion }),
+          body: JSON.stringify({
+            text: item.text,
+            previous_text: item.prev || undefined,
+            emotion: item.emotion,
+            voice_id: this.o.voiceId || undefined,
+          }),
         });
         if (!r.ok) throw new Error('tts ' + r.status);
         const j = await r.json();
