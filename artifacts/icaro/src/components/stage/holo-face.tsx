@@ -7,8 +7,9 @@ import {
   setSpeechAvatar,
 } from '@/lib/speech';
 import type { IcaroAvatarInstance } from '@/lib/icaro-avatar';
+import type { AvatarLayout } from '@/lib/avatar-layout';
 
-export function HoloFace({ state, getLevel }: { state: HoloStageState; getLevel: () => number }) {
+export function HoloFace({ state, getLevel, layout }: { state: HoloStageState; getLevel: () => number; layout: AvatarLayout }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const avatarRef = useRef<IcaroAvatarInstance | null>(null);
@@ -51,6 +52,14 @@ export function HoloFace({ state, getLevel }: { state: HoloStageState; getLevel:
   }, [state]);
 
   useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    root.style.setProperty('--holo-offset-x', `${layout.offsetX}vw`);
+    root.style.setProperty('--holo-offset-y', `${layout.offsetY}vh`);
+    root.style.setProperty('--holo-user-scale', String(layout.scale));
+  }, [layout.offsetX, layout.offsetY, layout.scale]);
+
+  useEffect(() => {
     let raf = 0;
     let level = 0;
     const tick = () => {
@@ -73,7 +82,7 @@ export function HoloFace({ state, getLevel }: { state: HoloStageState; getLevel:
   }, []);
 
   return (
-    <div ref={rootRef} className="face" aria-hidden data-testid="holo-face">
+    <div ref={rootRef} className="face" aria-hidden data-user-hidden={layout.hidden ? 'true' : undefined} data-testid="holo-face">
       <div className="face-orb" data-testid="holo-face-orb">
         <canvas
           ref={canvasRef}

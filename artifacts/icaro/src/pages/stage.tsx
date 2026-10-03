@@ -15,6 +15,8 @@ import { Particles, Waveform } from '@/components/stage/canvases';
 import { HoloFace } from '@/components/stage/holo-face';
 import { FutureScene } from '@/components/stage/future-scene';
 import { MicSettings } from '@/components/stage/mic-settings';
+import { AvatarAdjuster } from '@/components/stage/avatar-adjuster';
+import { AVATAR_LAYOUT_STORAGE_KEY, readAvatarLayout, updateAvatarLayout, type AvatarLayoutAction } from '@/lib/avatar-layout';
 import { HOLO_MEDIA } from '@/lib/holo-state';
 import { getMicMode, micErrorMessage, recordUtterance, setMicMode, SERVER_FALLBACK_ERRORS, transcribeOnServer, type MicMode } from '@/lib/mic-config';
 import { CosmosRenderer, type CosmosScene } from '@/components/stage/cosmos/renderer';
@@ -88,6 +90,9 @@ export default function Stage() {
   const [tab, setTab] = useState<'conversa' | 'voz' | 'ferramentas' | 'conexao' | 'sobre'>('conversa');
   const [scene, setScene] = useState<CosmosScene>('galaxy');
   const [quality, setQuality] = useState<VisualQuality>(readQuality);
+  const [avatarLayout, setAvatarLayout] = useState(readAvatarLayout);
+  const [avatarControlsOpen, setAvatarControlsOpen] = useState(false);
+  const [avatarLayoutSaveError, setAvatarLayoutSaveError] = useState('');
   const [sceneVisible, setSceneVisible] = useState(false);
   const [sceneFade, setSceneFade] = useState(false);
   const [materializing, setMaterializing] = useState(false);
@@ -157,6 +162,22 @@ export default function Stage() {
   useEffect(() => {
     try { localStorage.setItem(QUALITY_KEY, quality); } catch { /* storage can be disabled */ }
   }, [quality]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(AVATAR_LAYOUT_STORAGE_KEY, JSON.stringify(avatarLayout));
+      setAvatarLayoutSaveError('');
+    } catch {
+      setAvatarLayoutSaveError('O ajuste funciona, mas não foi possível salvá-lo neste dispositivo.');
+    }
+  }, [avatarLayout]);
+  useEffect(() => {
+    if (!avatarControlsOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setAvatarControlsOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [avatarControlsOpen]);
   useEffect(() => () => {
     void ambientRef.current?.close().catch(() => undefined);
     ambientRef.current = null;
@@ -229,6 +250,9 @@ export default function Stage() {
   const endIntro = () => { introRef.current?.pause(); setState(activeRef.current ? 'listening' : 'idle'); setCaption(''); setCaptionWords(null); commandCompleteRef.current(); };
 
   const fullscreen = () => { const el = stageRef.current; if (!el) return; if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined); else el.requestFullscreen?.().catch(() => undefined); };
+  const adjustAvatar = (action: AvatarLayoutAction) => {
+    setAvatarLayout((current) => updateAvatarLayout(current, action));
+  };
 
   const handle = useCallback((raw: string) => {
     const q = raw.trim().slice(0, 4000); if (!q) return;
@@ -716,7 +740,7 @@ export default function Stage() {
       <NeuralWeb state={state} scene={scene} emotion={emotion} longListening={longListening} thoughtTitle={state === 'thinking' ? 'SÍNTESE EM CURSO' : ''} />
       <FutureScene />
       <Particles />
-      <HoloFace state={state} getLevel={getLevel} />
+      <HoloFace state={state} getLevel={getLevel} layout={avatarLayout} />
       <video ref={introRef} className="intro" src={media('intro.mp4')} playsInline onEnded={endIntro} style={{ opacity: state === 'intro' ? 1 : 0, pointerEvents: 'none' }} data-testid="video-intro" />
       <div className="scan" /><div className="vig" />
       <Waveform energy={energy} analyser={state === 'talking' ? getAnalyser() : null} />
@@ -805,6 +829,13 @@ export default function Stage() {
         <MicSettings mode={micMode} onMode={chooseMicMode} usingServer={useServerMic} busy={micTestActive} onTestStart={beginMicTest} onTestEnd={endMicTest} />
       </StageHelp>
 
+      <AvatarAdjuster
+        layout={avatarLayout}
+        open={avatarControlsOpen}
+        saveError={avatarLayoutSaveError}
+        onOpenChange={setAvatarControlsOpen}
+        onAction={adjustAvatar}
+      />
       <button className="menu hbtn disp text-lg" onClick={() => setPanel(true)} aria-label="Abrir painel" data-testid="button-open-panel"><Menu size={18} /></button>
       {state === 'intro' && <button className="hbtn absolute right-4 top-16 z-[6] text-xs" onClick={endIntro} data-testid="button-stop-intro"><X size={14} className="mr-1 inline" />Encerrar apresentação</button>}
 
