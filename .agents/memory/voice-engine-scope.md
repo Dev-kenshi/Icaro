@@ -13,4 +13,4 @@ For ElevenLabs comparisons, use voices already available in the user's account. 
 
 **Why:** The user chose account-owned voices for testing, requested male Brazilian Portuguese options with Bahia/Feira de Santana and Emanuel matches, and asked to preserve the current default. No public search result verified a specifically Bahian or Feira de Santana voice.
 
-**How to apply:** Load account voices server-side without exposing the API key and validate any test voice ID against that account. Keep the selected test voice local to the browser; when no test voice is selected, use the configured server default. If no account voice matches, ask before sourcing or adding a public/shared voice.
+**How to apply:** Load account voices server-side without exposing the API key and validate any test voice ID against that account. Keep the selected test voice local to the browser; when no test voice is selected, use the configured server default. If no account voice matches, ask before sourcing or adding a public/shared voice. Do not restore sample-archive voice cloning without an explicit request.
