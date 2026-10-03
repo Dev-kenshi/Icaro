@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import express, { type Express } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -40,5 +43,27 @@ app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
+
+// Fora do Replit (ex.: Render) o mesmo processo serve o frontend buildado.
+const staticDir =
+  process.env.STATIC_DIR ||
+  path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../icaro/dist/public");
+if (fs.existsSync(path.join(staticDir, "index.html"))) {
+  app.use(
+    express.static(staticDir, {
+      index: false,
+      setHeaders: (res, file) => {
+        res.setHeader(
+          "Cache-Control",
+          file.includes(`${path.sep}assets${path.sep}`) ? "public, max-age=31536000, immutable" : "no-cache",
+        );
+      },
+    }),
+  );
+  app.get(/^\/(?!api(\/|$)).*/, (_req, res) => {
+    res.setHeader("Cache-Control", "no-cache");
+    res.sendFile(path.join(staticDir, "index.html"));
+  });
+}
 
 export default app;

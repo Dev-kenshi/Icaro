@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: icaro
+    runtime: node
+    plan: free
+    region: oregon
+    branch: main
+    buildCommand: >-
+      corepack enable &&
+      corepack prepare pnpm@10.18.0 --activate &&
+      pnpm install --frozen-lockfile --prod=false &&
+      PORT=10000 BASE_PATH=/ pnpm --filter @workspace/icaro run build &&
+      pnpm --filter @workspace/api-server run build
+    startCommand: node --enable-source-maps artifacts/api-server/dist/index.mjs
+    healthCheckPath: /api/healthz
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ICARO_ADMIN_CODE
+        sync: false
+      - key: ICARO_USER1_CODE
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: ELEVENLABS_VOICE_ID
+        sync: false
