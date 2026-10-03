@@ -98,14 +98,14 @@ export async function listAccountElevenLabsVoices(
     let hasMore = true;
 
     for (let pageNumber = 0; hasMore && pageNumber < MAX_PAGES; pageNumber += 1) {
-      const url = new URL("https://api.elevenlabs.io/v1/voices/search");
+      const url = new URL("https://api.elevenlabs.io/v2/voices");
       url.searchParams.set("page_size", String(PAGE_SIZE));
       url.searchParams.set("include_total_count", "false");
       url.searchParams.set("gender", "male");
       if (key) {
         url.searchParams.set("search", search.trim());
       } else {
-        url.searchParams.append("language", "Portuguese");
+        url.searchParams.append("language", "pt");
       }
       if (nextPageToken) url.searchParams.set("next_page_token", nextPageToken);
 
@@ -150,7 +150,7 @@ export async function isAccountElevenLabsVoice(
   const cached = voiceValidationCache.get(voiceId);
   if (cached && cached.expiresAt > Date.now()) return cached.available;
 
-  const url = new URL("https://api.elevenlabs.io/v1/voices/search");
+  const url = new URL("https://api.elevenlabs.io/v2/voices");
   url.searchParams.set("page_size", "100");
   url.searchParams.set("include_total_count", "false");
   url.searchParams.append("voice_ids", voiceId);
