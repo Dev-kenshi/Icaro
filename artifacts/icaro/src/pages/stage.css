@@ -11,6 +11,39 @@
   -webkit-mask-image:linear-gradient(to bottom,transparent 0%,#000 14%,#000 72%,transparent 100%); mask-image:linear-gradient(to bottom,transparent 0%,#000 14%,#000 72%,transparent 100%); animation:none; }
 .stage .face { z-index:4; }
 .stage .face[data-user-hidden="true"] { display:none; }
+
+/* Retrato holográfico realista (avatar "portrait") */
+.face--portrait { mix-blend-mode:screen; -webkit-mask-image:none; mask-image:none; }
+.holo-portrait { position:relative; width:100%; height:100%; }
+.holo-portrait__img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; object-position:50% 100%; user-select:none; filter:brightness(var(--holo-bright,1)) saturate(var(--holo-sat,1)) drop-shadow(0 0 26px #2f9fff55); }
+.holo-portrait__jaw {
+  /* Duplicata mascarada na região da boca: reage ao nível real da voz. */
+  -webkit-mask-image:radial-gradient(ellipse 13% 7% at 50% 55%, #000 55%, transparent 100%);
+  mask-image:radial-gradient(ellipse 13% 7% at 50% 55%, #000 55%, transparent 100%);
+  transform:translateY(calc(var(--talk,0) * 7px)) scaleY(calc(1 + var(--talk,0) * .18));
+  transform-origin:50% 55%;
+}
+.holo-portrait__scan { position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(0deg,#bfe9ff14 0 1px,transparent 1px 4px); mix-blend-mode:overlay; }
+.holo-portrait__sweep { position:absolute; inset:0; pointer-events:none; opacity:.3; background:linear-gradient(180deg,transparent 0%,rgba(140,225,255,.22) 50%,transparent 100%) no-repeat; background-size:100% 24%; animation:holo-sweep 5.2s linear infinite; }
+.holo-portrait__projector { position:absolute; left:50%; bottom:-2%; width:46%; height:12%; translate:-50% 0; pointer-events:none; background:radial-gradient(ellipse at 50% 100%, #5fd8ff3d 0%, transparent 70%); filter:blur(10px); }
+.stage[data-state="thinking"] .holo-portrait__img { animation:holo-think 1.6s ease-in-out infinite; }
+.stage[data-state="listening"] .holo-portrait__sweep { opacity:.5; animation-duration:3.4s; }
+
+/* Elementos móveis da interface */
+.stage [data-chrome-id] { translate:var(--chrome-x,0px) var(--chrome-y,0px); }
+.stage[data-layout-editing="true"] [data-chrome-id] { outline:1.5px dashed #5fd8ff99; outline-offset:6px; cursor:grab; touch-action:none; }
+.stage[data-layout-editing="true"] [data-chrome-id][data-dragging] { outline-style:solid; outline-color:#a6ffdc; cursor:grabbing; filter:brightness(1.12); }
+.layout-banner { position:absolute; z-index:14; top:max(58px,calc(env(safe-area-inset-top) + 52px)); left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:10px; padding:8px 12px; border:1px solid #5fd8ff66; border-radius:12px; background:#04111bf2; color:#cfeef6; font:10px/1 'IBM Plex Mono',monospace; letter-spacing:.05em; box-shadow:0 12px 36px #000a; backdrop-filter:blur(14px); }
+.layout-banner .hbtn { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; font-size:10px; }
+
+/* Seletor de avatar */
+.avatar-adjuster__choices { display:grid; gap:6px; margin:12px 0 4px; }
+.avatar-adjuster__choice { display:grid; gap:3px; padding:9px 11px; border:1px solid #315869; border-radius:9px; background:#0a2230; color:#d9eff3; text-align:left; transition:border-color .18s, background .18s; }
+.avatar-adjuster__choice strong { font:10px/1.2 'IBM Plex Mono',monospace; letter-spacing:.06em; color:#bffbf2; }
+.avatar-adjuster__choice span { font-size:9px; line-height:1.35; color:#8caeb7; }
+.avatar-adjuster__choice:hover { border-color:#79dfeb; background:#123547; }
+.avatar-adjuster__choice[data-active] { border-color:#a6ffdc; background:#0f3a35; box-shadow:inset 0 0 0 1px #a6ffdc66; }
+.avatar-adjuster__choice[data-active] strong { color:#a6ffdc; }
 .avatar-adjuster-trigger { position:absolute; z-index:8; top:62px; right:18px; display:inline-flex; align-items:center; gap:7px; min-height:36px; padding:7px 10px; background:#041521e8; backdrop-filter:blur(12px); font:9px/1 'IBM Plex Mono',monospace; letter-spacing:.05em; }
 .avatar-adjuster { position:absolute; z-index:12; top:106px; right:18px; width:min(244px,calc(100vw - 24px)); padding:13px; border:1px solid #5bb8c77a; border-radius:12px; background:#06131eed; box-shadow:0 16px 48px #000b; color:#d9eff3; backdrop-filter:blur(18px); }
 .avatar-adjuster[hidden] { display:none; }
@@ -566,7 +599,7 @@
   .cosmos-panel__label { font-size: 6px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .neural-web svg path, .neural-pulse, .glyph-ring, .neural-spore, .feed-skeleton i, .materialize__point, .materialize__galaxy, .materialize__earth, .materialize__neural, .materialize__face-scan, .materialize__online, .materialize__mark, .materialize__progress i, .cosmos-panel__drift { animation: none !important; }
+  .neural-web svg path, .neural-pulse, .glyph-ring, .neural-spore, .feed-skeleton i, .materialize__point, .materialize__galaxy, .materialize__earth, .materialize__neural, .materialize__face-scan, .materialize__online, .materialize__mark, .materialize__progress i, .cosmos-panel__drift, .holo-portrait__sweep, .holo-portrait__img { animation: none !important; }
   .scene-fade { transition: opacity .3s ease; }
   .materialize { animation: materialize-out .2s ease .2s forwards; }
   .materialize__online { opacity: 1; }

@@ -11,6 +11,8 @@ Keep the existing ElevenLabs/Gemini server voice as the default. Do not implemen
 
 For ElevenLabs comparisons, use voices already available in the user's account. Keep the configured server voice as the default; a test selection must not change it. Do not add public/shared voices or clone a voice without explicit approval.
 
+On 2026-10-03 the user explicitly approved creating Bahian voices: three voices were generated via ElevenLabs Voice Design and saved to the account — "Ícaro Feirense" (JlYs4qdBzi5jzOE0Gjfb), "Ícaro Baiano" (ntAcoGbGmpII56LqvnGW), "Ícaro Sertanejo" (DSSVvkCuwh3B8y9FGwyc). They are selectable in the stage voice picker, NOT the server default.
+
 **Why:** The user chose account-owned voices for testing, requested male Brazilian Portuguese options with Bahia/Feira de Santana and Emanuel matches, and asked to preserve the current default. No public search result verified a specifically Bahian or Feira de Santana voice.
 
 **How to apply:** Load account voices server-side without exposing the API key and validate any test voice ID against that account. Keep the selected test voice local to the browser; when no test voice is selected, use the configured server default. If no account voice matches, ask before sourcing or adding a public/shared voice. Do not restore sample-archive voice cloning without an explicit request.

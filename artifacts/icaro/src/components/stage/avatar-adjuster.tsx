@@ -12,11 +12,14 @@ import {
   X,
 } from 'lucide-react';
 import type { AvatarLayout, AvatarLayoutAction } from '@/lib/avatar-layout';
+import { AVATARS, type AvatarDefinition } from '@/lib/avatars';
 
 interface AvatarAdjusterProps {
   layout: AvatarLayout;
   open: boolean;
   saveError: string;
+  avatarId: string;
+  onSelectAvatar: (id: string) => void;
   onOpenChange: (open: boolean) => void;
   onAction: (action: AvatarLayoutAction) => void;
 }
@@ -25,6 +28,8 @@ export function AvatarAdjuster({
   layout,
   open,
   saveError,
+  avatarId,
+  onSelectAvatar,
   onOpenChange,
   onAction,
 }: AvatarAdjusterProps) {
@@ -62,6 +67,24 @@ export function AvatarAdjuster({
           >
             <X size={15} />
           </button>
+        </div>
+
+        <div className="avatar-adjuster__choices" role="radiogroup" aria-label="Escolher avatar do Ícaro">
+          {AVATARS.map((avatar: AvatarDefinition) => (
+            <button
+              key={avatar.id}
+              type="button"
+              role="radio"
+              aria-checked={avatarId === avatar.id}
+              className="avatar-adjuster__choice"
+              data-active={avatarId === avatar.id || undefined}
+              onClick={() => onSelectAvatar(avatar.id)}
+              data-testid={`button-avatar-choice-${avatar.id}`}
+            >
+              <strong>{avatar.label}</strong>
+              <span>{avatar.description}</span>
+            </button>
+          ))}
         </div>
 
         <div className="avatar-adjuster__pad" role="group" aria-label="Mover o rosto do Ícaro">

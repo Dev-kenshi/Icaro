@@ -22,7 +22,7 @@ check("Palco usa IcaroAvatar em canvas e não depende de vídeos faciais", () =>
   assert.match(face, /<canvas[\s\S]*?data-testid="holo-face-canvas"/);
   assert.match(face, /createHoloAvatar\(canvas\)/);
   assert.match(speech, /new Constructor\(canvas, \{ assets: avatarAssetsUrl\(\) \}\)/);
-  assert.match(stage, /<HoloFace state=\{state\} getLevel=\{getLevel\} \/>/);
+  assert.match(stage, /<HoloFace\s+state=\{state\}\s+getLevel=\{getLevel\}[^>]*\/>/);
   assert.doesNotMatch(face, /<video\b/i);
   assert.doesNotMatch(stage, /holo-talk\.mp4|holo-boot\.mp4|holo-idle\.jpg/i);
   assert.match(stage, /src=\{media\('intro\.mp4'\)\}/);

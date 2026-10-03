@@ -14,3 +14,59 @@ mtime_ms = 1790808057508
 storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:c3e2d7b8-918b-46b2-b84c-6f83c6c77c98/dc70c2c6-12f7-406c-8624-87a0c7f718a2/2722728e-0e42-4baa-82b1-8f7dc8ceae85"
 storage_version_token = "1790808058323682"
 content_type = "text/html"
+
+[[outputs]]
+id = "Qmge5HllexpW9F7SCG6rU"
+uri = "file://attached_assets/vozes-feirense/tts-feirense.mp3"
+type = "audio"
+title = "Amostra 1 · Ícaro Feirense"
+description = "Voz masculina com sotaque de Feira de Santana, gerada na sua conta ElevenLabs."
+logical_id = "22abc175-50f1-426e-9f74-3f2e5bfa4c08"
+content_hash = "sha256:354a90398ddc465a85129b158ef7bd64258eb4a1ff6c3482ca575c44f39b030d"
+size = 183110
+mtime_ms = 1791070251102
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:c3e2d7b8-918b-46b2-b84c-6f83c6c77c98/22abc175-50f1-426e-9f74-3f2e5bfa4c08/d9d6ac46-0527-49d8-b058-b48093b9e8fd"
+storage_version_token = "1791070267487649"
+content_type = "audio/mpeg"
+
+[[outputs]]
+id = "GSMpfi1HRSVmjg2OfHvhj"
+uri = "file://attached_assets/vozes-feirense/tts-baiano.mp3"
+type = "audio"
+title = "Amostra 2 · Ícaro Baiano"
+description = "Voz masculina baiana, ritmo musical e acolhedor."
+logical_id = "c3fe17b6-774a-46cb-b7ba-a48fe032ded9"
+content_hash = "sha256:11f26e722f814619320470dbceb0bcf2db3b36f6a4c1302431382eb4140fcb6d"
+size = 121252
+mtime_ms = 1791070252634
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:c3e2d7b8-918b-46b2-b84c-6f83c6c77c98/c3fe17b6-774a-46cb-b7ba-a48fe032ded9/23ee6938-1384-4c1c-a14a-331404092db7"
+storage_version_token = "1791070268223933"
+content_type = "audio/mpeg"
+
+[[outputs]]
+id = "a8s5twKyMJIwXM0plj9Zk"
+uri = "file://attached_assets/vozes-feirense/tts-sertanejo.mp3"
+type = "audio"
+title = "Amostra 3 · Ícaro Sertanejo"
+description = "Voz masculina do interior da Bahia, grave e tranquila."
+logical_id = "81f3fa20-4842-43f3-b71d-bc932184dc2a"
+content_hash = "sha256:926dc657b9c71562915d3093421aaed2c4dc9adc7254d38d5c520aefab0c3f07"
+size = 168063
+mtime_ms = 1791070254406
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:c3e2d7b8-918b-46b2-b84c-6f83c6c77c98/81f3fa20-4842-43f3-b71d-bc932184dc2a/04c1c6e8-56a7-4caf-b637-b9318ca01960"
+storage_version_token = "1791070268960466"
+content_type = "audio/mpeg"
+
+[[outputs]]
+id = "Bmn74mY2_YbAZvM8tdtEm"
+uri = "file://artifacts/icaro/public/avatars/feirense.png"
+type = "image"
+title = "Novo avatar · Ícaro Feirense"
+description = "Holograma realista inspirado na foto: homem de Feira de Santana com chapéu de cangaceiro, em projeção azul com scanlines. Fundo transparente, pronto para o palco."
+logical_id = "2941864f-989f-4508-8812-7768c72fec24"
+content_hash = "sha256:2d96ed04fc03624bfaa5659fb77dc2bd3c233be9a8ecb1ab094ed9774ffbcc10"
+size = 2329296
+mtime_ms = 1791070331781
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:c3e2d7b8-918b-46b2-b84c-6f83c6c77c98/2941864f-989f-4508-8812-7768c72fec24/24653782-4658-4c55-b271-0622bf86f0a0"
+storage_version_token = "1791070792508728"
+content_type = "image/png"
