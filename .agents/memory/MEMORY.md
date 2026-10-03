@@ -13,3 +13,4 @@
 - [Groq response resilience](groq-response-resilience.md) — retry malformed responses once; preserve text spacing and never log provider content.
 - [Cosmos public assets](cosmos-public-assets.md) — NASA GIBS maps work cross-origin; Solar System Scope can return CAPTCHA challenges, so keep procedural texture fallbacks.
 - [Vendor avatar integrity](avatar-vendor-integrity.md) — preserve packaged face and speech assets unless a specific expression or voice change is explicitly requested.
+- [Voice engine scope](voice-engine-scope.md) — keep ElevenLabs/Gemini as default; offer Kokoro optionally and defer Piper comparison until Piper exists.
