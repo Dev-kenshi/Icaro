@@ -124,6 +124,52 @@ paths:
           description: AI provider request failed
         "503":
           description: Requested AI provider is not configured
+  /ai/chat/stream:
+    post:
+      operationId: streamAiMessage
+      tags: [ai]
+      summary: Stream an automatically routed AI response
+      description: Emits Server-Sent Events. Automatic mode uses only configured providers and never switches after answer text has been emitted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiChatInput"
+      responses:
+        "200":
+          description: Provider metadata and incremental answer tokens
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "400":
+          description: Invalid request or streaming requires automatic provider mode
+        "429":
+          description: Too many questions in a short period
+        "502":
+          description: All configured providers failed before returning text
+        "503":
+          description: No automatic provider is configured
+  /ia/saude:
+    get:
+      operationId: getAiProviderHealth
+      tags: [ai]
+      summary: Get detailed provider health for administrators
+      description: Requires an administrator session. Never returns credentials or prompts.
+      responses:
+        "200":
+          description: Provider availability, latency, cooldown, and model health
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AiProviderHealth"
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role required
 components:
   schemas:
     AiSpeechInput:
@@ -207,12 +253,46 @@ components:
         speechAvailable:
           type: boolean
           description: Whether at least one server-side speech (TTS) provider is configured
+        providers:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiProviderHealth"
       required:
         - geminiAvailable
         - openaiAvailable
         - groqAvailable
         - claudeAvailable
         - speechAvailable
+        - providers
+    AiProviderHealth:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          enum: [groq, gemini, cerebras, openrouter, mistral, github, nvidia, cloudflare, huggingface, cohere, openai, claude]
+        name:
+          type: string
+        configured:
+          type: boolean
+        available:
+          type: boolean
+        state:
+          type: string
+          enum: [not_configured, ready, cooldown, model_unavailable, auth_error, degraded]
+        model:
+          type: string
+        privacyNote:
+          type: string
+        averageFirstTokenMs:
+          oneOf:
+            - type: integer
+            - type: "null"
+        errorRate:
+          type: number
+        cooldownMs:
+          type: integer
+      required: [id, name, configured, available, state, model, privacyNote, averageFirstTokenMs, errorRate, cooldownMs]
     AiChatHistoryMessage:
       type: object
       properties:
@@ -258,7 +338,10 @@ components:
       properties:
         provider:
           type: string
-          enum: [gemini, openai, groq, claude]
+          enum: [auto, gemini, openai, groq, claude, cerebras, openrouter, mistral, github, nvidia, cloudflare, huggingface, cohere]
+        mode:
+          type: string
+          enum: [fast, deep]
         persona:
           type: string
           enum: [analyst, icaro]
@@ -288,7 +371,7 @@ components:
           type: string
         provider:
           type: string
-          enum: [gemini, openai, groq, claude, local]
+          enum: [auto, gemini, openai, groq, claude, cerebras, openrouter, mistral, github, nvidia, cloudflare, huggingface, cohere, local]
         model:
           type: string
       required:
