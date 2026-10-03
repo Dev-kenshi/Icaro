@@ -263,17 +263,8 @@ router.post("/ai/tts", async (req, res) => {
   const text = parsed.data.text.trim();
   try {
     const spokenText = speech.family() === "gemini" ? applyTtsPronunciation(text) : text;
-    const emotionPrefix: Record<string, string> = {
-      entusiasmo: "Diga com entusiasmo",
-      sério: "Diga com seriedade",
-      curioso: "Diga com curiosidade",
-      alerta: "Diga com atenção e firmeza",
-      sorriso: "Diga com um sorriso na voz",
-    };
-    const speechText = speech.family() === "gemini" && parsed.data.emotion
-      ? `${emotionPrefix[parsed.data.emotion]}: ${spokenText}`
-      : spokenText;
-    const result = await speech.synthesize(speechText);
+    // Emotion is used by the avatar UI; do not prepend directions to spoken text.
+    const result = await speech.synthesize(spokenText);
     if (result.family === "gemini" && result.cache === "miss") speechProviderAuthRejected = false;
     res.setHeader("Content-Type", result.contentType);
     res.setHeader("X-Speech-Provider", result.family);

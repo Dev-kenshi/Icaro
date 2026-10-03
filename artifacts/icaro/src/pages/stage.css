@@ -310,11 +310,17 @@
 
 /* P7: the portrait remains the focal plane; every new signal stays on the perimeter. */
 .stage .cosmos-viewport {
-  position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
+  position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: auto;
   background: radial-gradient(ellipse at 50% 38%, #0b3146 0%, #061722 42%, #01070e 100%);
   opacity: .82;
 }
-.cosmos-webgl, .cosmos-static { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.cosmos-webgl, .cosmos-static { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+.cosmos-webgl:active, .cosmos-static:active { cursor: grabbing; }
+.cosmos-navigation { position: absolute; z-index: 7; right: 20px; bottom: calc(var(--dock-height, 220px) + 22px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 11px; pointer-events: auto; }
+.cosmos-navigation__hint { color: #b6d5dd; font: 8px/1.3 'IBM Plex Mono', monospace; letter-spacing: .04em; text-align: right; text-shadow: 0 1px 8px #00101a; }
+.cosmos-navigation__buttons { display: flex; align-items: center; gap: 4px; padding: 4px; border: 1px solid #6aa2ad70; border-radius: 4px; background: #041521e8; box-shadow: 0 8px 24px #00101a7a; backdrop-filter: blur(12px); }
+.cosmos-navigation__buttons button { display: grid; width: 31px; height: 31px; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 3px; background: transparent; color: #c8f4f2; cursor: pointer; }
+.cosmos-navigation__buttons button:hover, .cosmos-navigation__buttons button:focus-visible { border-color: #85dcd3a6; background: #15404b; outline: none; }
 .stage .future-scene { background: transparent; opacity: .30; }
 .stage .future-scene__glow { background: radial-gradient(ellipse at 50% 46%, #12506d32, transparent 59%); }
 .scene-fade { position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at 50% 42%, #03101bd9 0%, #03101b62 45%, transparent 72%); transition: opacity .42s ease; }

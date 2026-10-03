@@ -348,7 +348,7 @@ function createRunEngine(run: SpeechRun, Constructor: NonNullable<Window['IcaroS
 
 async function fetchGeminiAudio(run: SpeechRun, text: string, emotion?: SpeechEmotion): Promise<ArrayBuffer> {
   if (!isCurrent(run)) throw new DOMException('Fala cancelada.', 'AbortError');
-  const cacheKey = JSON.stringify([fallbackVoice, text, emotion ?? null]);
+  const cacheKey = JSON.stringify(['clean-fallback-voice-v1', fallbackVoice, text]);
   const cached = fallbackAudioCache.get(cacheKey);
   if (cached) {
     fallbackAudioCache.delete(cacheKey);
@@ -394,7 +394,7 @@ async function fetchGeminiAudio(run: SpeechRun, text: string, emotion?: SpeechEm
     if (controller.signal.aborted || !isCurrent(run)) throw new DOMException('Fala cancelada.', 'AbortError');
     run.usedFallback = true;
     const entry = { audio, size: blob.size };
-    const resolvedCacheKey = JSON.stringify([fallbackVoice, text, emotion ?? null]);
+    const resolvedCacheKey = JSON.stringify(['clean-fallback-voice-v1', fallbackVoice, text]);
     fallbackAudioCache.delete(resolvedCacheKey);
     fallbackAudioCache.set(resolvedCacheKey, entry);
     fallbackCacheBytes += entry.size;

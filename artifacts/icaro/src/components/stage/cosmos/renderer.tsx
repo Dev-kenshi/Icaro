@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Minus, Plus, RotateCcw } from 'lucide-react';
 import type { CosmosFeedsResponse } from '@workspace/api-client-react';
 import {
   createCloudMaskTexture,
@@ -47,6 +48,12 @@ type Props = {
   getAudioLevel: () => number;
   onFps?: (fps: number) => void;
   onAssetsStatus?: (status: string) => void;
+};
+
+type NavigationApi = {
+  zoomIn: () => void;
+  zoomOut: () => void;
+  reset: () => void;
 };
 
 const EARTH_RADIUS = 3.2;
@@ -254,6 +261,7 @@ export function CosmosRenderer({
   onAssetsStatus,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const navigationRef = useRef<NavigationApi | null>(null);
   const [mobileViewport, setMobileViewport] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
   const sceneRef = useRef(scene);
   const qualityRef = useRef(quality);
@@ -292,6 +300,7 @@ export function CosmosRenderer({
     let renderer: RendererLike | null = null;
     let resizeObserver: ResizeObserver | null = null;
     let cleanup: (() => void) | undefined;
+    let controlsCleanup: (() => void) | null = null;
     let composer: { render: () => void; setSize: (width: number, height: number) => void; dispose?: () => void } | null = null;
     let bloomPass: { enabled: boolean } | null = null;
     let frameDuration = 0;
@@ -301,7 +310,7 @@ export function CosmosRenderer({
     let lastFrameAt = 0;
     let fpsWindowStart = 0;
     let fpsFrames = 0;
-    let autoQuality: 'high' | 'medium' | 'low' = 'high';
+    let autoQuality: 'high' | 'medium' | 'low' = mobileViewport ? 'medium' : 'high';
     let solarTexturesStarted = false;
     let earthTexturesStarted = false;
     const assetStatus: Record<AssetKind, string> = {
@@ -309,12 +318,97 @@ export function CosmosRenderer({
       solar: 'Solar System Scope aguardando',
     };
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const staticMode = mobileViewport || qualityRef.current === 'low' || reduced;
-    const pointer = { x: 0, y: 0 };
+    const staticMode = qualityRef.current === 'low' || reduced;
+    const staticNavigation = { zoom: 1, x: 0, y: 0 };
+    const staticDrag = { pointerId: -1, lastX: 0, lastY: 0 };
+    const staticPointers = new Map<number, { x: number; y: number }>();
+    const staticPinch = { startDistance: 0, startZoom: 1 };
     const reportAsset = (kind: AssetKind, value: string) => {
       assetStatus[kind] = value;
       assetsCallbackRef.current?.(`${assetStatus.earth} · ${assetStatus.solar}`);
     };
+    const applyStaticTransform = () => {
+      const canvas = host.querySelector<HTMLCanvasElement>('.cosmos-static');
+      if (!canvas) return;
+      canvas.style.transformOrigin = 'center center';
+      canvas.style.transform = `translate3d(${staticNavigation.x}px,${staticNavigation.y}px,0) scale(${staticNavigation.zoom})`;
+    };
+    const zoomStatic = (factor: number) => {
+      staticNavigation.zoom = Math.max(.7, Math.min(4, staticNavigation.zoom * factor));
+      applyStaticTransform();
+    };
+    const resetStatic = () => {
+      staticNavigation.zoom = 1;
+      staticNavigation.x = 0;
+      staticNavigation.y = 0;
+      applyStaticTransform();
+    };
+    const staticNavigationApi: NavigationApi = {
+      zoomIn: () => zoomStatic(1.25),
+      zoomOut: () => zoomStatic(.8),
+      reset: resetStatic,
+    };
+    const pointerDistance = (points: { x: number; y: number }[]) => points.length < 2
+      ? 0
+      : Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+    const onStaticPointerDown = (event: PointerEvent) => {
+      if (!(event.target instanceof HTMLCanvasElement) || !event.target.classList.contains('cosmos-static')) return;
+      if (event.pointerType === 'mouse' && event.button !== 0) return;
+      staticPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (staticPointers.size === 1) {
+        staticDrag.pointerId = event.pointerId;
+        staticDrag.lastX = event.clientX;
+        staticDrag.lastY = event.clientY;
+      } else if (staticPointers.size >= 2) {
+        staticDrag.pointerId = -1;
+        staticPinch.startDistance = pointerDistance(Array.from(staticPointers.values()).slice(0, 2));
+        staticPinch.startZoom = staticNavigation.zoom;
+      }
+      host.setPointerCapture(event.pointerId);
+    };
+    const onStaticPointerMove = (event: PointerEvent) => {
+      if (!staticPointers.has(event.pointerId)) return;
+      staticPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (staticPointers.size >= 2 && staticPinch.startDistance > 0) {
+        const distance = pointerDistance(Array.from(staticPointers.values()).slice(0, 2));
+        staticNavigation.zoom = Math.max(.7, Math.min(4, staticPinch.startZoom * distance / staticPinch.startDistance));
+        applyStaticTransform();
+      } else if (event.pointerId === staticDrag.pointerId) {
+        staticNavigation.x += event.clientX - staticDrag.lastX;
+        staticNavigation.y += event.clientY - staticDrag.lastY;
+        staticDrag.lastX = event.clientX;
+        staticDrag.lastY = event.clientY;
+        applyStaticTransform();
+      }
+    };
+    const onStaticPointerUp = (event: PointerEvent) => {
+      staticPointers.delete(event.pointerId);
+      if (host.hasPointerCapture(event.pointerId)) host.releasePointerCapture(event.pointerId);
+      if (staticPointers.size >= 2) {
+        staticPinch.startDistance = pointerDistance(Array.from(staticPointers.values()).slice(0, 2));
+        staticPinch.startZoom = staticNavigation.zoom;
+        staticDrag.pointerId = -1;
+      } else if (staticPointers.size === 1) {
+        const [pointerId, point] = Array.from(staticPointers.entries())[0];
+        staticDrag.pointerId = pointerId;
+        staticDrag.lastX = point.x;
+        staticDrag.lastY = point.y;
+        staticPinch.startDistance = 0;
+      } else {
+        staticDrag.pointerId = -1;
+        staticPinch.startDistance = 0;
+      }
+    };
+    const onStaticWheel = (event: WheelEvent) => {
+      if (!(event.target instanceof HTMLCanvasElement) || !event.target.classList.contains('cosmos-static')) return;
+      event.preventDefault();
+      zoomStatic(Math.exp(-event.deltaY * .001));
+    };
+    host.addEventListener('pointerdown', onStaticPointerDown);
+    host.addEventListener('pointermove', onStaticPointerMove);
+    host.addEventListener('pointerup', onStaticPointerUp);
+    host.addEventListener('pointercancel', onStaticPointerUp);
+    host.addEventListener('wheel', onStaticWheel, { passive: false });
 
     const requestStaticEarthImages = () => {
       if (staticEarthStartedRef.current) return;
@@ -544,21 +638,9 @@ export function CosmosRenderer({
         context.fillStyle = pulse > .65 ? `rgba(255,244,218,${pulse})` : `rgba(157,235,255,${pulse})`;
         context.beginPath(); context.arc(node.x, node.y, pulse > .65 ? 1.8 : .85, 0, Math.PI * 2); context.fill();
       });
+      applyStaticTransform();
       return () => canvas.remove();
     };
-
-    const onPointerMove = (event: PointerEvent) => {
-      if (reduced) return;
-      const rect = host.getBoundingClientRect();
-      if (!rect.width || !rect.height) return;
-      pointer.x = (event.clientX - rect.left) / rect.width * 2 - 1;
-      pointer.y = (event.clientY - rect.top) / rect.height * 2 - 1;
-      if (staticMode) {
-        const canvas = host.querySelector<HTMLCanvasElement>('.cosmos-static');
-        if (canvas) canvas.style.transform = `translate3d(${-pointer.x * 4}px, ${pointer.y * 3}px, 0) scale(1.012)`;
-      }
-    };
-    window.addEventListener('pointermove', onPointerMove, { passive: true });
 
     const tick = (now: number) => {
       frame = 0;
@@ -606,13 +688,18 @@ export function CosmosRenderer({
     };
 
     if (staticMode) {
+      navigationRef.current = staticNavigationApi;
       cleanup = drawStatic();
       staticDrawRef.current = () => { cleanup?.(); cleanup = drawStatic(); };
       resizeObserver = new ResizeObserver(() => { cleanup?.(); cleanup = drawStatic(); });
       resizeObserver.observe(host);
     } else {
       document.addEventListener('visibilitychange', onVisibility);
-      void Promise.all([import('three'), import('astronomy-engine')]).then(async ([THREE, Astronomy]) => {
+      void Promise.all([
+        import('three'),
+        import('astronomy-engine'),
+        import('three/addons/controls/OrbitControls.js'),
+      ]).then(async ([THREE, Astronomy, controlsModule]) => {
         if (disposed || !host) return;
         const width = Math.max(1, host.clientWidth), height = Math.max(1, host.clientHeight);
         const activeRenderer = new THREE.WebGLRenderer({
@@ -630,9 +717,30 @@ export function CosmosRenderer({
 
         const world = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(42, width / height, .1, 1000);
-        camera.position.set(0, 0, 16);
-        const cameraTarget = new THREE.Vector3(0, 0, 16);
-        const cameraDesired = new THREE.Vector3();
+        const controls = new controlsModule.OrbitControls(camera, activeRenderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = .075;
+        controls.enablePan = true;
+        controls.screenSpacePanning = true;
+        controls.rotateSpeed = .72;
+        controls.zoomSpeed = .85;
+        controls.target.set(0, 0, 0);
+        controlsCleanup = () => controls.dispose();
+        const defaultDistances: Record<CosmosScene, number> = { galaxy: 16, system: 16, earth: 11.2 };
+        const distanceLimits: Record<CosmosScene, [number, number]> = {
+          galaxy: [1.8, 48],
+          system: [1.5, 42],
+          earth: [EARTH_RADIUS + .22, 36],
+        };
+        const viewStates = new Map<CosmosScene, { position: typeof camera.position; target: typeof controls.target }>();
+        let activeScene = sceneRef.current;
+        let cityViewActive = false;
+        let cityPoseBackup: { position: typeof camera.position; target: typeof controls.target } | null = null;
+        camera.position.set(0, 0, defaultDistances[activeScene]);
+        controls.minDistance = distanceLimits[activeScene][0];
+        controls.maxDistance = distanceLimits[activeScene][1];
+        controls.update();
+        viewStates.set(activeScene, { position: camera.position.clone(), target: controls.target.clone() });
         const groupGalaxy = new THREE.Group();
         const groupSystem = new THREE.Group();
         const groupEarth = new THREE.Group();
@@ -819,8 +927,6 @@ export function CosmosRenderer({
         cityHalo.position.copy(cityVector);
         cityHalo.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), cityVector.clone().normalize());
         groupEarth.add(cityMarker, cityHalo);
-        let cityTarget = false;
-
         const textureLoader = new THREE.TextureLoader();
         const reportSolarTextures = (completed: number, loaded: number) => {
           if (completed === planets.length) reportAsset('solar', loaded === planets.length ? 'texturas públicas ativas' : `${loaded}/8 texturas · fallback procedural`);
@@ -888,17 +994,71 @@ export function CosmosRenderer({
           groupGalaxy.visible = which === 'galaxy';
           groupSystem.visible = which === 'system';
           groupEarth.visible = which === 'earth';
-          if (which === 'earth' && city) {
-            cameraTarget.copy(cityVector.clone().normalize().multiplyScalar(9.6));
-          } else {
-            cameraTarget.set(0, 0, which === 'earth' ? 11.2 : 16);
+          const snapshot = () => ({ position: camera.position.clone(), target: controls.target.clone() });
+          const restorePose = (pose: { position: typeof camera.position; target: typeof controls.target }) => {
+            camera.position.copy(pose.position);
+            controls.target.copy(pose.target);
+          };
+
+          if (which !== activeScene) {
+            const poseToSave = activeScene === 'earth' && cityViewActive && cityPoseBackup
+              ? cityPoseBackup
+              : snapshot();
+            viewStates.set(activeScene, {
+              position: poseToSave.position.clone(),
+              target: poseToSave.target.clone(),
+            });
+            activeScene = which;
+            cityViewActive = false;
+            cityPoseBackup = null;
+            const savedPose = viewStates.get(which);
+            if (savedPose) restorePose(savedPose);
+            else {
+              camera.position.set(0, 0, defaultDistances[which]);
+              controls.target.set(0, 0, 0);
+            }
           }
-          if (reduced) camera.position.copy(cameraTarget);
-          camera.lookAt(0, 0, 0);
+
+          const [minDistance, maxDistance] = distanceLimits[which];
+          controls.minDistance = minDistance;
+          controls.maxDistance = maxDistance;
+
+          if (which === 'earth' && city && !cityViewActive) {
+            cityPoseBackup = snapshot();
+            camera.position.copy(cityVector.clone().normalize().multiplyScalar(9.6));
+            controls.target.set(0, 0, 0);
+          } else if (which === 'earth' && !city && cityViewActive && cityPoseBackup) {
+            restorePose(cityPoseBackup);
+            cityPoseBackup = null;
+          }
+          cityViewActive = which === 'earth' && city;
+          controls.update();
+          viewStates.set(which, snapshot());
+
           if (which === 'system') loadSolarTextures();
           if (which === 'earth') {
             loadEarthTextures();
           }
+        };
+        navigationRef.current = {
+          zoomIn: () => {
+            camera.position.sub(controls.target).multiplyScalar(.8).add(controls.target);
+            controls.update();
+          },
+          zoomOut: () => {
+            camera.position.sub(controls.target).multiplyScalar(1.25).add(controls.target);
+            controls.update();
+          },
+          reset: () => {
+            const which = sceneRef.current;
+            const city = which === 'earth' && cityRef.current;
+            if (city) camera.position.copy(cityVector.clone().normalize().multiplyScalar(9.6));
+            else camera.position.set(0, 0, defaultDistances[which]);
+            controls.target.set(0, 0, 0);
+            cityViewActive = city;
+            controls.update();
+            viewStates.set(which, { position: camera.position.clone(), target: controls.target.clone() });
+          },
         };
         const update = (
           which: CosmosScene,
@@ -913,7 +1073,6 @@ export function CosmosRenderer({
           if (key !== lastSceneKey) {
             lastSceneKey = key;
             show(which, city);
-            cityTarget = city;
             const ratio = Math.min(window.devicePixelRatio || 1, qualityName === 'high' ? 1.65 : qualityName === 'medium' ? 1.15 : .85);
             if (activeRenderer.getPixelRatio() !== ratio) activeRenderer.setPixelRatio(ratio);
             galaxy.geometry.setDrawRange(0, qualityName === 'high' ? 90_000 : qualityName === 'medium' ? 40_000 : 8_000);
@@ -980,11 +1139,7 @@ export function CosmosRenderer({
           sunMaterial.uniforms.uTime.value = time / 1000;
           cityMarker.scale.setScalar(1 + .18 * Math.sin(time * .004));
           cityHalo.scale.setScalar(1 + .12 * Math.sin(time * .003));
-          const pointerOffsetX = pointer.x * .12;
-          const pointerOffsetY = pointer.y * .09;
-          cameraDesired.copy(cameraTarget).add(new THREE.Vector3(pointerOffsetX, pointerOffsetY, 0));
-          camera.position.lerp(cameraDesired, .04);
-          camera.lookAt(0, 0, 0);
+          controls.update();
           const count = currentState === 'idle' ? 1 + Math.floor((Math.sin(time * .00031) + 1) * 1.45) : 0;
           const bucket = Math.floor(time / 1000 * Math.max(1, count));
           const idleNode = Math.floor(Math.abs(Math.sin(bucket * 12.9898) * 43758.5453)) % neural.count;
@@ -1049,6 +1204,16 @@ export function CosmosRenderer({
       }).catch(() => {
         if (!disposed) {
           reportAsset('earth', 'WebGL indisponível · modo 2D');
+          resizeObserver?.disconnect();
+          composer?.dispose?.();
+          composer = null;
+          controlsCleanup?.();
+          controlsCleanup = null;
+          renderer?.dispose();
+          renderer?.domElement.remove();
+          renderer = null;
+          host.replaceChildren();
+          navigationRef.current = staticNavigationApi;
           cleanup = drawStatic();
           staticDrawRef.current = () => { cleanup?.(); cleanup = drawStatic(); };
           resizeObserver = new ResizeObserver(() => { cleanup?.(); cleanup = drawStatic(); });
@@ -1061,11 +1226,17 @@ export function CosmosRenderer({
       disposed = true;
       cancelAnimationFrame(frame);
       document.removeEventListener('visibilitychange', onVisibility);
-      window.removeEventListener('pointermove', onPointerMove);
+      host.removeEventListener('pointerdown', onStaticPointerDown);
+      host.removeEventListener('pointermove', onStaticPointerMove);
+      host.removeEventListener('pointerup', onStaticPointerUp);
+      host.removeEventListener('pointercancel', onStaticPointerUp);
+      host.removeEventListener('wheel', onStaticWheel);
       resizeObserver?.disconnect();
       cleanup?.();
       staticDrawRef.current = null;
       composer?.dispose?.();
+      controlsCleanup?.();
+      navigationRef.current = null;
       renderer?.dispose();
       renderer?.domElement.remove();
       host.replaceChildren();
@@ -1073,11 +1244,38 @@ export function CosmosRenderer({
   }, [visible, quality, mobileViewport]);
 
   useEffect(() => {
-    const isStatic = quality === 'low' || mobileViewport || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isStatic = quality === 'low' || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (visible && isStatic) staticDrawRef.current?.();
-  }, [scene, quality, feeds, targetCity, state, visible, mobileViewport]);
+  }, [scene, quality, feeds, targetCity, state, visible]);
 
-  return <div ref={hostRef} className="cosmos-viewport" data-scene={scene} aria-hidden="true" />;
+  const simpleNavigation = quality === 'low' ||
+    (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  return (
+    <>
+      <div ref={hostRef} className="cosmos-viewport" data-scene={scene} aria-hidden="true" />
+      {visible && (
+        <div className="cosmos-navigation" role="group" aria-label="Navegação das cenas">
+          <span className="cosmos-navigation__hint">
+            {simpleNavigation
+              ? 'Arraste para mover · use +/− para zoom'
+              : `Arraste para girar · ${mobileViewport ? 'pinça para zoom' : 'roda para zoom'}`}
+          </span>
+          <div className="cosmos-navigation__buttons">
+            <button type="button" aria-label="Afastar" title="Afastar" onClick={() => navigationRef.current?.zoomOut()}>
+              <Minus size={15} aria-hidden="true" />
+            </button>
+            <button type="button" aria-label="Aproximar" title="Aproximar" onClick={() => navigationRef.current?.zoomIn()}>
+              <Plus size={15} aria-hidden="true" />
+            </button>
+            <button type="button" aria-label="Restaurar vista" title="Restaurar vista" onClick={() => navigationRef.current?.reset()}>
+              <RotateCcw size={13} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
 
 function earthVectorForCanvas(latitude: number, longitude: number) {
