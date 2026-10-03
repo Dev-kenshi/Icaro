@@ -192,6 +192,9 @@ importers:
       express:
         specifier: ^5.2.1
         version: 5.2.1
+      onnxruntime-common:
+        specifier: 1.30.0
+        version: 1.30.0
       pino:
         specifier: ^9.14.0
         version: 9.14.0
