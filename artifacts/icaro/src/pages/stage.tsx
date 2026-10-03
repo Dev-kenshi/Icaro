@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { StageHelp } from '@/components/stage/stage-help';
 import { shouldActivateStageShortcut } from '@/lib/stage-shortcuts';
-import { Mic, X, BarChart3, ExternalLink, Trash2, Menu, Keyboard, Play, Maximize, Volume2, VolumeX, Eye, EyeOff, Orbit, Globe2, Radio, SkipForward, Layers } from 'lucide-react';
+import { Mic, X, BarChart3, ExternalLink, Trash2, Menu, Keyboard, Play, Maximize, Volume2, VolumeX, Eye, EyeOff, Orbit, Globe2, Radio, SkipForward, Layers, Move, RotateCcw, Check } from 'lucide-react';
 import { getGetAiStatusQueryKey, getGetAiVoicesQueryKey, getGetCosmosFeedsQueryKey, useGetAiStatus, useGetAiVoices, useGetCosmosFeeds, useSendAiMessage, type AiChatResponse, type AiVoiceCatalog } from '@workspace/api-client-react';
 import { requestAiChatStream } from '@/lib/ai-chat-stream';
 import { interpret, formatDuration } from '@/lib/commands';
@@ -13,6 +13,9 @@ import { resemblesPlayback } from '@/lib/wake-turn-gate';
 import { wakeAccessErrorMessage } from '@/lib/wake-access';
 import { Particles, Waveform } from '@/components/stage/canvases';
 import { HoloFace } from '@/components/stage/holo-face';
+import { HoloPortrait } from '@/components/stage/holo-portrait';
+import { avatarById, readAvatarChoice, saveAvatarChoice } from '@/lib/avatars';
+import { useStageLayout } from '@/hooks/use-stage-layout';
 import { FutureScene } from '@/components/stage/future-scene';
 import { MicSettings } from '@/components/stage/mic-settings';
 import { AvatarAdjuster } from '@/components/stage/avatar-adjuster';
@@ -103,6 +106,8 @@ export default function Stage() {
   const [sceneMode, setSceneMode] = useState<'all' | 'single'>('all');
   const [quality, setQuality] = useState<VisualQuality>(readQuality);
   const [avatarLayout, setAvatarLayout] = useState(readAvatarLayout);
+  const [avatarId, setAvatarId] = useState(() => readAvatarChoice().id);
+  const stageLayout = useStageLayout();
   const [avatarControlsOpen, setAvatarControlsOpen] = useState(false);
   const [avatarLayoutSaveError, setAvatarLayoutSaveError] = useState('');
   const [sceneVisible, setSceneVisible] = useState(false);
@@ -290,6 +295,10 @@ export default function Stage() {
   const endIntro = () => { introRef.current?.pause(); setState(activeRef.current ? 'listening' : 'idle'); setCaption(''); setCaptionWords(null); commandCompleteRef.current(); };
 
   const fullscreen = () => { const el = stageRef.current; if (!el) return; if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined); else el.requestFullscreen?.().catch(() => undefined); };
+  const selectAvatar = (id: string) => {
+    saveAvatarChoice(id);
+    setAvatarId(avatarById(id).id);
+  };
   const adjustAvatar = (action: AvatarLayoutAction) => {
     setAvatarLayout((current) => updateAvatarLayout(current, action));
   };
@@ -691,6 +700,13 @@ export default function Stage() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  useEffect(() => {
+    if (!stageLayout.editing) return;
+    const onEsc = (event: KeyboardEvent) => { if (event.key === 'Escape') stageLayout.setEditing(false); };
+    window.addEventListener('keydown', onEsc);
+    return () => window.removeEventListener('keydown', onEsc);
+  }, [stageLayout.editing, stageLayout.setEditing]);
+
   const submit = () => { const t = text; setText(''); handle(t); };
   const clock = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'America/Sao_Paulo' }).format(now);
   const remaining = timerEnd ? Math.max(0, Math.ceil((timerEnd - now) / 1000)) : 0;
@@ -766,7 +782,7 @@ export default function Stage() {
   };
 
   return (
-    <div ref={stageRef} className="stage" data-state={state} data-scene-mode={sceneMode} data-voice-active={listener.active} data-voice-enabled={voiceOn} onPointerDown={prime}>
+    <div ref={stageRef} className="stage" data-state={state} data-scene-mode={sceneMode} data-voice-active={listener.active} data-voice-enabled={voiceOn} data-layout-editing={stageLayout.editing || undefined} onPointerDown={prime}>
       {sceneMode === 'all' ? (
         <CosmosOverview
           quality={quality}
@@ -793,12 +809,16 @@ export default function Stage() {
       <NeuralWeb state={state} scene={scene} emotion={emotion} longListening={longListening} thoughtTitle={state === 'thinking' ? 'SÍNTESE EM CURSO' : ''} />
       <FutureScene />
       <Particles />
-      <HoloFace state={state} getLevel={getLevel} layout={avatarLayout} />
+      {avatarById(avatarId).kind === 'engine' ? (
+        <HoloFace state={state} getLevel={getLevel} layout={avatarLayout} />
+      ) : (
+        <HoloPortrait definition={avatarById(avatarId)} state={state} getLevel={getLevel} layout={avatarLayout} />
+      )}
       <video ref={introRef} className="intro" src={media('intro.mp4')} playsInline onEnded={endIntro} style={{ opacity: state === 'intro' ? 1 : 0, pointerEvents: 'none' }} data-testid="video-intro" />
       <div className="scan" /><div className="vig" />
       <Waveform energy={energy} analyser={state === 'talking' ? getAnalyser() : null} />
 
-      <header className="stage-header" data-testid="stage-header">
+      <header className="stage-header" data-testid="stage-header" {...stageLayout.chrome('header')}>
         <div className="stage-brand">
           <span className="stage-brand__mark" aria-hidden="true">ᛟ</span>
           <div><div className="stage-brand__name">ÍCARO</div><div className="stage-brand__sub">CENTRO DE OPERAÇÕES · UEFS</div></div>
@@ -830,7 +850,7 @@ export default function Stage() {
           {feeds.data && <span>{feeds.data.stale ? 'Em cache · ' : 'AO VIVO · '}ISS {feeds.data.iss.current.latitude.toFixed(1)}° / {feeds.data.iss.current.longitude.toFixed(1)}° · {feeds.data.earthquakes.length} sismos</span>}
         </div>
       </header>
-      <aside className="stage-readout stage-readout--left" aria-label="Ícaro em atividade">
+      <aside className="stage-readout stage-readout--left" aria-label="Ícaro em atividade" {...stageLayout.chrome('readout-left')}>
         <svg className="readout-frame" viewBox="0 0 240 500" preserveAspectRatio="none" aria-hidden="true"><path d="M25 2Q12 2 9 19L3 47Q1 60 5 74L5 424Q4 440 18 446Q32 451 45 483L195 483Q211 481 214 464L235 429Q239 420 237 403L237 39Q237 22 220 19L93 18Q75 18 66 8Q58 1 43 2Z" /></svg>
         <div className="readout-kicker"><span className="readout-dot" /> SISTEMA ATIVO</div>
         <div className="readout-title">{scene === 'galaxy' ? 'Espaço profundo' : scene === 'system' ? 'Sistema solar' : feiraTarget ? 'Feira de Santana' : 'Órbita terrestre'}</div>
@@ -845,7 +865,7 @@ export default function Stage() {
         <p className="readout-assets" title={assetsStatus}>{assetsStatus}</p>
         <p>Presença neural estável. Canal de voz pronto para a próxima instrução.</p>
       </aside>
-      <aside className="stage-readout stage-readout--right" aria-label="Dados orbitais e sísmicos">
+      <aside className="stage-readout stage-readout--right" aria-label="Dados orbitais e sísmicos" {...stageLayout.chrome('readout-right')}>
         <svg className="readout-frame" viewBox="0 0 240 500" preserveAspectRatio="none" aria-hidden="true"><path d="M25 2Q12 2 9 19L3 47Q1 60 5 74L5 424Q4 440 18 446Q32 451 45 483L195 483Q211 481 214 464L235 429Q239 420 237 403L237 39Q237 22 220 19L93 18Q75 18 66 8Q58 1 43 2Z" /></svg>
         <div className="readout-kicker"><span className={`readout-dot ${feeds.data?.stale ? 'readout-dot--stale' : ''}`} /> TELEMETRIA PÚBLICA</div>
         {feeds.isLoading && <div className="feed-skeleton" role="status" data-testid="status-cosmos-loading"><i /><i /><i /></div>}
@@ -896,19 +916,29 @@ export default function Stage() {
         layout={avatarLayout}
         open={avatarControlsOpen}
         saveError={avatarLayoutSaveError}
+        avatarId={avatarId}
+        onSelectAvatar={selectAvatar}
         onOpenChange={setAvatarControlsOpen}
         onAction={adjustAvatar}
       />
-      <button className="menu hbtn disp text-lg" onClick={() => setPanel(true)} aria-label="Abrir painel" data-testid="button-open-panel"><Menu size={18} /></button>
+      {stageLayout.editing && (
+        <div className="layout-banner" role="status" data-testid="banner-layout-editing">
+          <Move size={14} aria-hidden="true" />
+          <span>Arraste os elementos para reorganizar a tela</span>
+          <button type="button" className="hbtn" onClick={stageLayout.resetLayout} data-testid="button-layout-reset"><RotateCcw size={13} /> Restaurar</button>
+          <button type="button" className="hbtn" onClick={() => stageLayout.setEditing(false)} data-testid="button-layout-done"><Check size={13} /> Concluir</button>
+        </div>
+      )}
+      <button className="menu hbtn disp text-lg" onClick={() => setPanel(true)} aria-label="Abrir painel" data-testid="button-open-panel" {...stageLayout.chrome('menu')}><Menu size={18} /></button>
       {state === 'intro' && <button className="hbtn absolute right-4 top-16 z-[6] text-xs" onClick={endIntro} data-testid="button-stop-intro"><X size={14} className="mr-1 inline" />Encerrar apresentação</button>}
 
-      <div className="caption" hidden={!captionsVisible || !visibleCaption} aria-live="polite" aria-atomic="true" data-testid="text-caption">
+      <div className="caption" hidden={!stageLayout.editing && (!captionsVisible || !visibleCaption)} aria-live="polite" aria-atomic="true" data-testid="text-caption" {...stageLayout.chrome('caption')}>
         <span>{captionWords
           ? captionWords.words.map((word, index) => <span key={`${index}-${word}`} className={`caption-word ${index < captionWords.activeIndex ? 'said' : index === captionWords.activeIndex ? 'now' : 'upcoming'}`}>{word}{' '}</span>)
-          : visibleCaption}</span>
+          : (visibleCaption || (stageLayout.editing ? 'As legendas do Ícaro aparecem aqui' : ''))}</span>
       </div>
 
-      <div ref={dockRef} className="dock">
+      <div ref={dockRef} className="dock" {...stageLayout.chrome('dock')}>
         {searchLink && <a href={searchLink} target="_blank" rel="noopener noreferrer" className="hbtn mono flex items-center gap-2 text-xs" data-testid="link-search">Abrir pesquisa <ExternalLink size={12} /></a>}
         {speechError && <div className="audio-error" role="alert" data-testid="status-audio-error">{speechError}</div>}
         {typing && (
@@ -923,6 +953,9 @@ export default function Stage() {
           </button>
           <button className="hbtn dock-action" onClick={() => setCaptionsVisible((visible) => !visible)} aria-pressed={captionsVisible} aria-label={captionsVisible ? 'Ocultar legendas' : 'Mostrar legendas'} data-testid="button-captions-toggle">
             {captionsVisible ? <EyeOff size={16} /> : <Eye size={16} />} Legendas {captionsVisible ? 'ligadas' : 'desligadas'}
+          </button>
+          <button className="hbtn dock-action" onClick={() => stageLayout.setEditing(!stageLayout.editing)} aria-pressed={stageLayout.editing} aria-label={stageLayout.editing ? 'Concluir reorganização da tela' : 'Reorganizar os elementos da tela'} data-testid="button-layout-edit">
+            <Move size={16} /> {stageLayout.editing ? 'Concluir' : 'Reorganizar'}
           </button>
         </div>
         <button className="mic" onClick={toggleMic} aria-label={recording ? 'Parar gravação' : useServerMic ? 'Falar com Ícaro pelo microfone' : listener.active ? 'Voltar ao modo de espera' : 'Ativar Ícaro manualmente'} aria-pressed={listener.active || recording} data-testid="button-mic" data-recording={recording || undefined}><Mic size={34} /></button>
