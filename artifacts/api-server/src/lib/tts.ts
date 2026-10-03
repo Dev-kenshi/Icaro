@@ -219,7 +219,6 @@ export type SpeechEngineConfig = {
   openAiModel: string;
   openAiVoice: string;
   elevenLabsModel: string;
-  voiceSamplePath: string;
   dataDir: string;
   fetchImpl?: typeof fetch;
   now?: () => number;
@@ -240,11 +239,10 @@ export function createSpeechEngine(cfg: SpeechEngineConfig) {
   const memory = new MemoryAudioCache();
   const disk = new DiskAudioCache(path.join(cfg.dataDir, "tts-cache"));
   const inflight = new Map<string, Promise<SpeechResult>>();
-  let clonePromise: Promise<string> | null = null;
 
   function family() {
     return resolveVoiceFamily({
-      elevenlabs: Boolean(cfg.elevenLabsKey()),
+      elevenlabs: Boolean(cfg.elevenLabsKey() && cfg.elevenLabsVoiceId().trim()),
       gemini: Boolean(cfg.geminiKey()),
       openai: Boolean(cfg.openAiKey()),
     });
@@ -253,43 +251,17 @@ export function createSpeechEngine(cfg: SpeechEngineConfig) {
   function voiceLabel(f: VoiceFamily) {
     if (f === "gemini") return cfg.geminiVoice;
     if (f === "openai") return cfg.openAiVoice;
-    return cfg.elevenLabsVoiceId() || "clone-amostra";
+    return cfg.elevenLabsVoiceId().trim();
   }
 
-  async function elevenLabsVoiceId(): Promise<string> {
-    const fromEnv = cfg.elevenLabsVoiceId();
-    if (fromEnv) return fromEnv;
-    const file = path.join(cfg.dataDir, "elevenlabs-voice.json");
-    try {
-      const saved = JSON.parse(await fs.readFile(file, "utf8")) as { voiceId?: unknown };
-      if (typeof saved.voiceId === "string" && saved.voiceId) return saved.voiceId;
-    } catch { /* not cloned yet */ }
-    clonePromise ??= (async () => {
-      const sample = await fs.readFile(cfg.voiceSamplePath);
-      const form = new FormData();
-      form.append("name", "ICARO");
-      form.append("remove_background_noise", "true");
-      form.append("description", "Voz do ÍCARO clonada da amostra do jarvis-voice");
-      form.append("labels", JSON.stringify({ language: "pt-BR" }));
-      form.append("files", new Blob([new Uint8Array(sample)], { type: "audio/mpeg" }), "amostra_voz.mp3");
-      const r = await fetchImpl("https://api.elevenlabs.io/v1/voices/add", {
-        method: "POST",
-        headers: { "xi-api-key": cfg.elevenLabsKey() },
-        body: form,
-        signal: AbortSignal.timeout(120_000),
-      });
-      if (!r.ok) throw new SpeechUnavailableError(`elevenlabs clone ${r.status}`);
-      const j = (await r.json()) as { voice_id?: string };
-      if (!j.voice_id) throw new SpeechUnavailableError("elevenlabs clone returned no voice_id");
-      await fs.mkdir(cfg.dataDir, { recursive: true });
-      await fs.writeFile(file, JSON.stringify({ voiceId: j.voice_id, createdAt: new Date(now()).toISOString() }));
-      return j.voice_id;
-    })().catch((e) => { clonePromise = null; throw e; });
-    return clonePromise;
+  function elevenLabsVoiceId(): string {
+    const voiceId = cfg.elevenLabsVoiceId().trim();
+    if (!voiceId) throw new SpeechUnavailableError("elevenlabs voice id not configured");
+    return voiceId;
   }
 
   async function elevenLabs(text: string, deadline: number): Promise<ProviderAudio> {
-    const voiceId = await elevenLabsVoiceId();
+    const voiceId = elevenLabsVoiceId();
     const r = await fetchImpl(
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
       {

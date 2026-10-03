@@ -59,14 +59,18 @@ const providerRouter = createProviderRouter();
 void providerRouter.refreshModels();
 
 function getElevenLabsKey() {
-  return process.env.ELEVENLABS_API_KEY || "";
+  return process.env.ELEVENLABS_API_KEY?.trim() || "";
+}
+
+function getElevenLabsVoiceId() {
+  return process.env.ELEVENLABS_VOICE_ID?.trim() || "";
 }
 
 const speech = createSpeechEngine({
   geminiKey: () => getGeminiKey(),
   openAiKey: () => getOpenAiKey(),
   elevenLabsKey: () => getElevenLabsKey(),
-  elevenLabsVoiceId: () => process.env.ELEVENLABS_VOICE_ID || "",
+  elevenLabsVoiceId: getElevenLabsVoiceId,
   geminiModels: [
     ...new Set([
       ...(process.env.GEMINI_TTS_MODELS || process.env.GEMINI_TTS_MODEL || "")
@@ -78,7 +82,6 @@ const speech = createSpeechEngine({
   openAiModel: process.env.OPENAI_TTS_MODEL || "gpt-4o-mini-tts",
   openAiVoice: process.env.OPENAI_TTS_VOICE || "onyx",
   elevenLabsModel: process.env.ELEVENLABS_MODEL || "eleven_flash_v2_5",
-  voiceSamplePath: process.env.ICARO_VOICE_SAMPLE || path.join(API_ROOT, "assets/voice/amostra_voz.mp3"),
   dataDir,
   log: logger,
 });
@@ -183,7 +186,9 @@ async function rewriteContextualFollowUp(
 let speechProviderAuthRejected = false;
 
 router.get("/ai/status", (_req, res) => {
-  const speechConfigured = Boolean(getElevenLabsKey() || getGeminiKey() || getOpenAiKey());
+  const speechConfigured = Boolean(
+    (getElevenLabsKey() && getElevenLabsVoiceId()) || getGeminiKey() || getOpenAiKey(),
+  );
   const data = GetAiStatusResponse.parse({
     geminiAvailable: Boolean(getGeminiKey()),
     openaiAvailable: Boolean(getOpenAiKey()),

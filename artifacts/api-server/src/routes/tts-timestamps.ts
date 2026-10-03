@@ -1,6 +1,3 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { Router, type IRouter } from "express";
 import {
   SynthesizeTtsTimestampsBody,
@@ -18,8 +15,6 @@ const router: IRouter = Router();
 const WINDOW_MS = 10 * 60 * 1000;
 const REQUEST_LIMIT = 90;
 const hits = new Map<string, { count: number; resetAt: number }>();
-const API_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const DATA_DIR = process.env.ICARO_DATA_DIR || path.join(API_ROOT, ".data");
 const timestampedSpeech = createTtsTimestampsService();
 
 function isRateLimited(key: string) {
@@ -40,20 +35,6 @@ function isRateLimited(key: string) {
   }
   entry.count += 1;
   return entry.count > REQUEST_LIMIT;
-}
-
-async function getExistingElevenLabsVoiceId(): Promise<string> {
-  const configuredVoiceId = process.env.ELEVENLABS_VOICE_ID?.trim();
-  if (configuredVoiceId) return configuredVoiceId;
-
-  try {
-    const saved = JSON.parse(
-      await fs.readFile(path.join(DATA_DIR, "elevenlabs-voice.json"), "utf8"),
-    ) as { voiceId?: unknown };
-    return typeof saved.voiceId === "string" ? saved.voiceId.trim() : "";
-  } catch {
-    return "";
-  }
 }
 
 router.post("/tts-ts", async (req, res): Promise<void> => {
@@ -86,13 +67,13 @@ router.post("/tts-ts", async (req, res): Promise<void> => {
     return;
   }
 
-  const apiKey = process.env.ELEVENLABS_API_KEY || "";
+  const apiKey = process.env.ELEVENLABS_API_KEY?.trim() || "";
   if (!apiKey) {
     res.status(503).json({ error: "O serviço de áudio com marcação de tempo não está configurado." });
     return;
   }
 
-  const voiceId = await getExistingElevenLabsVoiceId();
+  const voiceId = process.env.ELEVENLABS_VOICE_ID?.trim() || "";
   if (!voiceId) {
     res.status(503).json({ error: "O serviço de áudio com marcação de tempo não está configurado." });
     return;
