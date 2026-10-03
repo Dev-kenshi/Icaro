@@ -6,9 +6,9 @@ export type Session = { u: string; role: Role; exp: number };
 export const COOKIE = "icaro_session";
 export const SESSION_MS = 12 * 60 * 60 * 1000;
 
-const ACCOUNTS: Record<string, { env: string; role: Role }> = {
-  user1: { env: "ICARO_USER1_CODE", role: "user" },
-  admin: { env: "ICARO_ADMIN_CODE", role: "admin" },
+const ACCOUNTS: Record<string, { env: string[]; role: Role }> = {
+  user1: { env: ["ICARO_USER1_CODE", "ICARO_USER1_PASSWORD"], role: "user" },
+  admin: { env: ["ICARO_ADMIN_CODE", "ICARO_ADMIN_PASSWORD"], role: "admin" },
 };
 
 const secret = () => {
@@ -30,7 +30,7 @@ export type LoginResult = { ok: true; role: Role } | { ok: false; reason: "inval
 export function checkCredentials(username: string, password: string): LoginResult {
   const acc = Object.hasOwn(ACCOUNTS, username) ? ACCOUNTS[username] : undefined;
   if (!acc) return { ok: false, reason: "invalid" };
-  const expected = process.env[acc.env];
+  const expected = acc.env.map((k) => process.env[k]?.trim()).find(Boolean);
   if (!expected) return { ok: false, reason: "unconfigured" };
   return safeEqual(password, expected) ? { ok: true, role: acc.role } : { ok: false, reason: "invalid" };
 }
