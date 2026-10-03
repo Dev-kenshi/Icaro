@@ -53,11 +53,19 @@ const PROVIDER_NAMES: Record<Provider, string> = {
 const media = (f: string) => `${import.meta.env.BASE_URL}media/${f}`;
 const NOTES_KEY = 'icaro.notes';
 const VOICE_SELECTION_KEY = 'icaro.voice-test.selection';
+// The first Feira/Bahia voice-design batch used overt regional clichés. Keep
+// those voices in the user's ElevenLabs account, but do not offer them in Ícaro.
+const RETIRED_STEREOTYPED_VOICE_IDS = new Set([
+  'JlYs4qdBzi5jzOE0Gjfb',
+  'ntAcoGbGmpII56LqvnGW',
+  'DSSVvkCuwh3B8y9FGwyc',
+]);
 type StoredVoiceSelection = Pick<AiVoiceCatalog['voices'][number], 'voiceId' | 'name'>;
 const readVoiceSelection = (): StoredVoiceSelection | null => {
   try {
     const value = JSON.parse(localStorage.getItem(VOICE_SELECTION_KEY) || 'null');
     return value && typeof value.voiceId === 'string' && typeof value.name === 'string'
+      && !RETIRED_STEREOTYPED_VOICE_IDS.has(value.voiceId)
       ? { voiceId: value.voiceId, name: value.name }
       : null;
   } catch { return null; }
@@ -149,7 +157,8 @@ export default function Stage() {
       },
     },
   );
-  const voiceOptions = voiceCatalog.data?.voices ?? [];
+  const voiceOptions = (voiceCatalog.data?.voices ?? [])
+    .filter((voice) => !RETIRED_STEREOTYPED_VOICE_IDS.has(voice.voiceId));
   const selectedVoiceMetadata = voiceOptions.find((voice) => voice.voiceId === selectedVoice?.voiceId);
   const selectedVoiceName = selectedVoiceMetadata?.name ?? selectedVoice?.name;
 
