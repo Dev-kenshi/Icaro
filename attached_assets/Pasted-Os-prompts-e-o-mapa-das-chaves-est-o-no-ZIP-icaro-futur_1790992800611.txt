@@ -1,0 +1,59 @@
+Os prompts e o mapa das chaves estão no ZIP icaro-futuro.zip. São só instruções e pesquisa: nada foi aplicado no Ícaro nem testado. Os limites gratuitos vêm de comparativos de 2026 e mudam todo mês, então confira no painel de cada provedor ao criar a chave.
+
+O que tem no pacote:
+
+MAPA_MOTORES_IA_GRATIS.md (leia primeiro). Tabela com onde pegar cada chave, o nome do Secret no Replit, o endereço da API e o limite gratuito aproximado.
+Texto (10 provedores): Groq, Gemini, Cerebras, OpenRouter, Mistral, GitHub Models, NVIDIA NIM, Cloudflare Workers AI, Hugging Face e Cohere. Todos aceitam o mesmo formato de API, então o Ícaro pode usar qualquer um.
+Voz e ouvido: Whisper da Groq, ElevenLabs, Gemini TTS, Piper e Kokoro, que tem vozes em português e roda no navegador. A qualidade do Kokoro em português ainda precisa ser testada.
+Cosmos e Terra: imagens e dados da NASA, posição da Estação Espacial, terremotos do USGS e texturas de planetas, todos sem chave. Também o Cesium (globo estilo Google Earth), grátis para uso educacional sem financiamento, e o Google 3D Tiles, que exige conta de faturamento.
+Ordem para pegar as chaves: Groq e Gemini (confira as que já tem), depois Cerebras e OpenRouter, Cohere, ElevenLabs, e por último Cesium.
+Privacidade: no plano grátis, alguns provedores podem usar as perguntas para treinar modelos (Gemini fora da Europa, Mistral, parte do OpenRouter). O prompt manda nunca enviar dados de alunos.
+PROMPT_7_DESIGN_ALIENIGENA.md: cenário futurista de design alienígena.
+Três fundos que se alternam: galáxia em espiral, Sistema Solar com a posição real dos planetas no dia, e a Terra ao vivo (dia e noite reais, nuvens da NASA, Estação Espacial na posição real e um voo até Feira de Santana e a UEFS).
+Rede neural viva inspirada no filme A.I.: os neurônios acendem com sua voz quando ele ouve, em cascatas quando pensa e no ritmo das palavras quando fala.
+Moldura com escrita alienígena, painéis laterais orgânicos com dados reais e uma abertura de 4 segundos.
+Comandos de voz como "mostre a Terra" funcionam sem chamar a IA.
+PROMPT_8_MULTIMOTOR.md: troca automática entre motores. Se um motor bater o limite ou demorar mais de 2,5 s, o Ícaro passa para o próximo. Ele nunca fica mudo, e a aba Conexão mostra a saúde de cada motor.
+PROMPT_9_CEREBRO_99.md: IA só no necessário.
+Por que não 99%: nenhum banco fixo responde 99% de qualquer pergunta. A meta que dá para medir é 90 a 95% das perguntas do evento sem chamar a IA inteira.
+Seis camadas antes da IA:
+comandos;
+repetir uma resposta já dada antes à mesma pergunta;
+banco de respostas;
+busca por significado, que roda no próprio servidor, sem custo;
+base de conhecimento;
+IA só para juntar os trechos certos numa resposta curta.
+Aprendizado: toda resposta nova vira candidata para você aprovar com um clique no painel.
+Ensaio antes do ITCONT: 300 perguntas prováveis com o áudio já gerado, para responder em menos de 1 segundo.
+PROMPT_10_NIVEL_HUMANO.md: emoção e presença. A IA marca a emoção de cada frase (entusiasmo, sério, curioso…), e isso muda a expressão do rosto, a cor da rede neural e o tom da voz. Também:
+pausas de efeito de apresentador;
+ele para de falar quando alguém o interrompe;
+entende perguntas de continuação, como "e isso vale para o MEI?".
+
+Ordem: primeiro a correção do microfone (icaro-microfone.zip), depois os prompts 8, 9, 7 e 10, um por vez no Agent do Replit, conferindo os critérios no fim de cada um. Quem cola precisa ter permissão de edição no projeto, o que a conta Emanuelluz não tem.
+
+"Osiris AI": é um projeto aberto (OSIRIS) que mostra um globo estilo Google Earth, feito com Cesium, com dados públicos ao vivo. Usei a mesma base técnica no PROMPT 7, mas só com dados seguros (Estação Espacial, terremotos, imagens da NASA), sem câmeras nem dados de vigilância.
+
+Fontes:
+
+OpenRouter: Free LLM APIs 2026 comparados
+Free LLM API providers list (2026)
+KDnuggets: Free LLM API Providers 2026
+Analytics Vidhya: 15 Free LLM APIs 2026
+Free-LLM directory
+Cesium ion: planos (2026)
+Google Photorealistic 3D Tiles: perguntas frequentes
+OSIRIS no GitHub
+Editou 6 arquivos
++262
+-0
+PROMPT_7_DESIGN_ALIENIGENA.md
++75
+-0
+MAPA_MOTORES_IA_GRATIS.md
++62
+-0
+PROMPT_8_MULTIMOTOR.md
++41
+-0
+Mostrar mais 3
