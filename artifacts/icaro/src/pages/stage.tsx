@@ -20,6 +20,7 @@ import { AVATAR_LAYOUT_STORAGE_KEY, readAvatarLayout, updateAvatarLayout, type A
 import { HOLO_MEDIA } from '@/lib/holo-state';
 import { getMicMode, micErrorMessage, recordUtterance, setMicMode, SERVER_FALLBACK_ERRORS, transcribeOnServer, type MicMode } from '@/lib/mic-config';
 import { CosmosRenderer, type CosmosScene } from '@/components/stage/cosmos/renderer';
+import { CosmosOverview } from '@/components/stage/cosmos/CosmosOverview';
 import { NeuralWeb } from '@/components/stage/neural-web';
 import './stage.css';
 
@@ -767,32 +768,14 @@ export default function Stage() {
   return (
     <div ref={stageRef} className="stage" data-state={state} data-scene-mode={sceneMode} data-voice-active={listener.active} data-voice-enabled={voiceOn} onPointerDown={prime}>
       {sceneMode === 'all' ? (
-        <div className="cosmos-overview" role="group" aria-label="Terra, Galáxia e Sistema Solar" data-testid="cosmos-overview">
-          {([
-            ['galaxy', 'Galáxia'],
-            ['system', 'Sistema Solar'],
-            ['earth', 'Terra ao vivo'],
-          ] as const).map(([panelScene, label]) => (
-            <section
-              key={panelScene}
-              className="cosmos-panel"
-              aria-label={`Painel ${label}`}
-              data-testid={`panel-scene-${panelScene}`}
-            >
-              <span className="cosmos-panel__label" data-testid={`label-scene-${panelScene}`}>{label}</span>
-              <CosmosRenderer
-                scene={panelScene}
-                quality={quality}
-                visible={sceneVisible}
-                feeds={feeds.data}
-                targetCity={panelScene === 'earth' && feiraTarget}
-                state={state}
-                getAudioLevel={getLevel}
-                navigationLabel={`Controles de ${label}`}
-              />
-            </section>
-          ))}
-        </div>
+        <CosmosOverview
+          quality={quality}
+          visible={sceneVisible}
+          feeds={feeds.data}
+          targetCity={feiraTarget}
+          state={state}
+          getAudioLevel={getLevel}
+        />
       ) : (
         <CosmosRenderer
           scene={scene}

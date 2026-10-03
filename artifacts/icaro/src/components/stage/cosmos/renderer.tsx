@@ -42,6 +42,7 @@ type Props = {
   scene: CosmosScene;
   quality: CosmosQuality;
   visible: boolean;
+  transparentBackground?: boolean;
   feeds?: CosmosFeedsResponse;
   targetCity?: boolean;
   state: string;
@@ -103,22 +104,28 @@ function proceduralGalaxy(THREE: typeof import('three'), count: number) {
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
   const random = deterministicRandom(711);
-  const armCount = 5;
+  const armCount = 4;
   const colorCore = new THREE.Color('#ffd8aa');
   const colorArm = new THREE.Color('#73d9ef');
   const colorOuter = new THREE.Color('#5268cc');
   for (let i = 0; i < count; i++) {
-    const radius = Math.pow(random(), .62) * 5.6;
+    const inBulge = random() < .22;
+    const radius = inBulge
+      ? Math.pow(random(), 2.3) * 1.45
+      : Math.pow(random(), .68) * 5.6;
     const arm = Math.floor(random() * armCount);
-    const angle = arm * Math.PI * 2 / armCount + radius * .93 + (random() - .5) * (.18 + radius * .06);
-    const thickness = .04 + radius * .025;
+    const angle = arm * Math.PI * 2 / armCount
+      + radius * 1.04
+      + Math.sin(radius * 1.9 + arm) * .055
+      + (random() - .5) * (.16 + radius * .055);
+    const thickness = .032 + radius * .021;
     positions[i * 3] = Math.cos(angle) * radius + (random() - .5) * thickness;
-    positions[i * 3 + 1] = Math.sin(angle) * radius * .63 + (random() - .5) * thickness;
-    positions[i * 3 + 2] = (random() - .5) * (.25 + radius * .12);
+    positions[i * 3 + 1] = Math.sin(angle) * radius * .62 + (random() - .5) * thickness;
+    positions[i * 3 + 2] = (random() - .5) * (.18 + radius * .1);
     const color = radius < 1.1
       ? colorCore.clone().lerp(colorArm, radius / 1.1)
       : colorArm.clone().lerp(colorOuter, smoothstep(1.1, 5.6, radius));
-    const sparkle = .62 + random() * .5;
+    const sparkle = (inBulge ? .72 : .52) + random() * .58;
     colors[i * 3] = color.r * sparkle;
     colors[i * 3 + 1] = color.g * sparkle;
     colors[i * 3 + 2] = color.b * sparkle;
@@ -135,6 +142,48 @@ function proceduralGalaxy(THREE: typeof import('three'), count: number) {
     opacity: .88,
     depthWrite: false,
   }));
+}
+
+function createStarfield(THREE: typeof import('three'), count = 1900) {
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+  const random = deterministicRandom(2401);
+  const palette = [
+    new THREE.Color('#d9e7ff'),
+    new THREE.Color('#ffffff'),
+    new THREE.Color('#ffebd0'),
+    new THREE.Color('#a9ceff'),
+  ];
+
+  for (let i = 0; i < count; i++) {
+    const y = random() * 2 - 1;
+    const angle = random() * Math.PI * 2;
+    const radial = Math.sqrt(1 - y * y);
+    const distance = 92 + random() * 34;
+    positions[i * 3] = Math.cos(angle) * radial * distance;
+    positions[i * 3 + 1] = y * distance;
+    positions[i * 3 + 2] = Math.sin(angle) * radial * distance;
+
+    const color = palette[Math.floor(random() * palette.length)];
+    const brightness = .62 + random() * .55;
+    colors[i * 3] = color.r * brightness;
+    colors[i * 3 + 1] = color.g * brightness;
+    colors[i * 3 + 2] = color.b * brightness;
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  const stars = new THREE.Points(geometry, new THREE.PointsMaterial({
+    size: .2,
+    sizeAttenuation: true,
+    vertexColors: true,
+    transparent: true,
+    opacity: .78,
+    depthWrite: false,
+  }));
+  stars.renderOrder = -1;
+  return stars;
 }
 
 function createNeuralSphere(THREE: typeof import('three')) {
@@ -254,6 +303,7 @@ export function CosmosRenderer({
   scene,
   quality,
   visible,
+  transparentBackground = false,
   feeds,
   targetCity = false,
   state,
@@ -267,6 +317,7 @@ export function CosmosRenderer({
   const [mobileViewport, setMobileViewport] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
   const sceneRef = useRef(scene);
   const qualityRef = useRef(quality);
+  const transparentBackgroundRef = useRef(transparentBackground);
   const feedRef = useRef(feeds);
   const cityRef = useRef(targetCity);
   const stateRef = useRef(state);
@@ -279,6 +330,7 @@ export function CosmosRenderer({
   const staticEarthStatusRef = useRef({ finished: 0, loaded: 0 });
   sceneRef.current = scene;
   qualityRef.current = quality;
+  transparentBackgroundRef.current = transparentBackground;
   feedRef.current = feeds;
   cityRef.current = targetCity;
   stateRef.current = state;
@@ -463,8 +515,11 @@ export function CosmosRenderer({
       const currentScene = sceneRef.current;
       const level = Math.max(0, Math.min(1, audioLevelRef.current() || 0));
       const starsRandom = deterministicRandom(411);
-      context.fillStyle = '#020a13';
-      context.fillRect(0, 0, width, height);
+      context.clearRect(0, 0, width, height);
+      if (!transparentBackgroundRef.current) {
+        context.fillStyle = '#020a13';
+        context.fillRect(0, 0, width, height);
+      }
       const glow = context.createRadialGradient(width * .5, height * .43, 0, width * .5, height * .43, Math.max(width, height) * .65);
       glow.addColorStop(0, 'rgba(26,103,139,.25)');
       glow.addColorStop(.58, 'rgba(17,62,92,.10)');
@@ -747,6 +802,8 @@ export function CosmosRenderer({
         const groupSystem = new THREE.Group();
         const groupEarth = new THREE.Group();
         world.add(groupGalaxy, groupSystem, groupEarth);
+        const backgroundStars = createStarfield(THREE);
+        world.add(backgroundStars);
         const neural = createNeuralSphere(THREE);
         world.add(neural.group);
 
@@ -777,15 +834,26 @@ export function CosmosRenderer({
         })));
         const galaxyGlow = new THREE.Sprite(new THREE.SpriteMaterial({
           map: drawRadialTexture(THREE),
-          color: 0x75d9ff,
+          color: 0x8395ff,
           transparent: true,
-          opacity: .55,
+          opacity: .21,
           blending: THREE.AdditiveBlending,
           depthWrite: false,
         }));
         galaxyGlow.scale.set(4.3, 2.6, 1);
         galaxyGlow.position.set(0, 0, -.2);
         groupGalaxy.add(galaxyGlow);
+        const galaxyCore = new THREE.Sprite(new THREE.SpriteMaterial({
+          map: drawRadialTexture(THREE),
+          color: 0xffc17e,
+          transparent: true,
+          opacity: .42,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        }));
+        galaxyCore.scale.set(1.7, 1.2, 1);
+        galaxyCore.position.set(0, 0, .08);
+        groupGalaxy.add(galaxyCore);
 
         const sunMaterial = createSunMaterial(THREE);
         const sun = new THREE.Mesh(new THREE.SphereGeometry(.52, 40, 30), sunMaterial);
@@ -803,6 +871,33 @@ export function CosmosRenderer({
         world.add(new THREE.AmbientLight(0x8dbbd3, .65));
         const systemLight = new THREE.PointLight(0xffd39a, 48, 60);
         groupSystem.add(systemLight);
+        const beltCount = 2400;
+        const beltPositions = new Float32Array(beltCount * 3);
+        const beltColors = new Float32Array(beltCount * 3);
+        const beltRandom = deterministicRandom(610);
+        const beltColor = new THREE.Color('#a99c91');
+        for (let i = 0; i < beltCount; i++) {
+          const radius = 3.55 + beltRandom() * .46;
+          const angle = beltRandom() * Math.PI * 2;
+          beltPositions[i * 3] = Math.cos(angle) * radius;
+          beltPositions[i * 3 + 1] = Math.sin(angle) * radius * .018 + (beltRandom() - .5) * .12;
+          beltPositions[i * 3 + 2] = Math.sin(angle) * radius;
+          const brightness = .35 + beltRandom() * .48;
+          beltColors[i * 3] = beltColor.r * brightness;
+          beltColors[i * 3 + 1] = beltColor.g * brightness;
+          beltColors[i * 3 + 2] = beltColor.b * brightness;
+        }
+        const beltGeometry = new THREE.BufferGeometry();
+        beltGeometry.setAttribute('position', new THREE.BufferAttribute(beltPositions, 3));
+        beltGeometry.setAttribute('color', new THREE.BufferAttribute(beltColors, 3));
+        groupSystem.add(new THREE.Points(beltGeometry, new THREE.PointsMaterial({
+          size: .025,
+          sizeAttenuation: true,
+          vertexColors: true,
+          transparent: true,
+          opacity: .62,
+          depthWrite: false,
+        })));
         const bodies = [
           Astronomy.Body.Mercury,
           Astronomy.Body.Venus,
@@ -819,7 +914,7 @@ export function CosmosRenderer({
           const orbitRadius = orbitRadii[index];
           const orbit = new THREE.Mesh(
             new THREE.RingGeometry(orbitRadius - .006, orbitRadius + .006, 112),
-            new THREE.MeshBasicMaterial({ color: 0x70d6ed, transparent: true, opacity: .22, side: THREE.DoubleSide, depthWrite: false }),
+            new THREE.MeshBasicMaterial({ color: 0xa7c4d6, transparent: true, opacity: .13, side: THREE.DoubleSide, depthWrite: false }),
           );
           orbit.rotation.x = Math.PI * .5;
           groupSystem.add(orbit);
@@ -847,6 +942,7 @@ export function CosmosRenderer({
             uNightMap: { value: earthFallback.night },
             uCloudMap: { value: earthFallback.clouds },
             uSunDirection: { value: new THREE.Vector3(...subsolarDirection(new Date())) },
+            uCloudOffset: { value: 0 },
             uCloudsLoaded: { value: 1 },
           },
           vertexShader: `
@@ -863,6 +959,7 @@ export function CosmosRenderer({
             uniform sampler2D uNightMap;
             uniform sampler2D uCloudMap;
             uniform vec3 uSunDirection;
+            uniform float uCloudOffset;
             uniform float uCloudsLoaded;
             varying vec2 vUv;
             varying vec3 vLocalNormal;
@@ -872,7 +969,7 @@ export function CosmosRenderer({
               vec3 dayColor = texture2D(uDayMap, vUv).rgb;
               vec3 nightColor = texture2D(uNightMap, vUv).rgb;
               vec3 color = mix(nightColor, dayColor, day);
-              float cloudValue = texture2D(uCloudMap, vUv).r;
+              float cloudValue = texture2D(uCloudMap, vec2(fract(vUv.x + uCloudOffset), vUv.y)).r;
               float cloudMask = smoothstep(.42, .76, cloudValue) * uCloudsLoaded * day;
               color = mix(color, vec3(.82, .92, 1.0), cloudMask * .34);
               gl_FragColor = vec4(color, 1.0);
@@ -903,8 +1000,8 @@ export function CosmosRenderer({
               varying vec3 vViewPosition;
               void main() {
                 float fresnel = pow(1.0 - max(0.0, dot(normalize(vNormal), normalize(vViewPosition))), 3.0);
-                float alpha = fresnel * .48;
-                gl_FragColor = vec4(.20, .72, 1.0, alpha);
+              float alpha = fresnel * .34;
+              gl_FragColor = vec4(.18, .55, .98, alpha);
               }
             `,
           }),
@@ -912,7 +1009,7 @@ export function CosmosRenderer({
         groupEarth.add(atmosphere);
         const grid = new THREE.Mesh(
           new THREE.SphereGeometry(EARTH_RADIUS * 1.005, 18, 12),
-          new THREE.MeshBasicMaterial({ color: 0x87e8f1, wireframe: true, transparent: true, opacity: .065, depthWrite: false }),
+          new THREE.MeshBasicMaterial({ color: 0x87e8f1, wireframe: true, transparent: true, opacity: .022, depthWrite: false }),
         );
         groupEarth.add(grid);
         const issDot = new THREE.Mesh(new THREE.SphereGeometry(.085, 10, 8), new THREE.MeshBasicMaterial({ color: 0xd8fff2 }));
@@ -1138,6 +1235,9 @@ export function CosmosRenderer({
         renderer.__animate = (time, audioLevel, currentState) => {
           groupGalaxy.rotation.z += .000025;
           groupSystem.rotation.y += .00008;
+          groupEarth.rotation.y += .000035;
+          backgroundStars.rotation.y += .0000015;
+          earthMaterial.uniforms.uCloudOffset.value = (time * .0000025) % 1;
           sunMaterial.uniforms.uTime.value = time / 1000;
           cityMarker.scale.setScalar(1 + .18 * Math.sin(time * .004));
           cityHalo.scale.setScalar(1 + .12 * Math.sin(time * .003));
