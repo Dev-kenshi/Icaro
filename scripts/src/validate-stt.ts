@@ -32,7 +32,7 @@ const check = (condition: unknown, message: string) => {
 const login = await realFetch(`${api}/auth/login`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ username: "user1", password: process.env.ICARO_USER1_CODE }),
+  body: JSON.stringify({ username: "user1", password: process.env.ICARO_USER1_PASSWORD ?? process.env.ICARO_USER1_CODE }),
 });
 const cookie = (login.headers.get("set-cookie") || "").split(";")[0];
 const audio = new Uint8Array(4000).fill(7);

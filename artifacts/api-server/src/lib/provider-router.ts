@@ -349,22 +349,33 @@ export function createProviderRouter(options: RouterOptions = {}) {
           headers["HTTP-Referer"] = "https://icaro.uefs.br";
           headers["X-Title"] = "Icaro";
         }
-        const response = await fetchImpl(`${baseUrl}/chat/completions`, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            model,
-            stream: true,
-            messages: [
-              { role: "system", content: input.systemPrompt },
-              ...input.history.map(({ role, content }) => ({ role, content })),
-              { role: "user", content: input.userMessage },
-            ],
-            max_tokens: Math.min(input.maxTokens, mode === "deep" ? 4_096 : 1_536),
-            temperature: 0.7,
-            stream_options: { include_usage: true },
+        let headerTimeout: ReturnType<typeof setTimeout> | undefined;
+        const response = await Promise.race([
+          fetchImpl(`${baseUrl}/chat/completions`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              model,
+              stream: true,
+              messages: [
+                { role: "system", content: input.systemPrompt },
+                ...input.history.map(({ role, content }) => ({ role, content })),
+                { role: "user", content: input.userMessage },
+              ],
+              max_tokens: Math.min(input.maxTokens, mode === "deep" ? 4_096 : 1_536),
+              temperature: 0.7,
+              stream_options: { include_usage: true },
+            }),
+            signal: controller.signal,
           }),
-          signal: controller.signal,
+          new Promise<never>((_, reject) => {
+            headerTimeout = setTimeout(() => {
+              controller.abort();
+              reject(new Error("first_token_timeout"));
+            }, firstTokenTimeoutMs);
+          }),
+        ]).finally(() => {
+          if (headerTimeout) clearTimeout(headerTimeout);
         });
 
         if (!response.ok) {
@@ -405,7 +416,7 @@ export function createProviderRouter(options: RouterOptions = {}) {
           streamDone = next.done;
           buffer += decoder.decode(next.value ?? new Uint8Array(), { stream: !streamDone });
           const lines = buffer.split(/\r?\n/);
-          buffer = lines.pop() ?? "";
+          buffer = streamDone ? "" : lines.pop() ?? "";
           for (const line of lines) {
             if (!line.startsWith("data:")) continue;
             const raw = line.slice(5).trim();

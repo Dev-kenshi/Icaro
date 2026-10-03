@@ -74,7 +74,6 @@ function harness(opts: {
     openAiModel: "gpt-4o-mini-tts",
     openAiVoice: "onyx",
     elevenLabsModel: opts.elevenModel ?? "eleven_flash_v2_5",
-    voiceSamplePath: path.resolve(import.meta.dirname, "../../artifacts/api-server/assets/voice/amostra_voz.mp3"),
     dataDir: opts.dataDir ?? mkdtempSync(path.join(os.tmpdir(), "icaro-voice-")),
     fetchImpl,
     now: () => clock,
@@ -191,24 +190,22 @@ check("Nunca troca para outra voz (OpenAI) quando o Gemini falha", async () => {
   assert.ok(h.calls.length > 0);
 });
 
-check("Voz do zip: clona a amostra uma única vez e usa as configurações do kit", async () => {
+check("Voz da conta ElevenLabs usa as configurações do kit sem clonar uma amostra", async () => {
   const h = harness({
     keys: { elevenlabs: "e" },
-    handler: (url) => url.endsWith("/voices/add")
-      ? new Response(JSON.stringify({ voice_id: "voz-icaro" }), { status: 200 })
-      : new Response(Buffer.from("ID3fakeaudio"), { status: 200 }),
+    handler: () => new Response(Buffer.from("ID3fakeaudio"), { status: 200 }),
   });
-  assert.equal(h.engine.family(), "elevenlabs");
-  await h.engine.synthesize("Primeira frase.");
-  await h.engine.synthesize("Segunda frase.");
-  assert.equal(h.calls.filter((c) => c.url.endsWith("/voices/add")).length, 1);
-  const tts = h.calls.filter((c) => c.url.includes("/text-to-speech/voz-icaro"));
+  assert.equal(h.engine.family(), "gemini", "sem voz padrão configurada, Gemini continua sendo a voz do servidor");
+  const first = await h.engine.synthesize("Primeira frase.", "voz-da-conta");
+  const second = await h.engine.synthesize("Segunda frase.", "voz-da-conta");
+  assert.equal(first.family, "elevenlabs");
+  assert.equal(second.family, "elevenlabs");
+  assert.equal(h.calls.filter((c) => c.url.endsWith("/voices/add")).length, 0);
+  const tts = h.calls.filter((c) => c.url.includes("/text-to-speech/voz-da-conta"));
   assert.equal(tts.length, 2);
   const body = tts[0].body as Record<string, unknown>;
   assert.equal(body.language_code, "pt");
   assert.deepEqual(body.voice_settings, { stability: 0.45, similarity_boost: 0.9, style: 0, use_speaker_boost: true });
-  const saved = JSON.parse(readFileSync(path.join(h.cfg.dataDir, "elevenlabs-voice.json"), "utf8"));
-  assert.equal(saved.voiceId, "voz-icaro");
   assert.equal(elevenLabsBody("x", "eleven_multilingual_v2").language_code, undefined);
 });
 

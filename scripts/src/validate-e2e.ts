@@ -123,7 +123,7 @@ function assert(cond: unknown, msg: string): asserts cond { if (!cond) throw new
 let sessionCookie = '';
 async function api(path: string, init?: RequestInit) {
   if (!sessionCookie) {
-    const l = await fetch(API + 'auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'user1', password: process.env.ICARO_USER1_CODE ?? '' }) });
+    const l = await fetch(API + 'auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'user1', password: process.env.ICARO_USER1_PASSWORD ?? process.env.ICARO_USER1_CODE ?? '' }) });
     if (!l.ok) throw new Error(`Login de teste falhou: ${l.status}`);
     sessionCookie = (l.headers.get('set-cookie') ?? '').split(';')[0];
   }
@@ -187,7 +187,7 @@ async function main() {
     args: ['--autoplay-policy=no-user-gesture-required', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--no-sandbox'],
   });
   const ctx = await browser.newContext({ viewport: { width: 1366, height: 800 }, locale: 'pt-BR', timezoneId: 'America/Sao_Paulo' });
-  const loginRes = await ctx.request.post(new URL('api/auth/login', BASE).toString(), { data: { username: 'user1', password: process.env.ICARO_USER1_CODE ?? '' } });
+  const loginRes = await ctx.request.post(new URL('api/auth/login', BASE).toString(), { data: { username: 'user1', password: process.env.ICARO_USER1_PASSWORD ?? process.env.ICARO_USER1_CODE ?? '' } });
   if (!loginRes.ok()) throw new Error(`Login de teste falhou: ${loginRes.status()}`);
   await ctx.addInitScript(INIT);
   await ctx.route('**/api/tts-ts', (route) => route.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"sem ElevenLabs"}' }));

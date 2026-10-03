@@ -5,6 +5,7 @@ const router: IRouter = Router();
 const STT_WINDOW_MS = 10 * 60 * 1000;
 const STT_LIMIT = 80;
 const hits = new Map<string, { count: number; resetAt: number }>();
+const MAX_TRACKED_CLIENTS = 10_000;
 const VOCABULARY = "Ícaro, UEFS, Feira de Santana, ITCONT, contabilidade, reforma tributária, IBS, CBS, split payment, Simples Nacional, MEI, Groq.";
 const EXT: Record<string, string> = {
   "audio/webm": "webm",
@@ -21,11 +22,18 @@ export function getSttModel(env: Record<string, string | undefined> = process.en
 
 function isRateLimited(key: string) {
   const now = Date.now();
-  if (hits.size > 1000) {
-    for (const [entryKey, entry] of hits) if (now >= entry.resetAt) hits.delete(entryKey);
-  }
   const entry = hits.get(key);
   if (!entry || now >= entry.resetAt) {
+    if (!entry && hits.size >= MAX_TRACKED_CLIENTS) {
+      for (const [entryKey, oldEntry] of hits) {
+        if (now >= oldEntry.resetAt) hits.delete(entryKey);
+      }
+      while (hits.size >= MAX_TRACKED_CLIENTS) {
+        const oldest = hits.keys().next().value;
+        if (oldest === undefined) break;
+        hits.delete(oldest);
+      }
+    }
     hits.set(key, { count: 1, resetAt: now + STT_WINDOW_MS });
     return false;
   }

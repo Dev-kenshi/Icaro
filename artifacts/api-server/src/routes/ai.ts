@@ -33,23 +33,39 @@ const router: IRouter = Router();
 const CHAT_WINDOW_MS = 10 * 60 * 1000;
 const CHAT_LIMIT = 30;
 const chatHits = new Map<string, { count: number; resetAt: number }>();
+const MAX_TRACKED_RATE_LIMIT_KEYS = 10_000;
 
-function pruneHits(map: Map<string, { count: number; resetAt: number }>) {
-  if (map.size < 1000) return;
-  const now = Date.now();
-  for (const [k, v] of map) if (now >= v.resetAt) map.delete(k);
+function makeRateLimitSlot(map: Map<string, { count: number; resetAt: number }>, now: number) {
+  if (map.size < MAX_TRACKED_RATE_LIMIT_KEYS) return;
+  for (const [key, entry] of map) {
+    if (now >= entry.resetAt) map.delete(key);
+  }
+  while (map.size >= MAX_TRACKED_RATE_LIMIT_KEYS) {
+    const oldest = map.keys().next().value;
+    if (oldest === undefined) break;
+    map.delete(oldest);
+  }
 }
 
-function isChatRateLimited(key: string) {
-  pruneHits(chatHits);
+function isRateLimited(
+  map: Map<string, { count: number; resetAt: number }>,
+  key: string,
+  windowMs: number,
+  limit: number,
+) {
   const now = Date.now();
-  const entry = chatHits.get(key);
+  const entry = map.get(key);
   if (!entry || now >= entry.resetAt) {
-    chatHits.set(key, { count: 1, resetAt: now + CHAT_WINDOW_MS });
+    if (!entry) makeRateLimitSlot(map, now);
+    map.set(key, { count: 1, resetAt: now + windowMs });
     return false;
   }
   entry.count += 1;
-  return entry.count > CHAT_LIMIT;
+  return entry.count > limit;
+}
+
+function isChatRateLimited(key: string) {
+  return isRateLimited(chatHits, key, CHAT_WINDOW_MS, CHAT_LIMIT);
 }
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3-flash-preview";
@@ -285,15 +301,7 @@ const TTS_LIMIT = 90;
 const ttsHits = new Map<string, { count: number; resetAt: number }>();
 
 function isTtsRateLimited(key: string) {
-  pruneHits(ttsHits);
-  const now = Date.now();
-  const entry = ttsHits.get(key);
-  if (!entry || now >= entry.resetAt) {
-    ttsHits.set(key, { count: 1, resetAt: now + TTS_WINDOW_MS });
-    return false;
-  }
-  entry.count += 1;
-  return entry.count > TTS_LIMIT;
+  return isRateLimited(ttsHits, key, TTS_WINDOW_MS, TTS_LIMIT);
 }
 
 router.post("/ai/tts", async (req, res) => {
