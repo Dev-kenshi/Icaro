@@ -95,6 +95,12 @@ function getOpenAiKey() {
   return process.env.OPENAI_API_KEY || process.env.gpt || "";
 }
 
+function getClaudeApiKey() {
+  return process.env.ANTHROPIC_API_KEY?.trim()
+    || process.env.CLAUDE_API_KEY_ROMULA?.trim()
+    || "";
+}
+
 function buildDatasetContext(
   dataset: ReturnType<typeof SendAiMessageBody.parse>["dataset"],
 ) {
@@ -193,7 +199,7 @@ router.get("/ai/status", (_req, res) => {
     geminiAvailable: Boolean(getGeminiKey()),
     openaiAvailable: Boolean(getOpenAiKey()),
     groqAvailable: Boolean(getGroqApiKey()),
-    claudeAvailable: Boolean(process.env.ANTHROPIC_API_KEY),
+    claudeAvailable: Boolean(getClaudeApiKey()),
     speechAvailable: speechConfigured && !speechProviderAuthRejected,
     providers: providerRouter.getHealth(),
   });
@@ -738,10 +744,10 @@ router.post("/ai/chat", async (req, res) => {
     }
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = getClaudeApiKey();
   if (!apiKey) {
     res.status(503).json({
-      error: "Claude ainda não está configurado. Adicione ANTHROPIC_API_KEY aos Secrets do projeto.",
+      error: "Claude ainda não está configurado. Adicione uma chave Anthropic aos Secrets do projeto.",
     });
     return;
   }

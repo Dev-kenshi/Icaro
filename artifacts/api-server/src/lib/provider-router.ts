@@ -301,7 +301,7 @@ export function createProviderRouter(options: RouterOptions = {}) {
       {
         id: "claude" as const,
         name: "Claude",
-        configured: Boolean(env.ANTHROPIC_API_KEY),
+        configured: Boolean(env.ANTHROPIC_API_KEY?.trim() || env.CLAUDE_API_KEY_ROMULA?.trim()),
         model: env.ANTHROPIC_MODEL || "claude-sonnet-4-5",
         privacyNote: "Verifique as regras de retenção do provedor antes de enviar dados pessoais.",
       },
