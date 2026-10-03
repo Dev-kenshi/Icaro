@@ -163,6 +163,10 @@ export function providerQueue(mode: ProviderMode): AutoProviderId[] {
   return [...(mode === "deep" ? deepQueue : fastQueue)];
 }
 
+export function isAutoProviderId(value: string): value is AutoProviderId {
+  return definitions.some((def) => def.id === value);
+}
+
 function configuredKey(def: ProviderDefinition, env: NodeJS.ProcessEnv): string {
   for (const keyName of def.keyNames) {
     const value = env[keyName];
@@ -212,6 +216,7 @@ type ChatInput = {
   userMessage: string;
   maxTokens: number;
   mode?: ProviderMode;
+  providerId?: AutoProviderId;
   onProvider?: (provider: AutoProviderId, model: string) => void;
   onToken?: (token: string) => void;
 };
@@ -319,7 +324,7 @@ export function createProviderRouter(options: RouterOptions = {}) {
     const attempted: AutoProviderId[] = [];
     let lastError = "No configured provider could complete the request";
 
-    for (const id of providerQueue(mode)) {
+    for (const id of input.providerId ? [input.providerId] : providerQueue(mode)) {
       const def = definitions.find((item) => item.id === id)!;
       const key = configuredKey(def, env);
       const baseUrl = def.baseUrl(env);
@@ -355,7 +360,7 @@ export function createProviderRouter(options: RouterOptions = {}) {
               ...input.history.map(({ role, content }) => ({ role, content })),
               { role: "user", content: input.userMessage },
             ],
-            max_tokens: input.maxTokens,
+            max_tokens: Math.min(input.maxTokens, mode === "deep" ? 4_096 : 1_536),
             temperature: 0.7,
             stream_options: { include_usage: true },
           }),

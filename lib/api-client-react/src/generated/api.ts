@@ -22,8 +22,12 @@ import type {
 import type {
   AiChatInput,
   AiChatResponse,
+  AiProviderHealth,
   AiProviderStatus,
   AiSpeechInput,
+  AskStats,
+  CerebroCandidate,
+  CerebroCandidateApprovalInput,
   HealthStatus,
   TtsTimestampsInput,
   TtsTimestampsResult
@@ -473,5 +477,489 @@ export const useSendAiMessage = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getSendAiMessageMutationOptions(options));
+    }
+
+export const getStreamAiMessageUrl = () => {
+
+
+
+
+  return `/api/ai/chat/stream`
+}
+
+/**
+ * Emits Server-Sent Events. Automatic mode uses only configured providers and never switches after answer text has been emitted.
+ * @summary Stream an automatically routed AI response
+ */
+export const streamAiMessage = async (aiChatInput: AiChatInput, options?: Parameters<typeof customFetch>[1]): Promise<string> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<string>(getStreamAiMessageUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(aiChatInput)
+  }
+);}
+
+
+
+
+
+export const getStreamAiMessageMutationKey = () => ['streamAiMessage'] as const;
+
+export const getStreamAiMessageMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof streamAiMessage>>, TError,StreamAiMessageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof streamAiMessage>>, TError,StreamAiMessageMutationVariables, TContext> => {
+
+const mutationKey = getStreamAiMessageMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof streamAiMessage>>, StreamAiMessageMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  streamAiMessage(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StreamAiMessageMutationResult = NonNullable<Awaited<ReturnType<typeof streamAiMessage>>>
+    export type StreamAiMessageMutationBody = BodyType<AiChatInput>
+    export type StreamAiMessageMutationError = ErrorType<void>
+    export type StreamAiMessageMutationVariables = {data: BodyType<AiChatInput>}
+
+    /**
+ * @summary Stream an automatically routed AI response
+ */
+export const useStreamAiMessage = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof streamAiMessage>>, TError,StreamAiMessageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof streamAiMessage>>,
+        TError,
+        StreamAiMessageMutationVariables,
+        TContext
+      > => {
+      return useMutation(getStreamAiMessageMutationOptions(options));
+    }
+
+export const getGetAiProviderHealthUrl = () => {
+
+
+
+
+  return `/api/ia/saude`
+}
+
+/**
+ * Requires an administrator session. Never returns credentials or prompts.
+ * @summary Get detailed provider health for administrators
+ */
+export const getAiProviderHealth = async ( options?: Parameters<typeof customFetch>[1]): Promise<AiProviderHealth[]> => {
+
+  return customFetch<AiProviderHealth[]>(getGetAiProviderHealthUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAiProviderHealthQueryKey = () => {
+    return [
+    `/api/ia/saude`
+    ] as const;
+    }
+
+
+export const getGetAiProviderHealthQueryOptions = <TData = Awaited<ReturnType<typeof getAiProviderHealth>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAiProviderHealth>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAiProviderHealthQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAiProviderHealth>>> = ({ signal }) => getAiProviderHealth({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAiProviderHealth>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAiProviderHealthQueryResult = NonNullable<Awaited<ReturnType<typeof getAiProviderHealth>>>
+export type GetAiProviderHealthQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get detailed provider health for administrators
+ */
+
+export function useGetAiProviderHealth<TData = Awaited<ReturnType<typeof getAiProviderHealth>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAiProviderHealth>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAiProviderHealthQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAskStatsUrl = () => {
+
+
+
+
+  return `/api/ask/stats`
+}
+
+/**
+ * @summary Get answer distribution by knowledge layer
+ */
+export const getAskStats = async ( options?: Parameters<typeof customFetch>[1]): Promise<AskStats> => {
+
+  return customFetch<AskStats>(getGetAskStatsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAskStatsQueryKey = () => {
+    return [
+    `/api/ask/stats`
+    ] as const;
+    }
+
+
+export const getGetAskStatsQueryOptions = <TData = Awaited<ReturnType<typeof getAskStats>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAskStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAskStatsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAskStats>>> = ({ signal }) => getAskStats({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAskStats>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAskStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getAskStats>>>
+export type GetAskStatsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get answer distribution by knowledge layer
+ */
+
+export function useGetAskStats<TData = Awaited<ReturnType<typeof getAskStats>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAskStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAskStatsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListCerebroCandidatesUrl = () => {
+
+
+
+
+  return `/api/admin/cerebro/candidates`
+}
+
+/**
+ * @summary List pending ÍCARO knowledge candidates
+ */
+export const listCerebroCandidates = async ( options?: Parameters<typeof customFetch>[1]): Promise<CerebroCandidate[]> => {
+
+  return customFetch<CerebroCandidate[]>(getListCerebroCandidatesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCerebroCandidatesQueryKey = () => {
+    return [
+    `/api/admin/cerebro/candidates`
+    ] as const;
+    }
+
+
+export const getListCerebroCandidatesQueryOptions = <TData = Awaited<ReturnType<typeof listCerebroCandidates>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCerebroCandidates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCerebroCandidatesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCerebroCandidates>>> = ({ signal }) => listCerebroCandidates({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCerebroCandidates>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCerebroCandidatesQueryResult = NonNullable<Awaited<ReturnType<typeof listCerebroCandidates>>>
+export type ListCerebroCandidatesQueryError = ErrorType<void>
+
+
+/**
+ * @summary List pending ÍCARO knowledge candidates
+ */
+
+export function useListCerebroCandidates<TData = Awaited<ReturnType<typeof listCerebroCandidates>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCerebroCandidates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCerebroCandidatesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getApproveCerebroCandidateUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/cerebro/candidates/${id}/approve`
+}
+
+/**
+ * @summary Approve a pending candidate into the local bank or base
+ */
+export const approveCerebroCandidate = async (id: string,
+    cerebroCandidateApprovalInput: CerebroCandidateApprovalInput, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<void>(getApproveCerebroCandidateUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(cerebroCandidateApprovalInput)
+  }
+);}
+
+
+
+
+
+export const getApproveCerebroCandidateMutationKey = () => ['approveCerebroCandidate'] as const;
+
+export const getApproveCerebroCandidateMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveCerebroCandidate>>, TError,ApproveCerebroCandidateMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveCerebroCandidate>>, TError,ApproveCerebroCandidateMutationVariables, TContext> => {
+
+const mutationKey = getApproveCerebroCandidateMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveCerebroCandidate>>, ApproveCerebroCandidateMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  approveCerebroCandidate(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveCerebroCandidateMutationResult = NonNullable<Awaited<ReturnType<typeof approveCerebroCandidate>>>
+    export type ApproveCerebroCandidateMutationBody = BodyType<CerebroCandidateApprovalInput>
+    export type ApproveCerebroCandidateMutationError = ErrorType<void>
+    export type ApproveCerebroCandidateMutationVariables = {id: string;data: BodyType<CerebroCandidateApprovalInput>}
+
+    /**
+ * @summary Approve a pending candidate into the local bank or base
+ */
+export const useApproveCerebroCandidate = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveCerebroCandidate>>, TError,ApproveCerebroCandidateMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approveCerebroCandidate>>,
+        TError,
+        ApproveCerebroCandidateMutationVariables,
+        TContext
+      > => {
+      return useMutation(getApproveCerebroCandidateMutationOptions(options));
+    }
+
+export const getDiscardCerebroCandidateUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/cerebro/candidates/${id}`
+}
+
+/**
+ * @summary Discard a pending ÍCARO knowledge candidate
+ */
+export const discardCerebroCandidate = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDiscardCerebroCandidateUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDiscardCerebroCandidateMutationKey = () => ['discardCerebroCandidate'] as const;
+
+export const getDiscardCerebroCandidateMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof discardCerebroCandidate>>, TError,DiscardCerebroCandidateMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof discardCerebroCandidate>>, TError,DiscardCerebroCandidateMutationVariables, TContext> => {
+
+const mutationKey = getDiscardCerebroCandidateMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof discardCerebroCandidate>>, DiscardCerebroCandidateMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  discardCerebroCandidate(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DiscardCerebroCandidateMutationResult = NonNullable<Awaited<ReturnType<typeof discardCerebroCandidate>>>
+
+    export type DiscardCerebroCandidateMutationError = ErrorType<void>
+    export type DiscardCerebroCandidateMutationVariables = {id: string}
+
+    /**
+ * @summary Discard a pending ÍCARO knowledge candidate
+ */
+export const useDiscardCerebroCandidate = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof discardCerebroCandidate>>, TError,DiscardCerebroCandidateMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof discardCerebroCandidate>>,
+        TError,
+        DiscardCerebroCandidateMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDiscardCerebroCandidateMutationOptions(options));
     }
 

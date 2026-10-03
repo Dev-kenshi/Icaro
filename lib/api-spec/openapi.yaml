@@ -170,6 +170,92 @@ paths:
           description: Authentication required
         "403":
           description: Administrator role required
+  /ask/stats:
+    get:
+      operationId: getAskStats
+      tags: [ai]
+      summary: Get answer distribution by knowledge layer
+      responses:
+        "200":
+          description: Layer resolution, token, and daily statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AskStats"
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role required
+  /admin/cerebro/candidates:
+    get:
+      operationId: listCerebroCandidates
+      tags: [ai]
+      summary: List pending ÍCARO knowledge candidates
+      responses:
+        "200":
+          description: Candidate list without stored embeddings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CerebroCandidate"
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role required
+  /admin/cerebro/candidates/{id}/approve:
+    post:
+      operationId: approveCerebroCandidate
+      tags: [ai]
+      summary: Approve a pending candidate into the local bank or base
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 24
+            maxLength: 24
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CerebroCandidateApprovalInput"
+      responses:
+        "200":
+          description: Candidate approved
+        "400":
+          description: Invalid destination
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role required
+        "404":
+          description: Candidate not found or contains personal data
+  /admin/cerebro/candidates/{id}:
+    delete:
+      operationId: discardCerebroCandidate
+      tags: [ai]
+      summary: Discard a pending ÍCARO knowledge candidate
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 24
+            maxLength: 24
+      responses:
+        "200":
+          description: Candidate discarded
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role required
+        "404":
+          description: Candidate not found or already reviewed
 components:
   schemas:
     AiSpeechInput:
@@ -293,6 +379,79 @@ components:
         cooldownMs:
           type: integer
       required: [id, name, configured, available, state, model, privacyNote, averageFirstTokenMs, errorRate, cooldownMs]
+    LayerCount:
+      type: object
+      additionalProperties: false
+      properties:
+        count:
+          type: integer
+        percent:
+          type: number
+      required: [count, percent]
+    AskDailyStats:
+      type: object
+      additionalProperties: false
+      properties:
+        date:
+          type: string
+          format: date
+        noAiPercent:
+          type: number
+        total:
+          type: integer
+      required: [date, noAiPercent, total]
+    AskStats:
+      type: object
+      additionalProperties: false
+      properties:
+        total:
+          type: integer
+        byLayer:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/LayerCount"
+        tokensSpent:
+          type: integer
+        tokensSaved:
+          type: integer
+        daily:
+          type: array
+          items:
+            $ref: "#/components/schemas/AskDailyStats"
+      required: [total, byLayer, tokensSpent, tokensSaved, daily]
+    CerebroCandidate:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        question:
+          type: string
+        answer:
+          type: string
+        layer:
+          type: string
+          enum: [L5, L6]
+        provider:
+          type: string
+        firstSeenAt:
+          type: integer
+        lastSeenAt:
+          type: integer
+        count:
+          type: integer
+        status:
+          type: string
+          enum: [pending]
+      required: [id, question, answer, layer, provider, firstSeenAt, lastSeenAt, count, status]
+    CerebroCandidateApprovalInput:
+      type: object
+      additionalProperties: false
+      required: [destination]
+      properties:
+        destination:
+          type: string
+          enum: [bank, base]
     AiChatHistoryMessage:
       type: object
       properties:
@@ -352,9 +511,13 @@ components:
           maxLength: 4000
         history:
           type: array
-          maxItems: 8
+          maxItems: 12
           items:
             $ref: "#/components/schemas/AiChatHistoryMessage"
+        knowledgeMode:
+          type: string
+          enum: [auto, base]
+          default: auto
         dataset:
           oneOf:
             - $ref: "#/components/schemas/DatasetContext"
@@ -374,6 +537,9 @@ components:
           enum: [auto, gemini, openai, groq, claude, cerebras, openrouter, mistral, github, nvidia, cloudflare, huggingface, cohere, local]
         model:
           type: string
+        layer:
+          type: string
+          enum: [L1, L2, L3, L4, L5, L6]
       required:
         - answer
         - provider

@@ -11,7 +11,8 @@
     "validate:groq": "tsx ./src/validate-groq.ts",
     "validate:knowledge": "tsx ./src/validate-fast-knowledge.ts",
     "validate:stt": "tsx ./src/validate-stt.ts",
-    "validate:api-1000": "tsx ./src/validate-api-1000.ts",
+    "validate:api-1000": "tsx ./src/validate-api-1000.ts && pnpm run validate:cerebro-200",
+    "validate:cerebro-200": "tsx ../artifacts/api-server/src/validate-cerebro-200.ts",
     "validate:e2e": "tsx ./src/validate-e2e.ts",
     "validate:voice-output": "tsx ./src/validate-voice-output.ts"
   },

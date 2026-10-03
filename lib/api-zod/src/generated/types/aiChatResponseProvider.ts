@@ -10,9 +10,18 @@ export type AiChatResponseProvider = typeof AiChatResponseProvider[keyof typeof 
 
 
 export const AiChatResponseProvider = {
+  auto: 'auto',
   gemini: 'gemini',
   openai: 'openai',
   groq: 'groq',
   claude: 'claude',
+  cerebras: 'cerebras',
+  openrouter: 'openrouter',
+  mistral: 'mistral',
+  github: 'github',
+  nvidia: 'nvidia',
+  cloudflare: 'cloudflare',
+  huggingface: 'huggingface',
+  cohere: 'cohere',
   local: 'local',
 } as const;

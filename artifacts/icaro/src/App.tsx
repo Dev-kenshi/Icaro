@@ -9,6 +9,7 @@ import NotFound from '@/pages/not-found';
 import Stage from '@/pages/stage';
 import Analysis from '@/pages/analysis';
 import Assistant from '@/pages/assistant';
+import AdminCerebro from '@/pages/admin-cerebro';
 import { LoginGate } from '@/components/login/login-gate';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 
@@ -34,6 +35,7 @@ function Shelled() {
       <Switch>
         <Route path="/analysis" component={Analysis} />
         <Route path="/assistant" component={Assistant} />
+        <Route path="/admin/cerebro" component={AdminCerebro} />
         <Route component={NotFound} />
       </Switch>
     </AppShell>

@@ -4,13 +4,16 @@
  */
 import {
   GetAiStatusResponse,
+  GetAskStatsResponse,
+  ListCerebroCandidatesResponse,
+  ApproveCerebroCandidateBody,
   SendAiMessageBody,
   SendAiMessageResponse,
   SpeakAiTextBody,
   SynthesizeTtsTimestampsBody,
 } from "../../lib/api-zod/src/generated/api";
 
-const EXPECTED_CASES = 1_000;
+const EXPECTED_CASES = 800;
 let passed = 0;
 let failed = 0;
 let total = 0;
@@ -52,15 +55,17 @@ function chatBody(overrides: Record<string, unknown> = {}) {
     question: "Explique o fluxo contábil.",
     history: [],
     dataset: null,
+    knowledgeMode: "auto",
     ...overrides,
   };
 }
 
-const providers = ["gemini", "openai", "groq", "claude"] as const;
+const providers = ["auto", "gemini", "openai", "groq", "claude"] as const;
+const healthProviders = ["groq", "gemini", "cerebras", "openrouter", "mistral", "github", "nvidia", "cloudflare", "huggingface", "cohere", "openai", "claude"] as const;
 const personas = ["analyst", "icaro"] as const;
 
-// 100 limites válidos + 100 entradas inválidas para síntese de voz.
-for (let i = 0; i < 100; i++) {
+// 80 limites válidos + 80 entradas inválidas para síntese de voz.
+for (let i = 0; i < 80; i++) {
   runCase(`tts válido ${i + 1}`, () => {
     const length = 1 + ((i * 37) % 1_200);
     const text = textOfLength(length, i);
@@ -79,32 +84,35 @@ for (let i = 0; i < 100; i++) {
   });
 }
 
-// 100 mensagens válidas com combinações de provedor/persona + 100 rejeições de envelope.
-for (let i = 0; i < 100; i++) {
+// 80 mensagens válidas com combinações de provedor/persona + 80 rejeições de envelope.
+for (let i = 0; i < 80; i++) {
   runCase(`chat básico válido ${i + 1}`, () => {
     const body = chatBody({
       provider: providers[i % providers.length],
       persona: personas[i % personas.length],
       question: textOfLength(1 + ((i * 41) % 4_000), i),
+      knowledgeMode: i % 2 === 0 ? "auto" : "base",
     });
     expectParse(SendAiMessageBody, body, true);
   });
   runCase(`chat básico inválido ${i + 1}`, () => {
-    const invalid = i % 4 === 0
+    const invalid = i % 5 === 0
       ? chatBody({ provider: "unknown" })
-      : i % 4 === 1
+      : i % 5 === 1
         ? chatBody({ question: "" })
-        : i % 4 === 2
+        : i % 5 === 2
           ? chatBody({ persona: "unknown" })
-          : chatBody({ question: textOfLength(4_001 + (i % 17), i) });
+          : i % 5 === 3
+              ? chatBody({ question: textOfLength(4_001 + (i % 17), i) })
+              : chatBody({ knowledgeMode: "unknown" });
     expectParse(SendAiMessageBody, invalid, false);
   });
 }
 
-// Histórico no máximo permitido e recusas para tamanho, papel e conteúdo inválidos.
-for (let i = 0; i < 100; i++) {
+// Histórico no máximo permitido (12 turnos) e recusas para tamanho, papel e conteúdo inválidos.
+for (let i = 0; i < 80; i++) {
   runCase(`histórico válido ${i + 1}`, () => {
-    const count = i % 9;
+    const count = i % 13;
     const history = Array.from({ length: count }, (_, j) => ({
       role: j % 2 === 0 ? "user" : "assistant",
       content: textOfLength((i * 43 + j) % 4_001, i + j),
@@ -113,7 +121,7 @@ for (let i = 0; i < 100; i++) {
   });
   runCase(`histórico inválido ${i + 1}`, () => {
     const invalid = i % 4 === 0
-      ? chatBody({ history: Array.from({ length: 9 }, () => ({ role: "user", content: "oi" })) })
+      ? chatBody({ history: Array.from({ length: 13 }, () => ({ role: "user", content: "oi" })) })
       : i % 4 === 1
         ? chatBody({ history: [{ role: "user", content: textOfLength(4_001, i) }] })
         : i % 4 === 2
@@ -124,7 +132,7 @@ for (let i = 0; i < 100; i++) {
 }
 
 // Datasets válidos nos limites e quatro tipos comuns de corrupção.
-for (let i = 0; i < 100; i++) {
+for (let i = 0; i < 80; i++) {
   runCase(`dataset válido ${i + 1}`, () => {
     const columnsCount = i % 61;
     const rowsCount = i % 51;
@@ -150,8 +158,8 @@ for (let i = 0; i < 100; i++) {
   });
 }
 
-// Status/response envelopes e limites da rota de timestamps.
-for (let i = 0; i < 100; i++) {
+// Status/response envelopes and new admin API shapes, plus timestamp route limits.
+for (let i = 0; i < 80; i++) {
   runCase(`envelopes de resposta ${i + 1}`, () => {
     const status = {
       geminiAvailable: i % 2 === 0,
@@ -159,15 +167,54 @@ for (let i = 0; i < 100; i++) {
       groqAvailable: i % 5 === 0,
       claudeAvailable: i % 7 === 0,
       speechAvailable: i % 11 === 0,
+      providers: healthProviders.map((id, index) => ({
+        id,
+        name: id,
+        configured: i % 2 === 0,
+        available: true,
+        state: "ready",
+        model: `model-${index}`,
+        privacyNote: "ok",
+        averageFirstTokenMs: index % 2 === 0 ? null : 45,
+        errorRate: 0,
+        cooldownMs: 0,
+      })),
     };
     const statusInput = i % 2 === 0 ? status : { ...status, speechAvailable: "yes" };
     expectParse(GetAiStatusResponse, statusInput, i % 2 === 0);
     const response = {
       answer: textOfLength(i % 300, i),
-      provider: providers[i % providers.length],
+      provider: ["gemini", "openai", "groq", "claude"][i % 4],
       model: `model-${i}`,
+      layer: ["L1", "L2", "L3", "L4", "L5", "L6"][i % 6],
     };
     expectParse(SendAiMessageResponse, response, true);
+    const layerStats = Object.fromEntries(["L1", "L2", "L3", "L4", "L5", "L6"].map((layer) => [
+      layer,
+      { count: i, percent: 16.67 },
+    ]));
+    expectParse(GetAskStatsResponse, {
+      total: i,
+      byLayer: layerStats,
+      tokensSpent: i * 10,
+      tokensSaved: i * 3,
+      daily: [{ date: "2026-10-02", noAiPercent: i % 101, total: i }],
+    }, true);
+    const candidate = {
+      id: String(i).padStart(24, "0"),
+      question: `pergunta segura ${i}`,
+      answer: `resposta local ${i}`,
+      layer: i % 2 === 0 ? "L5" : "L6",
+      provider: "mock",
+      firstSeenAt: i,
+      lastSeenAt: i + 1,
+      count: 1 + (i % 5),
+      status: "pending",
+    };
+    expectParse(ListCerebroCandidatesResponse, [candidate], true);
+    expectParse(ListCerebroCandidatesResponse, [{ ...candidate, status: "approved" }], false);
+    expectParse(ApproveCerebroCandidateBody, { destination: i % 2 === 0 ? "bank" : "base" }, true);
+    expectParse(ApproveCerebroCandidateBody, { destination: "remote" }, false);
   });
   runCase(`timestamps ${i + 1}`, () => {
     const text = textOfLength(1 + ((i * 17) % 600), i);
@@ -191,7 +238,7 @@ if (total !== EXPECTED_CASES) {
   failed++;
 }
 
-console.log(`${passed}/${EXPECTED_CASES} validações determinísticas da API passaram.`);
+console.log(`${passed}/${EXPECTED_CASES} validações determinísticas de contrato passaram.`);
 if (failures.length) {
   for (const failure of failures) console.error(`✗ ${failure}`);
 }

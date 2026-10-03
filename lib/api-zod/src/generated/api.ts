@@ -68,7 +68,19 @@ export const GetAiStatusResponse = zod.object({
   "openaiAvailable": zod.boolean(),
   "groqAvailable": zod.boolean(),
   "claudeAvailable": zod.boolean(),
-  "speechAvailable": zod.boolean().describe('Whether at least one server-side speech (TTS) provider is configured')
+  "speechAvailable": zod.boolean().describe('Whether at least one server-side speech (TTS) provider is configured'),
+  "providers": zod.array(zod.object({
+  "id": zod.enum(['groq', 'gemini', 'cerebras', 'openrouter', 'mistral', 'github', 'nvidia', 'cloudflare', 'huggingface', 'cohere', 'openai', 'claude']),
+  "name": zod.string(),
+  "configured": zod.boolean(),
+  "available": zod.boolean(),
+  "state": zod.enum(['not_configured', 'ready', 'cooldown', 'model_unavailable', 'auth_error', 'degraded']),
+  "model": zod.string(),
+  "privacyNote": zod.string(),
+  "averageFirstTokenMs": zod.union([zod.number().int(),zod.null()]),
+  "errorRate": zod.number(),
+  "cooldownMs": zod.number().int()
+}))
 })
 
 
@@ -80,8 +92,9 @@ export const sendAiMessageBodyQuestionMax = 4000;
 
 export const sendAiMessageBodyHistoryItemContentMax = 4000;
 
-export const sendAiMessageBodyHistoryMax = 8;
+export const sendAiMessageBodyHistoryMax = 12;
 
+export const sendAiMessageBodyKnowledgeModeDefault = `auto`;
 export const sendAiMessageBodyDatasetOneNameMax = 160;
 
 export const sendAiMessageBodyDatasetOneColumnsItemMax = 160;
@@ -95,13 +108,15 @@ export const sendAiMessageBodyDatasetOneSummaryMax = 6000;
 
 
 export const SendAiMessageBody = zod.object({
-  "provider": zod.enum(['gemini', 'openai', 'groq', 'claude']),
+  "provider": zod.enum(['auto', 'gemini', 'openai', 'groq', 'claude', 'cerebras', 'openrouter', 'mistral', 'github', 'nvidia', 'cloudflare', 'huggingface', 'cohere']),
+  "mode": zod.enum(['fast', 'deep']).optional(),
   "persona": zod.enum(['analyst', 'icaro']).default(sendAiMessageBodyPersonaDefault),
   "question": zod.string().min(1).max(sendAiMessageBodyQuestionMax),
   "history": zod.array(zod.object({
   "role": zod.enum(['user', 'assistant']),
   "content": zod.string().max(sendAiMessageBodyHistoryItemContentMax)
 })).max(sendAiMessageBodyHistoryMax),
+  "knowledgeMode": zod.enum(['auto', 'base']).default(sendAiMessageBodyKnowledgeModeDefault),
   "dataset": zod.union([zod.object({
   "name": zod.string().max(sendAiMessageBodyDatasetOneNameMax),
   "columns": zod.array(zod.string().max(sendAiMessageBodyDatasetOneColumnsItemMax)).max(sendAiMessageBodyDatasetOneColumnsMax),
@@ -112,8 +127,143 @@ export const SendAiMessageBody = zod.object({
 
 export const SendAiMessageResponse = zod.object({
   "answer": zod.string(),
-  "provider": zod.enum(['gemini', 'openai', 'groq', 'claude', 'local']),
-  "model": zod.string()
+  "provider": zod.enum(['auto', 'gemini', 'openai', 'groq', 'claude', 'cerebras', 'openrouter', 'mistral', 'github', 'nvidia', 'cloudflare', 'huggingface', 'cohere', 'local']),
+  "model": zod.string(),
+  "layer": zod.enum(['L1', 'L2', 'L3', 'L4', 'L5', 'L6']).optional()
 })
+
+
+/**
+ * Emits Server-Sent Events. Automatic mode uses only configured providers and never switches after answer text has been emitted.
+ * @summary Stream an automatically routed AI response
+ */
+export const streamAiMessageBodyPersonaDefault = `analyst`;
+export const streamAiMessageBodyQuestionMax = 4000;
+
+export const streamAiMessageBodyHistoryItemContentMax = 4000;
+
+export const streamAiMessageBodyHistoryMax = 12;
+
+export const streamAiMessageBodyKnowledgeModeDefault = `auto`;
+export const streamAiMessageBodyDatasetOneNameMax = 160;
+
+export const streamAiMessageBodyDatasetOneColumnsItemMax = 160;
+
+export const streamAiMessageBodyDatasetOneColumnsMax = 60;
+
+export const streamAiMessageBodyDatasetOneSampleRowsMax = 50;
+
+export const streamAiMessageBodyDatasetOneSummaryMax = 6000;
+
+
+
+export const StreamAiMessageBody = zod.object({
+  "provider": zod.enum(['auto', 'gemini', 'openai', 'groq', 'claude', 'cerebras', 'openrouter', 'mistral', 'github', 'nvidia', 'cloudflare', 'huggingface', 'cohere']),
+  "mode": zod.enum(['fast', 'deep']).optional(),
+  "persona": zod.enum(['analyst', 'icaro']).default(streamAiMessageBodyPersonaDefault),
+  "question": zod.string().min(1).max(streamAiMessageBodyQuestionMax),
+  "history": zod.array(zod.object({
+  "role": zod.enum(['user', 'assistant']),
+  "content": zod.string().max(streamAiMessageBodyHistoryItemContentMax)
+})).max(streamAiMessageBodyHistoryMax),
+  "knowledgeMode": zod.enum(['auto', 'base']).default(streamAiMessageBodyKnowledgeModeDefault),
+  "dataset": zod.union([zod.object({
+  "name": zod.string().max(streamAiMessageBodyDatasetOneNameMax),
+  "columns": zod.array(zod.string().max(streamAiMessageBodyDatasetOneColumnsItemMax)).max(streamAiMessageBodyDatasetOneColumnsMax),
+  "sampleRows": zod.array(zod.record(zod.string(), zod.string().nullable())).max(streamAiMessageBodyDatasetOneSampleRowsMax),
+  "summary": zod.string().max(streamAiMessageBodyDatasetOneSummaryMax).optional()
+}),zod.null()])
+})
+
+export const StreamAiMessageResponse = zod.unknown()
+
+
+/**
+ * Requires an administrator session. Never returns credentials or prompts.
+ * @summary Get detailed provider health for administrators
+ */
+export const GetAiProviderHealthResponseItem = zod.object({
+  "id": zod.enum(['groq', 'gemini', 'cerebras', 'openrouter', 'mistral', 'github', 'nvidia', 'cloudflare', 'huggingface', 'cohere', 'openai', 'claude']),
+  "name": zod.string(),
+  "configured": zod.boolean(),
+  "available": zod.boolean(),
+  "state": zod.enum(['not_configured', 'ready', 'cooldown', 'model_unavailable', 'auth_error', 'degraded']),
+  "model": zod.string(),
+  "privacyNote": zod.string(),
+  "averageFirstTokenMs": zod.union([zod.number().int(),zod.null()]),
+  "errorRate": zod.number(),
+  "cooldownMs": zod.number().int()
+})
+export const GetAiProviderHealthResponse = zod.array(GetAiProviderHealthResponseItem)
+
+
+/**
+ * @summary Get answer distribution by knowledge layer
+ */
+export const GetAskStatsResponse = zod.object({
+  "total": zod.number().int(),
+  "byLayer": zod.record(zod.string(), zod.object({
+  "count": zod.number().int(),
+  "percent": zod.number()
+})),
+  "tokensSpent": zod.number().int(),
+  "tokensSaved": zod.number().int(),
+  "daily": zod.array(zod.object({
+  "date": zod.coerce.date(),
+  "noAiPercent": zod.number(),
+  "total": zod.number().int()
+}))
+})
+
+
+/**
+ * @summary List pending ÍCARO knowledge candidates
+ */
+export const ListCerebroCandidatesResponseItem = zod.object({
+  "id": zod.string(),
+  "question": zod.string(),
+  "answer": zod.string(),
+  "layer": zod.enum(['L5', 'L6']),
+  "provider": zod.string(),
+  "firstSeenAt": zod.number().int(),
+  "lastSeenAt": zod.number().int(),
+  "count": zod.number().int(),
+  "status": zod.enum(['pending'])
+})
+export const ListCerebroCandidatesResponse = zod.array(ListCerebroCandidatesResponseItem)
+
+
+/**
+ * @summary Approve a pending candidate into the local bank or base
+ */
+export const approveCerebroCandidatePathIdMin = 24;
+export const approveCerebroCandidatePathIdMax = 24;
+
+
+
+export const ApproveCerebroCandidateParams = zod.object({
+  "id": zod.coerce.string().min(approveCerebroCandidatePathIdMin).max(approveCerebroCandidatePathIdMax)
+})
+
+export const ApproveCerebroCandidateBody = zod.object({
+  "destination": zod.enum(['bank', 'base'])
+})
+
+export const ApproveCerebroCandidateResponse = zod.unknown()
+
+
+/**
+ * @summary Discard a pending ÍCARO knowledge candidate
+ */
+export const discardCerebroCandidatePathIdMin = 24;
+export const discardCerebroCandidatePathIdMax = 24;
+
+
+
+export const DiscardCerebroCandidateParams = zod.object({
+  "id": zod.coerce.string().min(discardCerebroCandidatePathIdMin).max(discardCerebroCandidatePathIdMax)
+})
+
+export const DiscardCerebroCandidateResponse = zod.unknown()
 
 

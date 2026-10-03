@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AiProviderHealth } from './aiProviderHealth';
 
 export interface AiProviderStatus {
   geminiAvailable: boolean;
@@ -13,4 +14,5 @@ export interface AiProviderStatus {
   claudeAvailable: boolean;
   /** Whether at least one server-side speech (TTS) provider is configured */
   speechAvailable: boolean;
+  providers: AiProviderHealth[];
 }

@@ -39,6 +39,49 @@ export interface HealthStatus {
   status: string;
 }
 
+export type AiProviderHealthId = typeof AiProviderHealthId[keyof typeof AiProviderHealthId];
+
+
+export const AiProviderHealthId = {
+  groq: 'groq',
+  gemini: 'gemini',
+  cerebras: 'cerebras',
+  openrouter: 'openrouter',
+  mistral: 'mistral',
+  github: 'github',
+  nvidia: 'nvidia',
+  cloudflare: 'cloudflare',
+  huggingface: 'huggingface',
+  cohere: 'cohere',
+  openai: 'openai',
+  claude: 'claude',
+} as const;
+
+export type AiProviderHealthState = typeof AiProviderHealthState[keyof typeof AiProviderHealthState];
+
+
+export const AiProviderHealthState = {
+  not_configured: 'not_configured',
+  ready: 'ready',
+  cooldown: 'cooldown',
+  model_unavailable: 'model_unavailable',
+  auth_error: 'auth_error',
+  degraded: 'degraded',
+} as const;
+
+export interface AiProviderHealth {
+  id: AiProviderHealthId;
+  name: string;
+  configured: boolean;
+  available: boolean;
+  state: AiProviderHealthState;
+  model: string;
+  privacyNote: string;
+  averageFirstTokenMs: number | null;
+  errorRate: number;
+  cooldownMs: number;
+}
+
 export interface AiProviderStatus {
   geminiAvailable: boolean;
   openaiAvailable: boolean;
@@ -46,6 +89,67 @@ export interface AiProviderStatus {
   claudeAvailable: boolean;
   /** Whether at least one server-side speech (TTS) provider is configured */
   speechAvailable: boolean;
+  providers: AiProviderHealth[];
+}
+
+export interface LayerCount {
+  count: number;
+  percent: number;
+}
+
+export interface AskDailyStats {
+  date: string;
+  noAiPercent: number;
+  total: number;
+}
+
+export type AskStatsByLayer = {[key: string]: LayerCount};
+
+export interface AskStats {
+  total: number;
+  byLayer: AskStatsByLayer;
+  tokensSpent: number;
+  tokensSaved: number;
+  daily: AskDailyStats[];
+}
+
+export type CerebroCandidateLayer = typeof CerebroCandidateLayer[keyof typeof CerebroCandidateLayer];
+
+
+export const CerebroCandidateLayer = {
+  L5: 'L5',
+  L6: 'L6',
+} as const;
+
+export type CerebroCandidateStatus = typeof CerebroCandidateStatus[keyof typeof CerebroCandidateStatus];
+
+
+export const CerebroCandidateStatus = {
+  pending: 'pending',
+} as const;
+
+export interface CerebroCandidate {
+  id: string;
+  question: string;
+  answer: string;
+  layer: CerebroCandidateLayer;
+  provider: string;
+  firstSeenAt: number;
+  lastSeenAt: number;
+  count: number;
+  status: CerebroCandidateStatus;
+}
+
+export type CerebroCandidateApprovalInputDestination = typeof CerebroCandidateApprovalInputDestination[keyof typeof CerebroCandidateApprovalInputDestination];
+
+
+export const CerebroCandidateApprovalInputDestination = {
+  bank: 'bank',
+  base: 'base',
+} as const;
+
+export interface CerebroCandidateApprovalInput {
+  destination: CerebroCandidateApprovalInputDestination;
 }
 
 export type AiChatHistoryMessageRole = typeof AiChatHistoryMessageRole[keyof typeof AiChatHistoryMessageRole];
@@ -82,10 +186,27 @@ export type AiChatInputProvider = typeof AiChatInputProvider[keyof typeof AiChat
 
 
 export const AiChatInputProvider = {
+  auto: 'auto',
   gemini: 'gemini',
   openai: 'openai',
   groq: 'groq',
   claude: 'claude',
+  cerebras: 'cerebras',
+  openrouter: 'openrouter',
+  mistral: 'mistral',
+  github: 'github',
+  nvidia: 'nvidia',
+  cloudflare: 'cloudflare',
+  huggingface: 'huggingface',
+  cohere: 'cohere',
+} as const;
+
+export type AiChatInputMode = typeof AiChatInputMode[keyof typeof AiChatInputMode];
+
+
+export const AiChatInputMode = {
+  fast: 'fast',
+  deep: 'deep',
 } as const;
 
 export type AiChatInputPersona = typeof AiChatInputPersona[keyof typeof AiChatInputPersona];
@@ -96,16 +217,26 @@ export const AiChatInputPersona = {
   icaro: 'icaro',
 } as const;
 
+export type AiChatInputKnowledgeMode = typeof AiChatInputKnowledgeMode[keyof typeof AiChatInputKnowledgeMode];
+
+
+export const AiChatInputKnowledgeMode = {
+  auto: 'auto',
+  base: 'base',
+} as const;
+
 export interface AiChatInput {
   provider: AiChatInputProvider;
+  mode?: AiChatInputMode;
   persona?: AiChatInputPersona;
   /**
      * @minLength 1
      * @maxLength 4000
      */
   question: string;
-  /** @maxItems 8 */
+  /** @maxItems 12 */
   history: AiChatHistoryMessage[];
+  knowledgeMode?: AiChatInputKnowledgeMode;
   dataset: DatasetContext | null;
 }
 
@@ -113,16 +244,38 @@ export type AiChatResponseProvider = typeof AiChatResponseProvider[keyof typeof 
 
 
 export const AiChatResponseProvider = {
+  auto: 'auto',
   gemini: 'gemini',
   openai: 'openai',
   groq: 'groq',
   claude: 'claude',
+  cerebras: 'cerebras',
+  openrouter: 'openrouter',
+  mistral: 'mistral',
+  github: 'github',
+  nvidia: 'nvidia',
+  cloudflare: 'cloudflare',
+  huggingface: 'huggingface',
+  cohere: 'cohere',
   local: 'local',
+} as const;
+
+export type AiChatResponseLayer = typeof AiChatResponseLayer[keyof typeof AiChatResponseLayer];
+
+
+export const AiChatResponseLayer = {
+  L1: 'L1',
+  L2: 'L2',
+  L3: 'L3',
+  L4: 'L4',
+  L5: 'L5',
+  L6: 'L6',
 } as const;
 
 export interface AiChatResponse {
   answer: string;
   provider: AiChatResponseProvider;
   model: string;
+  layer?: AiChatResponseLayer;
 }
 

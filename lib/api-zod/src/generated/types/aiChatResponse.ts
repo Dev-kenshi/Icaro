@@ -5,10 +5,12 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AiChatResponseLayer } from './aiChatResponseLayer';
 import type { AiChatResponseProvider } from './aiChatResponseProvider';
 
 export interface AiChatResponse {
   answer: string;
   provider: AiChatResponseProvider;
   model: string;
+  layer?: AiChatResponseLayer;
 }

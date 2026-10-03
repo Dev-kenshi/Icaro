@@ -4,22 +4,36 @@ import { getGetAiStatusQueryKey, useGetAiStatus, useSendAiMessage, type AiChatHi
 import { useDataset } from '@/lib/dataset-context';
 
 type ChatMessage = { role: AiChatHistoryMessageRole; content: string; model?: string };
-type Provider = 'groq' | 'gemini' | 'openai' | 'claude';
+type Provider = 'auto' | 'groq' | 'gemini' | 'openai' | 'claude' | 'cerebras' | 'openrouter' | 'mistral' | 'github' | 'nvidia' | 'cloudflare' | 'huggingface' | 'cohere';
+type ProviderStatusData = {
+  providers: Array<{
+    id: Provider;
+    name: string;
+    configured: boolean;
+    available: boolean;
+    state: string;
+    model: string;
+    privacyNote: string;
+    averageFirstTokenMs: number | null;
+    errorRate: number;
+    cooldownMs: number;
+  }>;
+};
+const AUTO_PROVIDER_IDS = new Set(['groq', 'gemini', 'cerebras', 'openrouter', 'mistral', 'github', 'nvidia', 'cloudflare', 'huggingface', 'cohere']);
 
 export default function Assistant() {
   const { dataset } = useDataset();
   const status = useGetAiStatus({ query: { queryKey: getGetAiStatusQueryKey() } });
   const sendMessage = useSendAiMessage();
-  const [provider, setProvider] = useState<Provider>('groq');
+  const [provider, setProvider] = useState<Provider>('auto');
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
-  const available = provider === 'groq' ? status.data?.groqAvailable : provider === 'gemini'
-    ? status.data?.geminiAvailable
-    : provider === 'openai'
-      ? status.data?.openaiAvailable
-      : status.data?.claudeAvailable;
-  const history = useMemo(() => messages.slice(-8).map(({ role, content }) => ({ role, content })), [messages]);
+  const providers = status.data?.providers ?? [];
+  const available = provider === 'auto'
+    ? providers.some((item) => AUTO_PROVIDER_IDS.has(item.id) && item.available)
+    : providers.some((item) => item.id === provider && item.available);
+  const history = useMemo(() => messages.slice(-12).map(({ role, content }) => ({ role, content })), [messages]);
   const submit = () => {
     const trimmed = question.trim();
     if (!trimmed || !available || sendMessage.isPending) return;
@@ -57,20 +71,20 @@ export default function Assistant() {
   </div>;
 }
 
-function ProviderPicker({ value, setValue, status }: { value: Provider; setValue: (value: Provider) => void; status?: { groqAvailable: boolean; geminiAvailable: boolean; openaiAvailable: boolean; claudeAvailable: boolean } }) {
+function ProviderPicker({ value, setValue, status }: { value: Provider; setValue: (value: Provider) => void; status?: ProviderStatusData }) {
+  const providerRows = status?.providers ?? [];
+  const autoAvailable = providerRows.some((item) => AUTO_PROVIDER_IDS.has(item.id) && item.available);
   return <div className="relative">
     <select value={value} onChange={(event) => setValue(event.target.value as Provider)} className="appearance-none rounded-lg border border-border bg-background py-2 pl-3 pr-8 text-xs font-semibold text-primary outline-none" aria-label="Selecionar provedor" data-testid="select-ai-provider">
-      <option value="groq" disabled={!status?.groqAvailable}>Groq {status?.groqAvailable ? '· configurado' : '· indisponível'}</option>
-      <option value="gemini" disabled={!status?.geminiAvailable}>Gemini {status?.geminiAvailable ? '· configurado' : '· indisponível'}</option>
-      <option value="openai" disabled={!status?.openaiAvailable}>ChatGPT {status?.openaiAvailable ? '· configurado' : '· indisponível'}</option>
-      <option value="claude" disabled={!status?.claudeAvailable}>Claude {status?.claudeAvailable ? '· configurado' : '· indisponível'}</option>
+      <option value="auto" disabled={!autoAvailable}>Automático {autoAvailable ? '· roteamento ativo' : '· sem provedores disponíveis'}</option>
+      {providerRows.map((item) => <option key={item.id} value={item.id} disabled={!item.available}>{item.name} · {item.available ? 'disponível' : item.configured ? item.state.replaceAll('_', ' ') : 'não configurado'}</option>)}
     </select>
     <ChevronDown size={14} className="pointer-events-none absolute right-2 top-2.5 text-muted-foreground" />
   </div>;
 }
 
-function ProviderStatus({ status, loading, error }: { status?: { groqAvailable: boolean; geminiAvailable: boolean; openaiAvailable: boolean; claudeAvailable: boolean }; loading: boolean; error: boolean }) {
-  return <div className="rounded-2xl border border-border bg-card p-5 shadow-xs"><div className="eyebrow">Setup do ambiente</div><h2 className="mt-2 text-sm font-bold text-primary">Provedores de IA</h2>{loading ? <div className="mt-4 space-y-2">{[0, 1, 2, 3].map((i) => <div key={i} className="h-8 animate-pulse rounded-lg bg-muted" />)}</div> : error || !status ? <div className="mt-4 flex gap-2 text-xs leading-5 text-destructive"><CircleAlert size={15} className="mt-0.5" /> Não foi possível consultar o setup.</div> : <div className="mt-4 space-y-2">{[['Groq', status.groqAvailable], ['Gemini', status.geminiAvailable], ['ChatGPT', status.openaiAvailable], ['Claude', status.claudeAvailable]].map(([label, available]) => <div key={label as string} className="flex items-center justify-between rounded-lg bg-muted/70 px-3 py-2.5 text-xs"><span className="font-semibold text-primary">{label as string}</span>{available ? <span className="flex items-center gap-1.5 text-secondary"><Check size={13} /> configurado</span> : <span className="text-muted-foreground">não configurado</span>}</div>)}</div>}</div>;
+function ProviderStatus({ status, loading, error }: { status?: ProviderStatusData; loading: boolean; error: boolean }) {
+  return <div className="rounded-2xl border border-border bg-card p-5 shadow-xs"><div className="eyebrow">Setup do ambiente</div><h2 className="mt-2 text-sm font-bold text-primary">Provedores de IA</h2>{loading ? <div className="mt-4 space-y-2">{[0, 1, 2, 3].map((i) => <div key={i} className="h-8 animate-pulse rounded-lg bg-muted" />)}</div> : error || !status ? <div className="mt-4 flex gap-2 text-xs leading-5 text-destructive"><CircleAlert size={15} className="mt-0.5" /> Não foi possível consultar o setup.</div> : <div className="mt-4 max-h-80 space-y-2 overflow-y-auto">{status.providers.map((item) => <div key={item.id} className="rounded-lg bg-muted/70 px-3 py-2.5 text-xs"><div className="flex items-center justify-between gap-3"><span className="font-semibold text-primary">{item.name}</span>{item.available ? <span className="flex shrink-0 items-center gap-1.5 text-secondary"><Check size={13} /> disponível</span> : <span className="shrink-0 text-muted-foreground">{item.configured ? item.state.replaceAll('_', ' ') : 'não configurado'}</span>}</div>{item.configured && <div className="mt-1 truncate font-mono-data text-[10px] text-muted-foreground">{item.model}{item.averageFirstTokenMs !== null ? ` · ${item.averageFirstTokenMs} ms até o primeiro trecho` : ''}</div>}</div>)}</div>}</div>;
 }
 
 function getApiErrorMessage(error: unknown) {

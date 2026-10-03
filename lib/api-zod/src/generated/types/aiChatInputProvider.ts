@@ -10,8 +10,17 @@ export type AiChatInputProvider = typeof AiChatInputProvider[keyof typeof AiChat
 
 
 export const AiChatInputProvider = {
+  auto: 'auto',
   gemini: 'gemini',
   openai: 'openai',
   groq: 'groq',
   claude: 'claude',
+  cerebras: 'cerebras',
+  openrouter: 'openrouter',
+  mistral: 'mistral',
+  github: 'github',
+  nvidia: 'nvidia',
+  cloudflare: 'cloudflare',
+  huggingface: 'huggingface',
+  cohere: 'cohere',
 } as const;

@@ -18,11 +18,27 @@ import { getMicMode, micErrorMessage, recordUtterance, setMicMode, SERVER_FALLBA
 import './stage.css';
 
 type State = 'idle' | 'listening' | 'thinking' | 'talking' | 'intro';
-type Provider = 'groq' | 'gemini' | 'openai' | 'claude';
+type Provider = 'auto' | 'groq' | 'gemini' | 'openai' | 'claude' | 'cerebras' | 'openrouter' | 'mistral' | 'github' | 'nvidia' | 'cloudflare' | 'huggingface' | 'cohere';
 type Entry = { role: 'user' | 'assistant'; content: string; link?: string };
 type Note = { text: string; at: number };
 
 const STATE_LABEL: Record<State, string> = { idle: 'Online', listening: 'Ouvindo', thinking: 'Pensando', talking: 'Falando', intro: 'Apresentação' };
+const AUTO_PROVIDER_IDS = new Set(['groq', 'gemini', 'cerebras', 'openrouter', 'mistral', 'github', 'nvidia', 'cloudflare', 'huggingface', 'cohere']);
+const PROVIDER_NAMES: Record<Provider, string> = {
+  auto: 'Automático',
+  groq: 'Groq',
+  gemini: 'Gemini',
+  openai: 'OpenAI',
+  claude: 'Claude',
+  cerebras: 'Cerebras',
+  openrouter: 'OpenRouter',
+  mistral: 'Mistral',
+  github: 'GitHub Models',
+  nvidia: 'NVIDIA',
+  cloudflare: 'Cloudflare',
+  huggingface: 'Hugging Face',
+  cohere: 'Cohere',
+};
 const media = (f: string) => `${import.meta.env.BASE_URL}media/${f}`;
 const NOTES_KEY = 'icaro.notes';
 const loadNotes = (): Note[] => { try { const v = JSON.parse(localStorage.getItem(NOTES_KEY) || '[]'); return Array.isArray(v) ? v.filter((n) => n && typeof n.text === 'string') : []; } catch { return []; } };
@@ -53,7 +69,7 @@ export default function Stage() {
   const [typing, setTyping] = useState(false);
   const [text, setText] = useState('');
   const [log, setLog] = useState<Entry[]>([]);
-  const [provider, setProvider] = useState<Provider>('groq');
+  const [provider, setProvider] = useState<Provider>('auto');
   const pitch = .95, rate = .92, voiceURI = null;
   const [voiceOn, setVoiceOn] = useState(true);
   const voiceOnRef = useRef(voiceOn); voiceOnRef.current = voiceOn;
@@ -179,7 +195,7 @@ export default function Stage() {
       }
       case 'ai': {
         setState('thinking'); setCaption(''); setCaptionWords(null);
-        const history = logRef.current.slice(-8).map(({ role, content }) => ({ role, content: content.slice(0, 4000) }));
+        const history = logRef.current.slice(-12).map(({ role, content }) => ({ role, content: content.slice(0, 4000) }));
         sendRef.current({ data: { provider, persona: 'icaro', question: q, history, dataset: null } }, {
           onSuccess: (res: AiChatResponse) => { if (turnRef.current === turn) sayRef.current(res.answer); },
           onError: (e) => {
@@ -387,7 +403,7 @@ export default function Stage() {
   const remaining = timerEnd ? Math.max(0, Math.ceil((timerEnd - now) / 1000)) : 0;
   const mmss = `${String(Math.floor(remaining / 3600)).padStart(2, '0')}:${String(Math.floor((remaining % 3600) / 60)).padStart(2, '0')}:${String(remaining % 60).padStart(2, '0')}`;
   const energy = state === 'talking' ? .85 : state === 'listening' ? .6 : state === 'thinking' ? .35 : .1;
-  const provName: Record<Provider, string> = { groq: 'Groq', gemini: 'Gemini', openai: 'ChatGPT', claude: 'Claude' };
+  const provName = PROVIDER_NAMES;
 
   return (
     <div ref={stageRef} className="stage" data-state={state} data-voice-active={listener.active} data-voice-enabled={voiceOn} onPointerDown={prime}>
@@ -543,16 +559,26 @@ export default function Stage() {
             <div className="space-y-3">
               {status.isLoading ? [0, 1, 2].map((i) => <div key={i} className="h-14 animate-pulse rounded-xl bg-[color:var(--panel)]" />)
                 : status.isError ? <div className="card text-[color:var(--bad)]">Não foi possível consultar os provedores. <button className="underline" onClick={() => status.refetch()} data-testid="button-retry-status">Tentar novamente</button></div>
-                : (['groq', 'gemini', 'openai', 'claude'] as Provider[]).map((p) => {
-                  const ok = p === 'groq' ? status.data?.groqAvailable : p === 'gemini' ? status.data?.geminiAvailable : p === 'openai' ? status.data?.openaiAvailable : status.data?.claudeAvailable;
+                : [
+                  {
+                    id: 'auto' as Provider,
+                    name: 'Automático',
+                    available: status.data?.providers.some((item) => AUTO_PROVIDER_IDS.has(item.id) && item.available) ?? false,
+                  },
+                  ...(status.data?.providers ?? []).map((item) => ({
+                    id: item.id as Provider,
+                    name: item.name,
+                    available: item.available,
+                  })),
+                ].map(({ id: p, name, available: ok }) => {
                   return (
                     <button key={p} disabled={!ok} onClick={() => setProvider(p)} className="card flex w-full items-center justify-between text-left disabled:opacity-50" style={{ borderColor: provider === p ? 'var(--holo)' : undefined }} data-testid={`button-provider-${p}`}>
-                      <span className="disp font-semibold">{provName[p]}</span>
-                      <span className="mono text-xs" style={{ color: ok ? 'var(--ok)' : 'var(--bad)' }}>{ok ? (provider === p ? 'em uso · configurado' : 'configurado') : 'indisponível'}</span>
+                      <span className="disp font-semibold">{name || provName[p]}</span>
+                      <span className="mono text-xs" style={{ color: ok ? 'var(--ok)' : 'var(--bad)' }}>{ok ? (provider === p ? 'em uso · disponível' : 'disponível') : 'indisponível'}</span>
                     </button>
                   );
                 })}
-              <p className="text-xs leading-5 text-[color:var(--dim)]">Groq gera as respostas de texto. A voz continua no Gemini, com Orus, e depende da cota de áudio. O plano gratuito da Groq tem limites de uso. As chaves ficam nos Secrets e nunca aparecem na tela. Não há troca automática para outro provedor.</p>
+              <p className="text-xs leading-5 text-[color:var(--dim)]">No modo automático, ÍCARO tenta apenas provedores configurados e disponíveis. Se a conexão falhar antes de começar a resposta, ele tenta o próximo; depois do primeiro trecho, mantém o mesmo provedor. A voz continua no Gemini, com Orus. Chaves permanecem no ambiente seguro e nunca aparecem nesta tela.</p>
               <Link href="/assistant" className="mono inline-flex items-center gap-1 text-xs text-[color:var(--holo)]" data-testid="link-assistant">Abrir chat completo <ExternalLink size={12} /></Link>
             </div>
           )}

@@ -6,19 +6,23 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AiChatHistoryMessage } from './aiChatHistoryMessage';
+import type { AiChatInputKnowledgeMode } from './aiChatInputKnowledgeMode';
+import type { AiChatInputMode } from './aiChatInputMode';
 import type { AiChatInputPersona } from './aiChatInputPersona';
 import type { AiChatInputProvider } from './aiChatInputProvider';
 import type { DatasetContext } from './datasetContext';
 
 export interface AiChatInput {
   provider: AiChatInputProvider;
+  mode?: AiChatInputMode;
   persona?: AiChatInputPersona;
   /**
      * @minLength 1
      * @maxLength 4000
      */
   question: string;
-  /** @maxItems 8 */
+  /** @maxItems 12 */
   history: AiChatHistoryMessage[];
+  knowledgeMode?: AiChatInputKnowledgeMode;
   dataset: DatasetContext | null;
 }
