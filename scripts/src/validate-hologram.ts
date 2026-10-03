@@ -28,7 +28,7 @@ check("Palco usa IcaroAvatar em canvas e não depende de vídeos faciais", () =>
   assert.match(stage, /src=\{media\('intro\.mp4'\)\}/);
 });
 
-check("Bibliotecas e assets publicados são byte a byte os originais do pacote", () => {
+check("Assets do pacote permanecem originais fora das extensões de expressão e fala do P10", () => {
   const packageFiles = (dir: string): string[] => readdirSync(dir, { withFileTypes: true })
     .flatMap((entry) => entry.isDirectory()
       ? packageFiles(path.join(dir, entry.name)).map((f) => path.join(entry.name, f))
@@ -36,13 +36,23 @@ check("Bibliotecas e assets publicados são byte a byte os originais do pacote",
     .sort();
   const deployedFiles = packageFiles(path.join(ROOT, "public/avatar"));
   assert.deepEqual(deployedFiles, packageFiles(PACKAGE), "arquivos do pacote publicado divergiram");
+  const p10Extensions = new Set(["avatar-engine.js", "speech-player.js"]);
   for (const rel of deployedFiles) {
+    if (p10Extensions.has(rel)) continue;
     assert.deepEqual(
       readFileSync(path.join(ROOT, "public/avatar", rel)),
       readFileSync(path.join(PACKAGE, rel)),
       `${rel} difere do vendor`,
     );
   }
+  const engine = read("public/avatar/avatar-engine.js");
+  assert.match(engine, /setEmotion\(/);
+  assert.match(engine, /setListeningActivity\(/);
+  assert.match(engine, /smileTarget/);
+  const player = read("public/avatar/speech-player.js");
+  assert.match(player, /emotion/);
+  assert.match(player, /gapAfter/);
+  assert.match(player, /playbackRate/);
 });
 
 check("Motor do avatar fecha a boca quando a voz está em silêncio", () => {
@@ -90,7 +100,7 @@ check("Player integra frases, prefetch, relógio de áudio, timestamps e interru
   assert.match(player, /for \(const a of this\.aborts\) a\.abort\(\)/);
   assert.match(player, /s\.stop\(\)/);
   assert.match(player, /async _fallback/);
-  assert.match(player, /this\.o\.fallback\(text\)/);
+  assert.match(player, /this\.o\.fallback\(text,\s*emotion\)/);
   assert.match(visemes, /function splitSentences/);
 });
 

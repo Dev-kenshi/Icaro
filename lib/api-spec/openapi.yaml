@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: ai
     description: AI assistant operations
+  - name: cosmos
+    description: Public cached Earth and orbit feeds
 paths:
   /healthz:
     get:
@@ -26,6 +28,21 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /cosmos/feeds:
+    get:
+      operationId: getCosmosFeeds
+      tags: [cosmos]
+      summary: Get cached public ISS and earthquake feeds
+      description: Returns public orbital and earthquake data fetched and cached by the server.
+      responses:
+        "200":
+          description: Cached public feeds
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CosmosFeedsResponse"
+        "502":
+          description: Public feed sources are temporarily unavailable
   /ai/tts:
     post:
       operationId: speakAiText
@@ -268,6 +285,9 @@ components:
           type: string
           minLength: 1
           maxLength: 1200
+        emotion:
+          type: string
+          enum: [entusiasmo, sério, curioso, alerta, sorriso]
     TtsTimestampsInput:
       type: object
       additionalProperties: false
@@ -281,6 +301,9 @@ components:
         previous_text:
           type: string
           maxLength: 1200
+        emotion:
+          type: string
+          enum: [entusiasmo, sério, curioso, alerta, sorriso]
     TtsCharacterAlignment:
       type: object
       additionalProperties: false
@@ -544,4 +567,83 @@ components:
         - answer
         - provider
         - model
+    CosmosIssCurrent:
+      type: object
+      additionalProperties: false
+      properties:
+        latitude:
+          type: number
+        longitude:
+          type: number
+        altitudeKm:
+          type: number
+        velocityKmh:
+          type: number
+        visibility:
+          type: string
+        timestamp:
+          type: integer
+      required: [latitude, longitude, altitudeKm, velocityKmh, visibility, timestamp]
+    CosmosIssPoint:
+      type: object
+      additionalProperties: false
+      properties:
+        latitude:
+          type: number
+        longitude:
+          type: number
+        timestamp:
+          type: integer
+      required: [latitude, longitude, timestamp]
+    CosmosEarthquake:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        magnitude:
+          type: number
+        place:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        depthKm:
+          type: number
+        occurredAt:
+          type: integer
+        url:
+          type: string
+      required: [id, magnitude, place, latitude, longitude, depthKm, occurredAt, url]
+    CosmosFeedsResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        updatedAt:
+          type: integer
+        stale:
+          type: boolean
+        ttlSeconds:
+          type: integer
+        iss:
+          type: object
+          additionalProperties: false
+          properties:
+            current:
+              $ref: "#/components/schemas/CosmosIssCurrent"
+            trajectory:
+              type: array
+              items:
+                $ref: "#/components/schemas/CosmosIssPoint"
+            nextPassAt:
+              type: ["integer", "null"]
+            nextPassDistanceKm:
+              type: ["number", "null"]
+          required: [current, trajectory, nextPassAt, nextPassDistanceKm]
+        earthquakes:
+          type: array
+          items:
+            $ref: "#/components/schemas/CosmosEarthquake"
+      required: [updatedAt, stale, ttlSeconds, iss, earthquakes]
 

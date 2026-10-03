@@ -47,6 +47,10 @@
       this.blink = { t: 0, next: performance.now() + rand(1200, 3000), double: false };
       this.brow = { amt: 0, until: 0, peak: 0 };
       this.nod = { t: -1, amp: 0 };
+      this.emotion = 'sério';
+      this.smile = 0;
+      this.smileTarget = 0;
+      this.listeningSpeechSince = 0;
       this.firedEmphasis = new Set();
       this.nx = makeNoise(7); this.ny = makeNoise(13); this.nr = makeNoise(29); this.ns = makeNoise(41);
       this.last = performance.now();
@@ -110,7 +114,8 @@
       if (s === this.state) return;
       this.state = s;
       if (s !== 'speaking') { this.tl = null; this.clock = null; }
-      if (s === 'listening') this._nodSoon(rand(600, 1400), 0.6);
+      if (s !== 'listening') this.listeningSpeechSince = 0;
+      if (s === 'listening') this.nod = { t: -1, amp: 0 };
       if (s === 'thinking') this._browPulse(0.35, 900);
     }
     speak(timeline, clock) {
@@ -118,8 +123,28 @@
       this.state = 'speaking';
       this._blinkSoon(rand(80, 260)); // pessoas piscam ao começar a falar
     }
-    stopSpeaking() { this.tl = null; this.clock = null; if (this.state === 'speaking') this.state = 'idle'; }
+    stopSpeaking() {
+      this.tl = null; this.clock = null;
+      if (this.state === 'speaking') this.state = 'idle';
+      this.setEmotion('sério');
+    }
     setAudioLevel(l) { this.level = l; this.levelAt = this._t(); this.useLevelGate = true; }
+    setEmotion(emotion) {
+      const expressions = {
+        entusiasmo: { brow: 0.52, smile: 0.72 },
+        'sério': { brow: 0.12, smile: 0 },
+        curioso: { brow: 0.64, smile: 0.18 },
+        alerta: { brow: 0.82, smile: 0 },
+        sorriso: { brow: 0.34, smile: 0.9 },
+      };
+      const expression = expressions[emotion] || expressions['sério'];
+      this.emotion = expressions[emotion] ? emotion : 'sério';
+      this.smileTarget = expression.smile;
+      if (expression.brow > 0.15) this._browPulse(expression.brow, 720);
+    }
+    setListeningActivity(active) {
+      this.listeningSpeechSince = active ? this._t() : 0;
+    }
 
     /* ---------- microexpressões ---------- */
     // um único relógio (o do quadro atual) para todas as microexpressões
@@ -196,6 +221,7 @@
       if (now >= this.brow.until) this.brow.peak = 0;
       this.brow.amt += (browTarget - this.brow.amt) * (browTarget > this.brow.amt ? 0.25 : 0.08);
       if (this.state === 'idle' && Math.random() < dt * 0.05) this._browPulse(rand(0.2, 0.4), rand(500, 900)); // microexpressão ocasional
+      this.smile += (this.smileTarget - this.smile) * (this.smileTarget > this.smile ? 0.13 : 0.07);
 
       // ----- cabeça (respiração + deriva orgânica + acenos ligados à fala) -----
       const speakBoost = this.state === 'speaking' ? 1 + open * 0.8 : 1;
@@ -210,7 +236,9 @@
         const e = (now - this.nod.t) / 1000;
         if (e >= 0 && e < 0.7) ty += Math.sin(e / 0.7 * Math.PI) * 5 * this.nod.amp; else if (e >= 0.7) this.nod.t = -1;
       }
-      if (this.state === 'listening' && Math.random() < dt * 0.25) this.nod = { t: now, amp: rand(0.35, 0.6) };
+      if (this.state === 'listening' && this.listeningSpeechSince && now - this.listeningSpeechSince >= 4000 && Math.random() < dt * 0.25) {
+        this.nod = { t: now, amp: rand(0.2, 0.38) };
+      }
       const H = this.head;
       rx = spring(H.rx, rx * M, dt, 1.6); tx = spring(H.tx, tx * M, dt, 1.4);
       ty = spring(H.ty, ty * M, dt, 2.2); sc = spring(H.sc, 1 + (sc - 1) * M, dt, 1.5);
@@ -261,6 +289,20 @@
       }
       if (eyeKind !== 'open') drawEye(this.eyeFrames[eyeKind] ?? this.eyeFrames.closed, 1);
       ctx.globalAlpha = 1;
+      if (this.smile > 0.02 && (this.state !== 'speaking' || open < 0.12)) {
+        const mb = meta.mouth.box;
+        const cornerY = mb[1] + mb[3] * 0.74;
+        ctx.save();
+        ctx.globalAlpha = Math.min(0.26, this.smile * 0.26);
+        ctx.strokeStyle = '#6e3334';
+        ctx.lineWidth = Math.max(1, S * 0.0017);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(mb[0] + mb[2] * 0.16, cornerY);
+        ctx.quadraticCurveTo(mb[0] + mb[2] * 0.5, cornerY + mb[3] * 0.16 * this.smile, mb[0] + mb[2] * 0.84, cornerY);
+        ctx.stroke();
+        ctx.restore();
+      }
     }
   }
 

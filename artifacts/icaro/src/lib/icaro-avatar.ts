@@ -1,3 +1,5 @@
+import type { SpeechEmotion, SpeechSegmentOptions } from './speech-plan';
+
 export interface IcaroWord { text: string; t0: number; t1: number; i: number }
 export interface IcaroVisemeKey { t0: number; t1: number; [key: string]: unknown }
 export interface IcaroTimeline { words: IcaroWord[]; keys?: IcaroVisemeKey[]; [key: string]: unknown }
@@ -9,6 +11,8 @@ export interface IcaroAvatarInstance {
   speak(timeline: IcaroTimeline, clock: () => number): void;
   stopSpeaking(): void;
   setAudioLevel(level: number): void;
+  setEmotion(emotion: SpeechEmotion): void;
+  setListeningActivity(active: boolean): void;
   canvas: HTMLCanvasElement;
   _loop?: () => void;
   _resize?: () => void;
@@ -18,8 +22,9 @@ export interface IcaroAvatarInstance {
 export interface IcaroSpeechOptions {
   avatar: IcaroAvatarInstance;
   endpoint: string;
-  fallback: (text: string) => Promise<ArrayBuffer>;
-  onSentence: (text: string, timeline: IcaroTimeline, clock: () => number) => void;
+  fallback: (text: string, emotion?: SpeechEmotion) => Promise<ArrayBuffer>;
+  onSentence: (text: string, timeline: IcaroTimeline, clock: () => number, emotion?: SpeechEmotion) => void;
+  onEmotion?: (emotion: SpeechEmotion) => void;
   onWord: (word: IcaroWord, index: number, words: IcaroWord[]) => void;
   onEnd: () => void;
   onLevel: (level: number) => void;
@@ -35,8 +40,9 @@ export interface IcaroSpeechInstance {
   stop(): void;
   _meter?: () => void;
   sources?: AudioBufferSourceNode[];
+  _enqueue(text: string, options?: SpeechSegmentOptions): void;
   _fetch(item: unknown, generation: number): Promise<unknown>;
-  _fallback(text: string): Promise<unknown>;
+  _fallback(text: string, emotion?: SpeechEmotion): Promise<unknown>;
   _pump(generation: number): Promise<void>;
 }
 

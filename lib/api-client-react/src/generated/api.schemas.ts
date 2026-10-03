@@ -5,13 +5,36 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type AiSpeechInputEmotion = typeof AiSpeechInputEmotion[keyof typeof AiSpeechInputEmotion];
+
+
+export const AiSpeechInputEmotion = {
+  entusiasmo: 'entusiasmo',
+  sério: 'sério',
+  curioso: 'curioso',
+  alerta: 'alerta',
+  sorriso: 'sorriso',
+} as const;
+
 export interface AiSpeechInput {
   /**
      * @minLength 1
      * @maxLength 1200
      */
   text: string;
+  emotion?: AiSpeechInputEmotion;
 }
+
+export type TtsTimestampsInputEmotion = typeof TtsTimestampsInputEmotion[keyof typeof TtsTimestampsInputEmotion];
+
+
+export const TtsTimestampsInputEmotion = {
+  entusiasmo: 'entusiasmo',
+  sério: 'sério',
+  curioso: 'curioso',
+  alerta: 'alerta',
+  sorriso: 'sorriso',
+} as const;
 
 export interface TtsTimestampsInput {
   /**
@@ -21,6 +44,7 @@ export interface TtsTimestampsInput {
   text: string;
   /** @maxLength 1200 */
   previous_text?: string;
+  emotion?: TtsTimestampsInputEmotion;
 }
 
 export interface TtsCharacterAlignment {
@@ -277,5 +301,48 @@ export interface AiChatResponse {
   provider: AiChatResponseProvider;
   model: string;
   layer?: AiChatResponseLayer;
+}
+
+export interface CosmosIssCurrent {
+  latitude: number;
+  longitude: number;
+  altitudeKm: number;
+  velocityKmh: number;
+  visibility: string;
+  timestamp: number;
+}
+
+export interface CosmosIssPoint {
+  latitude: number;
+  longitude: number;
+  timestamp: number;
+}
+
+export interface CosmosEarthquake {
+  id: string;
+  magnitude: number;
+  place: string;
+  latitude: number;
+  longitude: number;
+  depthKm: number;
+  occurredAt: number;
+  url: string;
+}
+
+export type CosmosFeedsResponseIss = {
+  current: CosmosIssCurrent;
+  trajectory: CosmosIssPoint[];
+  /** @nullable */
+  nextPassAt: number | null;
+  /** @nullable */
+  nextPassDistanceKm: number | null;
+};
+
+export interface CosmosFeedsResponse {
+  updatedAt: number;
+  stale: boolean;
+  ttlSeconds: number;
+  iss: CosmosFeedsResponseIss;
+  earthquakes: CosmosEarthquake[];
 }
 

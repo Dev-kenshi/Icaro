@@ -18,6 +18,44 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * Returns public orbital and earthquake data fetched and cached by the server.
+ * @summary Get cached public ISS and earthquake feeds
+ */
+export const GetCosmosFeedsResponse = zod.object({
+  "updatedAt": zod.number().int(),
+  "stale": zod.boolean(),
+  "ttlSeconds": zod.number().int(),
+  "iss": zod.object({
+  "current": zod.object({
+  "latitude": zod.number(),
+  "longitude": zod.number(),
+  "altitudeKm": zod.number(),
+  "velocityKmh": zod.number(),
+  "visibility": zod.string(),
+  "timestamp": zod.number().int()
+}),
+  "trajectory": zod.array(zod.object({
+  "latitude": zod.number(),
+  "longitude": zod.number(),
+  "timestamp": zod.number().int()
+})),
+  "nextPassAt": zod.number().int().nullable(),
+  "nextPassDistanceKm": zod.number().nullable()
+}),
+  "earthquakes": zod.array(zod.object({
+  "id": zod.string(),
+  "magnitude": zod.number(),
+  "place": zod.string(),
+  "latitude": zod.number(),
+  "longitude": zod.number(),
+  "depthKm": zod.number(),
+  "occurredAt": zod.number().int(),
+  "url": zod.string()
+}))
+})
+
+
+/**
  * @summary Synthesize ÍCARO's voice from text
  */
 export const speakAiTextBodyTextMax = 1200;
@@ -25,7 +63,8 @@ export const speakAiTextBodyTextMax = 1200;
 
 
 export const SpeakAiTextBody = zod.object({
-  "text": zod.string().min(1).max(speakAiTextBodyTextMax)
+  "text": zod.string().min(1).max(speakAiTextBodyTextMax),
+  "emotion": zod.enum(['entusiasmo', 'sério', 'curioso', 'alerta', 'sorriso']).optional()
 })
 
 export const SpeakAiTextResponse = zod.unknown()
@@ -42,7 +81,8 @@ export const synthesizeTtsTimestampsBodyPreviousTextMax = 1200;
 
 export const SynthesizeTtsTimestampsBody = zod.object({
   "text": zod.string().min(1).max(synthesizeTtsTimestampsBodyTextMax),
-  "previous_text": zod.string().max(synthesizeTtsTimestampsBodyPreviousTextMax).optional()
+  "previous_text": zod.string().max(synthesizeTtsTimestampsBodyPreviousTextMax).optional(),
+  "emotion": zod.enum(['entusiasmo', 'sério', 'curioso', 'alerta', 'sorriso']).optional()
 })
 
 export const SynthesizeTtsTimestampsResponse = zod.object({

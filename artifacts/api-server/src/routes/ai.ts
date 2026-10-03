@@ -11,6 +11,7 @@ import { logger } from "../lib/logger";
 import { createSpeechEngine, DEFAULT_GEMINI_TTS_MODELS, SpeechUnavailableError } from "../lib/tts";
 import { applyTtsPronunciation } from "../lib/tts-timestamps";
 import { normalizeAnswerText } from "../lib/answer-text";
+import { createEmotionTagStream } from "../lib/emotion-tags";
 import { createProviderRouter, isAutoProviderId } from "../lib/provider-router";
 import { createCerebroLayers, presenterize, redactPersonalData } from "../lib/cerebro-camadas";
 import { requireAuth } from "../middlewares/require-auth";
@@ -121,6 +122,7 @@ const ICARO_PERSONA = [
   "Você foi apresentado na ITCONT 2026, 1ª Imersão Tecnológica Contábil da UEFS, uma realização do projeto de extensão Contador do Amanhã.",
   "Você fala com o professor Rômulo e com os alunos, em sala de aula.",
   "Fale sempre em português do Brasil, em primeira pessoa como ÍCARO, com tom cordial, confiante e didático.",
+  "Quando uma frase pedir expressão, comece-a com uma etiqueta invisível, exatamente uma entre [entusiasmo], [sério], [curioso], [alerta] e [sorriso]. Use etiquetas com moderação; nunca as explique nem as pronuncie.",
   "Só fale quando houver uma pergunta ou solicitação explícita; nunca inicie falas proativamente.",
   "Suas respostas são faladas em voz alta. Dê respostas completas e bem explicadas: de 5 a 8 frases (cerca de 90 a 150 palavras), com contexto, explicação e, quando útil, um exemplo prático. Só seja mais curto se pedirem uma resposta rápida.",
   "Não use markdown, asteriscos, tabelas, emojis nem marcadores de lista. Para enumerar, diga primeiro, segundo, terceiro.",
@@ -141,6 +143,41 @@ function analystInstructions(datasetContext: string) {
   ]
     .filter(Boolean)
     .join("\n\n");
+}
+
+function isShortContextualFollowUp(question: string, history: Array<{ role: string; content: string }>): boolean {
+  const words = question.trim().split(/\s+/).filter(Boolean);
+  return words.length > 0
+    && words.length < 6
+    && history.some((message) => message.role === "assistant")
+    && /^(?:e\s+se|e|isso)\b/i.test(question.trim());
+}
+
+async function rewriteContextualFollowUp(
+  question: string,
+  history: Array<{ role: "user" | "assistant"; content: string }>,
+  provider?: string,
+): Promise<string> {
+  if (!isShortContextualFollowUp(question, history)) return question;
+  try {
+    const result = await providerRouter.complete({
+      systemPrompt: [
+        "Reescreva a pergunta curta como uma pergunta autônoma, usando somente o contexto das últimas mensagens.",
+        "Preserve a intenção e os detalhes. Retorne apenas a pergunta reescrita, sem explicação, em no máximo 60 tokens.",
+      ].join(" "),
+      history,
+      userMessage: question,
+      maxTokens: 60,
+      mode: "fast",
+      ...(provider && isAutoProviderId(provider) ? { providerId: provider } : {}),
+    });
+    const rewritten = normalizeAnswerText(presenterize(result.answer)).trim();
+    if (!rewritten || rewritten.length > 240 || rewritten.split(/\s+/).length > 40) return question;
+    return rewritten;
+  } catch (error) {
+    logger.warn({ message: error instanceof Error ? error.message : "rewrite failed" }, "Contextual follow-up rewrite failed");
+    return question;
+  }
 }
 
 let speechProviderAuthRejected = false;
@@ -225,7 +262,17 @@ router.post("/ai/tts", async (req, res) => {
 
   const text = parsed.data.text.trim();
   try {
-    const speechText = speech.family() === "gemini" ? applyTtsPronunciation(text) : text;
+    const spokenText = speech.family() === "gemini" ? applyTtsPronunciation(text) : text;
+    const emotionPrefix: Record<string, string> = {
+      entusiasmo: "Diga com entusiasmo",
+      sério: "Diga com seriedade",
+      curioso: "Diga com curiosidade",
+      alerta: "Diga com atenção e firmeza",
+      sorriso: "Diga com um sorriso na voz",
+    };
+    const speechText = speech.family() === "gemini" && parsed.data.emotion
+      ? `${emotionPrefix[parsed.data.emotion]}: ${spokenText}`
+      : spokenText;
     const result = await speech.synthesize(speechText);
     if (result.family === "gemini" && result.cache === "miss") speechProviderAuthRejected = false;
     res.setHeader("Content-Type", result.contentType);
@@ -785,8 +832,8 @@ router.post("/ai/chat/stream", async (req, res) => {
     return;
   }
   const input = parsed.data;
-  if (input.provider !== "auto") {
-    res.status(400).json({ error: "A transmissão incremental exige o modo automático." });
+  if (input.provider !== "auto" && !isAutoProviderId(input.provider)) {
+    res.status(400).json({ error: "A transmissão incremental não oferece este provedor selecionado." });
     return;
   }
   const userMessage = input.question.trim();
@@ -807,6 +854,10 @@ router.post("/ai/chat/stream", async (req, res) => {
   const sendEvent = (event: string, data: unknown) => {
     if (!res.destroyed && !res.writableEnded) res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   };
+  const emotionOutput = createEmotionTagStream(
+    (text) => sendEvent("token", { text }),
+    (emotion) => sendEvent("emocao", { emotion }),
+  );
 
   res.status(200);
   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
@@ -814,15 +865,22 @@ router.post("/ai/chat/stream", async (req, res) => {
   res.setHeader("Connection", "keep-alive");
   res.flushHeaders();
 
+  const effectiveUserMessage = await rewriteContextualFollowUp(
+    safeUserMessage,
+    safeHistory,
+    input.provider === "auto" ? undefined : input.provider,
+  );
+
   if (input.persona === "icaro" && !input.dataset) {
-    const layered = await cerebro.resolve(userMessage, input.knowledgeMode);
+    const layered = await cerebro.resolve(effectiveUserMessage, input.knowledgeMode);
     if (layered.kind === "answer") {
       const answer = normalizeAnswerText(presenterize(layered.answer));
       const model = `${layered.layer.toLowerCase()}-${layered.sourceId}`;
       sendEvent("provider", { provider: "local", model });
       for (let offset = 0; offset < answer.length; offset += 48) {
-        sendEvent("token", { text: answer.slice(offset, offset + 48) });
+        emotionOutput.feed(answer.slice(offset, offset + 48));
       }
+      emotionOutput.flush();
       sendEvent("done", { provider: "local", model, partial: false, layer: layered.layer });
       res.end();
       return;
@@ -837,16 +895,17 @@ router.post("/ai/chat/stream", async (req, res) => {
             "Você é ÍCARO. Responda em português do Brasil, com 4 a 6 frases curtas.",
             "Use SOMENTE os trechos abaixo. Não acrescente fatos, leis, valores ou fontes.",
             "Se os trechos não responderem à pergunta, diga claramente que não há informação suficiente.",
-            "Não use markdown nem etiquetas de emoção.",
+            "Não use markdown. Quando uma frase pedir expressão, prefixe-a com exatamente uma etiqueta entre [entusiasmo], [sério], [curioso], [alerta] e [sorriso]. Use com moderação; as etiquetas não serão pronunciadas.",
             snippets,
           ].join("\n\n"),
           history: safeHistory,
-          userMessage: safeUserMessage,
+          userMessage: effectiveUserMessage,
           maxTokens: 150,
           mode: "fast",
           onProvider: (provider, model) => sendEvent("provider", { provider, model }),
-          onToken: (text) => sendEvent("token", { text }),
+          onToken: emotionOutput.feed,
         });
+        emotionOutput.flush();
         const answer = normalizeAnswerText(presenterize(composed.answer));
         await cerebro.recordAnswer({
           question: userMessage,
@@ -865,7 +924,11 @@ router.post("/ai/chat/stream", async (req, res) => {
   }
 
   const configured = providerRouter.getHealth().some((item) =>
-    item.id !== "openai" && item.id !== "claude" && item.configured && item.available,
+    (input.provider === "auto"
+      ? item.id !== "openai" && item.id !== "claude"
+      : item.id === input.provider)
+    && item.configured
+    && item.available,
   );
   if (!configured) {
     sendEvent("error", { error: "Nenhum provedor automático está configurado ou disponível." });
@@ -877,12 +940,14 @@ router.post("/ai/chat/stream", async (req, res) => {
     const result = await providerRouter.complete({
       systemPrompt,
       history: safeHistory,
-      userMessage: safeUserMessage,
+      userMessage: effectiveUserMessage,
       maxTokens: input.persona === "icaro" ? 1024 : 8192,
       mode: input.mode,
+      ...(input.provider === "auto" ? {} : { providerId: input.provider }),
       onProvider: (provider, model) => sendEvent("provider", { provider, model }),
-      onToken: (text) => sendEvent("token", { text }),
+      onToken: emotionOutput.feed,
     });
+    emotionOutput.flush();
     const answer = normalizeAnswerText(presenterize(result.answer));
     await cerebro.recordAnswer({
       question: userMessage,

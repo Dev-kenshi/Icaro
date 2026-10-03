@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { IcaroEmotion } from "./emotion-tags";
 
 export const TTS_TIMESTAMP_MAX_TEXT = 600;
 
@@ -11,6 +12,20 @@ const ELEVENLABS_VOICE_SETTINGS = {
   style: 0.18,
   use_speaker_boost: true,
 } as const;
+const ELEVENLABS_EMOTION_SETTINGS: Record<IcaroEmotion, { stability: number; style: number }> = {
+  entusiasmo: { stability: 0.32, style: 0.52 },
+  sério: { stability: 0.62, style: 0.05 },
+  curioso: { stability: 0.4, style: 0.32 },
+  alerta: { stability: 0.38, style: 0.4 },
+  sorriso: { stability: 0.3, style: 0.55 },
+};
+
+function voiceSettings(emotion?: IcaroEmotion) {
+  return {
+    ...ELEVENLABS_VOICE_SETTINGS,
+    ...(emotion ? ELEVENLABS_EMOTION_SETTINGS[emotion] : {}),
+  };
+}
 
 export function cleanTtsText(value: unknown): string {
   return (typeof value === "string" ? value : "")
@@ -130,6 +145,7 @@ export function createTtsTimestampsService(fetchImpl: typeof fetch = fetch) {
     apiKey: string;
     voiceId: string;
     modelId: string;
+    emotion?: IcaroEmotion;
     signal: AbortSignal;
   }): Promise<TimestampedAudio> {
     const text = applyTtsPronunciation(cleanTtsText(input.text));
@@ -139,7 +155,7 @@ export function createTtsTimestampsService(fetchImpl: typeof fetch = fetch) {
     }
     const previousText = applyTtsPronunciation(cleanTtsText(input.previousText)).slice(-300);
     const cacheKey = createHash("sha256")
-      .update(`${input.modelId}\u0000${input.voiceId}\u0000${text}`)
+      .update(`${input.modelId}\u0000${input.voiceId}\u0000${input.emotion ?? ""}\u0000${text}`)
       .digest("hex");
     if (!previousText) {
       const cached = getCached(cacheKey);
@@ -149,7 +165,7 @@ export function createTtsTimestampsService(fetchImpl: typeof fetch = fetch) {
     const payload: Record<string, unknown> = {
       text,
       model_id: input.modelId,
-      voice_settings: ELEVENLABS_VOICE_SETTINGS,
+      voice_settings: voiceSettings(input.emotion),
     };
     if (previousText) payload.previous_text = previousText;
     if (/v2_5/.test(input.modelId)) payload.language_code = "pt";

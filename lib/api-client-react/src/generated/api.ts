@@ -28,6 +28,7 @@ import type {
   AskStats,
   CerebroCandidate,
   CerebroCandidateApprovalInput,
+  CosmosFeedsResponse,
   HealthStatus,
   TtsTimestampsInput,
   TtsTimestampsResult
@@ -126,6 +127,84 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getHealthCheckQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCosmosFeedsUrl = () => {
+
+
+
+
+  return `/api/cosmos/feeds`
+}
+
+/**
+ * Returns public orbital and earthquake data fetched and cached by the server.
+ * @summary Get cached public ISS and earthquake feeds
+ */
+export const getCosmosFeeds = async ( options?: Parameters<typeof customFetch>[1]): Promise<CosmosFeedsResponse> => {
+
+  return customFetch<CosmosFeedsResponse>(getGetCosmosFeedsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCosmosFeedsQueryKey = () => {
+    return [
+    `/api/cosmos/feeds`
+    ] as const;
+    }
+
+
+export const getGetCosmosFeedsQueryOptions = <TData = Awaited<ReturnType<typeof getCosmosFeeds>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCosmosFeeds>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCosmosFeedsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCosmosFeeds>>> = ({ signal }) => getCosmosFeeds({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCosmosFeeds>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCosmosFeedsQueryResult = NonNullable<Awaited<ReturnType<typeof getCosmosFeeds>>>
+export type GetCosmosFeedsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get cached public ISS and earthquake feeds
+ */
+
+export function useGetCosmosFeeds<TData = Awaited<ReturnType<typeof getCosmosFeeds>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCosmosFeeds>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCosmosFeedsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

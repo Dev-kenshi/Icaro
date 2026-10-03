@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AiSpeechInputEmotion } from './aiSpeechInputEmotion';
 
 export interface AiSpeechInput {
   /**
@@ -12,4 +13,5 @@ export interface AiSpeechInput {
      * @maxLength 1200
      */
   text: string;
+  emotion?: AiSpeechInputEmotion;
 }

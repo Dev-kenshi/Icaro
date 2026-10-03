@@ -7,6 +7,8 @@ export type CommandResult =
   | { kind: 'note'; note: string; text: string }
   | { kind: 'listNotes' }
   | { kind: 'search'; query: string; text: string }
+  | { kind: 'scene'; scene: 'galaxy' | 'system' | 'earth'; text: string }
+  | { kind: 'flyFeira'; text: string }
   | { kind: 'ai' };
 
 export const normalize = (s: string) =>
@@ -113,6 +115,15 @@ export const HELP = 'Respondo perguntas com inteligência artificial, principalm
 export function interpret(input: string): CommandResult {
   const t = normalize(input).replace(WAKE, '').replace(/[.]+$/, '').trim();
   if (!t) return { kind: 'say', text: 'Estou ouvindo, professor.' };
+
+  if (/\b(fly|go|travel)\s+to\b.*\b(feira de santana|feira)\b/.test(t) || /\b(voar|voe|ir|va|viajar|leve|voo)\b.*\b(feira de santana|feira)\b/.test(t) || /\b(feira de santana|feira)\b.*\b(voar|voe|ir|va|viajar|leve)\b/.test(t))
+    return { kind: 'flyFeira', text: 'Ajustando a visualização para Feira de Santana.' };
+  if (/\b(galaxia|galaxy)\b/.test(t) && /\b(mostrar|mostra|mostre|exibir|exiba|ver|abrir|open|show)\b/.test(t))
+    return { kind: 'scene', scene: 'galaxy', text: 'Abrindo a visão da galáxia.' };
+  if (/\b(sistema solar|planetas|solar system)\b/.test(t) && /\b(mostrar|mostra|mostre|exibir|exiba|ver|abrir|open|show)\b/.test(t))
+    return { kind: 'scene', scene: 'system', text: 'Abrindo o sistema solar.' };
+  if (/\b(terra|earth)\b/.test(t) && /\b(mostrar|mostra|mostre|exibir|exiba|ver|abrir|open|show)\b/.test(t))
+    return { kind: 'scene', scene: 'earth', text: 'Abrindo a visão ao vivo da Terra.' };
 
   if (/\b(o que|que) significa (o )?(icaro|i caro)|\bo que e (o )?(icaro|i caro)|significado d[eo] (icaro|i caro)/.test(t))
     return { kind: 'say', text: 'Eu sou o ÍCARO. ÍCARO significa Inteligência, Ciência de Dados, Análise de Dados, Resultados e Operações. Sou o assistente de aula da Contabilidade da UEFS.' };

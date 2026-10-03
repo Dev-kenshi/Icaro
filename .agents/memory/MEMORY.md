@@ -11,3 +11,5 @@
 - [Gemini TTS authentication](gemini-tts-auth.md) — configured-key presence and cached audio do not prove live TTS works; probe with a fresh, uncached phrase.
 - [Patch application behavior](patch-application.md) — failed multi-file patches can leave other targets changed; inspect each file before retrying.
 - [Groq response resilience](groq-response-resilience.md) — retry malformed responses once; preserve text spacing and never log provider content.
+- [Cosmos public assets](cosmos-public-assets.md) — NASA GIBS maps work cross-origin; Solar System Scope can return CAPTCHA challenges, so keep procedural texture fallbacks.
+- [Vendor avatar integrity](avatar-vendor-integrity.md) — preserve packaged face and speech assets unless a specific expression or voice change is explicitly requested.

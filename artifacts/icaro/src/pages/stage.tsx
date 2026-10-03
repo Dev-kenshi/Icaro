@@ -2,10 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { StageHelp } from '@/components/stage/stage-help';
 import { shouldActivateStageShortcut } from '@/lib/stage-shortcuts';
-import { Mic, X, BarChart3, ExternalLink, Trash2, Menu, Keyboard, Play, Maximize, Volume2, VolumeX, Eye, EyeOff } from 'lucide-react';
-import { getGetAiStatusQueryKey, useGetAiStatus, useSendAiMessage, type AiChatResponse } from '@workspace/api-client-react';
+import { Mic, X, BarChart3, ExternalLink, Trash2, Menu, Keyboard, Play, Maximize, Volume2, VolumeX, Eye, EyeOff, Orbit, Globe2, Radio, SkipForward } from 'lucide-react';
+import { getGetAiStatusQueryKey, getGetCosmosFeedsQueryKey, useGetAiStatus, useGetCosmosFeeds, useSendAiMessage, type AiChatResponse } from '@workspace/api-client-react';
+import { requestAiChatStream } from '@/lib/ai-chat-stream';
 import { interpret, formatDuration } from '@/lib/commands';
-import { speak, stopSpeaking, ensureAudio, activateAudio, getAnalyser, getLevel, releaseSpeechCache } from '@/lib/speech';
+import { speak, stopSpeaking, ensureAudio, activateAudio, connectMic, getAnalyser, getLevel, getMicRms, getOutputRms, setListeningActivity, releaseSpeechCache } from '@/lib/speech';
+import type { SpeechEmotion, SpeechEmotionMark } from '@/lib/speech-plan';
 import { useWakeListener } from '@/hooks/use-wake-listener';
 import { resemblesPlayback } from '@/lib/wake-turn-gate';
 import { wakeAccessErrorMessage } from '@/lib/wake-access';
@@ -15,12 +17,15 @@ import { FutureScene } from '@/components/stage/future-scene';
 import { MicSettings } from '@/components/stage/mic-settings';
 import { HOLO_MEDIA } from '@/lib/holo-state';
 import { getMicMode, micErrorMessage, recordUtterance, setMicMode, SERVER_FALLBACK_ERRORS, transcribeOnServer, type MicMode } from '@/lib/mic-config';
+import { CosmosRenderer, type CosmosScene } from '@/components/stage/cosmos/renderer';
+import { NeuralWeb } from '@/components/stage/neural-web';
 import './stage.css';
 
 type State = 'idle' | 'listening' | 'thinking' | 'talking' | 'intro';
 type Provider = 'auto' | 'groq' | 'gemini' | 'openai' | 'claude' | 'cerebras' | 'openrouter' | 'mistral' | 'github' | 'nvidia' | 'cloudflare' | 'huggingface' | 'cohere';
 type Entry = { role: 'user' | 'assistant'; content: string; link?: string };
 type Note = { text: string; at: number };
+type VisualQuality = 'auto' | 'high' | 'medium' | 'low';
 
 const STATE_LABEL: Record<State, string> = { idle: 'Online', listening: 'Ouvindo', thinking: 'Pensando', talking: 'Falando', intro: 'Apresentação' };
 const AUTO_PROVIDER_IDS = new Set(['groq', 'gemini', 'cerebras', 'openrouter', 'mistral', 'github', 'nvidia', 'cloudflare', 'huggingface', 'cohere']);
@@ -41,6 +46,17 @@ const PROVIDER_NAMES: Record<Provider, string> = {
 };
 const media = (f: string) => `${import.meta.env.BASE_URL}media/${f}`;
 const NOTES_KEY = 'icaro.notes';
+const QUALITY_KEY = 'icaro.stage.quality';
+const QUALITY_OPTIONS: { value: VisualQuality; label: string }[] = [
+  { value: 'auto', label: 'Auto' }, { value: 'high', label: 'Alta' }, { value: 'medium', label: 'Média' }, { value: 'low', label: 'Baixa' },
+];
+const readQuality = (): VisualQuality => {
+  try {
+    const value = localStorage.getItem(QUALITY_KEY);
+    return value === 'high' || value === 'medium' || value === 'low' ? value : 'auto';
+  } catch { return 'auto'; }
+};
+const timeValue = (value: number) => new Date(value < 1e12 ? value * 1000 : value);
 const loadNotes = (): Note[] => { try { const v = JSON.parse(localStorage.getItem(NOTES_KEY) || '[]'); return Array.isArray(v) ? v.filter((n) => n && typeof n.text === 'string') : []; } catch { return []; } };
 
 function errMsg(e: unknown) {
@@ -50,10 +66,14 @@ function errMsg(e: unknown) {
 
 export default function Stage() {
   const status = useGetAiStatus({ query: { queryKey: getGetAiStatusQueryKey() } });
+  const feeds = useGetCosmosFeeds({ query: { queryKey: getGetCosmosFeedsQueryKey(), refetchInterval: 30000 } });
   const sendMessage = useSendAiMessage();
   const sendRef = useRef(sendMessage.mutate); sendRef.current = sendMessage.mutate;
+  const aiAbortRef = useRef<AbortController | null>(null);
 
   const [state, setState] = useState<State>('idle');
+  const [emotion, setEmotion] = useState<SpeechEmotion>('sério');
+  const [longListening, setLongListening] = useState(false);
   const [caption, setCaption] = useState('');
   const [captionWords, setCaptionWords] = useState<{ words: string[]; activeIndex: number } | null>(null);
   const [captionsVisible, setCaptionsVisible] = useState(false);
@@ -65,11 +85,25 @@ export default function Stage() {
   const [helpOpen, setHelpOpen] = useState(false);
   const helpRef = useRef(false); helpRef.current = helpOpen;
   const panelRef = useRef(false); panelRef.current = panel;
-  const [tab, setTab] = useState<'conversa' | 'voz' | 'ferramentas' | 'conexao'>('conversa');
+  const [tab, setTab] = useState<'conversa' | 'voz' | 'ferramentas' | 'conexao' | 'sobre'>('conversa');
+  const [scene, setScene] = useState<CosmosScene>('galaxy');
+  const [quality, setQuality] = useState<VisualQuality>(readQuality);
+  const [sceneVisible, setSceneVisible] = useState(false);
+  const [sceneFade, setSceneFade] = useState(false);
+  const [materializing, setMaterializing] = useState(false);
+  const [ambientOn, setAmbientOn] = useState(false);
+  const [ambientError, setAmbientError] = useState('');
+  const [renderFps, setRenderFps] = useState<number | null>(null);
+  const [assetsStatus, setAssetsStatus] = useState('NASA GIBS · carregamento sob demanda');
+  const [responseMeta, setResponseMeta] = useState<{ source: string; durationMs: number | null }>({ source: '—', durationMs: null });
+  const [feiraTarget, setFeiraTarget] = useState(false);
+  const ambientRef = useRef<AudioContext | null>(null);
   const [typing, setTyping] = useState(false);
   const [text, setText] = useState('');
   const [log, setLog] = useState<Entry[]>([]);
   const [provider, setProvider] = useState<Provider>('auto');
+  const bargeCandidateRef = useRef<{ text: string; at: number } | null>(null);
+  const bargeHandledRef = useRef(false);
   const pitch = .95, rate = .92, voiceURI = null;
   const [voiceOn, setVoiceOn] = useState(true);
   const voiceOnRef = useRef(voiceOn); voiceOnRef.current = voiceOn;
@@ -93,6 +127,41 @@ export default function Stage() {
   const stateRef = useRef(state); stateRef.current = state;
   const logEnd = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem('icaro.materialized')) return;
+      sessionStorage.setItem('icaro.materialized', '1');
+    } catch { /* session storage may be blocked; still show the one-time entrance for this mount */ }
+    setMaterializing(true);
+    const id = window.setTimeout(() => setMaterializing(false), 4000);
+    return () => window.clearTimeout(id);
+  }, []);
+  useEffect(() => {
+    const node = stageRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      setSceneVisible(entry.isIntersecting);
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setScene((current) => current === 'galaxy' ? 'system' : current === 'system' ? 'earth' : 'galaxy');
+      setFeiraTarget(false);
+      setSceneFade(true);
+      window.setTimeout(() => setSceneFade(false), 1000);
+    }, 90000);
+    return () => window.clearInterval(id);
+  }, []);
+  useEffect(() => {
+    try { localStorage.setItem(QUALITY_KEY, quality); } catch { /* storage can be disabled */ }
+  }, [quality]);
+  useEffect(() => () => {
+    void ambientRef.current?.close().catch(() => undefined);
+    ambientRef.current = null;
+  }, []);
+
   useEffect(() => { const id = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(id); }, []);
   useEffect(() => {
     const dock = dockRef.current;
@@ -104,6 +173,7 @@ export default function Stage() {
   }, []);
   useEffect(() => () => {
     turnRef.current++;
+    aiAbortRef.current?.abort();
     window.clearTimeout(captionTimerRef.current);
     stopSpeaking();
     releaseSpeechCache();
@@ -115,7 +185,7 @@ export default function Stage() {
     ensureAudio();
   }, []);
 
-  const say = useCallback((t: string, link?: string) => {
+  const say = useCallback((t: string, link?: string, emotionMarks?: readonly SpeechEmotionMark[]) => {
     const turn = turnRef.current;
     lastAnswerRef.current = t;
     setSpeechError('');
@@ -128,7 +198,7 @@ export default function Stage() {
     setState('thinking');
     let playedAudio = false;
     speak(t, {
-      pitch, rate, voiceURI, neural: true,
+      pitch, rate, voiceURI, neural: true, emotionMarks, onEmotion: setEmotion,
       onProvider: setEngine,
       onChunk: (c) => { if (turnRef.current === turn) setCaption(c); },
       onWords: (words, activeIndex) => { if (turnRef.current === turn) setCaptionWords({ words, activeIndex }); },
@@ -162,6 +232,8 @@ export default function Stage() {
 
   const handle = useCallback((raw: string) => {
     const q = raw.trim().slice(0, 4000); if (!q) return;
+    aiAbortRef.current?.abort();
+    aiAbortRef.current = null;
     const turn = ++turnRef.current;
     activeRef.current = false;
     speechPendingRef.current = false;
@@ -173,6 +245,15 @@ export default function Stage() {
     setLog((l) => [...l, { role: 'user', content: q }]);
     const r = interpret(q);
     switch (r.kind) {
+      case 'scene':
+        setFeiraTarget(false);
+        setScene(r.scene);
+        setSceneFade(true); window.setTimeout(() => setSceneFade(false), 1000);
+        return sayRef.current(r.text);
+      case 'flyFeira':
+        setScene('earth'); setFeiraTarget(true);
+        setSceneFade(true); window.setTimeout(() => setSceneFade(false), 1000);
+        return sayRef.current(r.text);
       case 'say': return sayRef.current(r.text);
       case 'intro': setLog((l) => [...l, { role: 'assistant', content: 'Reproduzindo a apresentação original.' }]); return playIntro();
       case 'fullscreen': fullscreen(); return sayRef.current(r.text);
@@ -196,8 +277,56 @@ export default function Stage() {
       case 'ai': {
         setState('thinking'); setCaption(''); setCaptionWords(null);
         const history = logRef.current.slice(-12).map(({ role, content }) => ({ role, content: content.slice(0, 4000) }));
+        const requestStartedAt = performance.now();
+        if (provider !== 'openai' && provider !== 'claude') {
+          const controller = new AbortController();
+          aiAbortRef.current = controller;
+          let streamedText = '';
+          void requestAiChatStream({
+            provider,
+            persona: 'icaro',
+            question: q,
+            history,
+            dataset: null,
+            knowledgeMode: 'auto',
+          }, controller.signal, (chunk) => {
+            streamedText += chunk;
+            if (turnRef.current === turn) setCaption(streamedText);
+          }).then((res) => {
+            if (turnRef.current !== turn) return;
+            const providerId = res.provider;
+            const source = providerId === 'local'
+              ? 'BANCO LOCAL'
+              : res.layer
+                ? `BASE ${res.layer}`
+                : `IA · ${PROVIDER_NAMES[providerId as Provider] ?? providerId.toUpperCase()}`;
+            setResponseMeta({ source, durationMs: Math.round(performance.now() - requestStartedAt) });
+            sayRef.current(res.answer, undefined, res.emotionMarks);
+          }).catch((error: unknown) => {
+            if (controller.signal.aborted || turnRef.current !== turn) return;
+            speechPendingRef.current = false;
+            activeRef.current = false;
+            setState('idle'); setCaption(''); setCaptionWords(null);
+            const message = error instanceof Error ? error.message : errMsg(error);
+            setLog((l) => [...l, { role: 'assistant', content: message }]);
+            commandCompleteRef.current(false);
+          }).finally(() => {
+            if (aiAbortRef.current === controller) aiAbortRef.current = null;
+          });
+          return;
+        }
         sendRef.current({ data: { provider, persona: 'icaro', question: q, history, dataset: null } }, {
-          onSuccess: (res: AiChatResponse) => { if (turnRef.current === turn) sayRef.current(res.answer); },
+          onSuccess: (res: AiChatResponse) => {
+            if (turnRef.current !== turn) return;
+            const providerId = String(res.provider);
+            const source = providerId === 'local'
+              ? 'BANCO LOCAL'
+              : res.layer
+                ? `BASE ${String(res.layer)}`
+                : `IA · ${PROVIDER_NAMES[providerId as Provider] ?? providerId.toUpperCase()}`;
+            setResponseMeta({ source, durationMs: Math.round(performance.now() - requestStartedAt) });
+            sayRef.current(res.answer);
+          },
           onError: (e) => {
             if (turnRef.current !== turn) return;
             speechPendingRef.current = false;
@@ -216,9 +345,15 @@ export default function Stage() {
     busy: state === 'talking' || state === 'thinking' || state === 'intro',
     allowWakeDuringWait: state === 'thinking',
     onQuestion: (question) => handleRef.current(question),
+    onBargeSpeech: (transcript) => {
+      if (stateRef.current === 'talking' && !resemblesPlayback(transcript, lastAnswerRef.current)) {
+        bargeCandidateRef.current = { text: transcript, at: Date.now() };
+      }
+    },
     isEcho: (transcript) => resemblesPlayback(transcript, lastAnswerRef.current),
     onTranscript: () => { setCaption(''); setCaptionWords(null); },
     onWake: () => {
+      aiAbortRef.current?.abort();
       setHelpOpen(false);
       activeRef.current = true; turnRef.current++; stopSpeaking(); prime();
       speechPendingRef.current = false;
@@ -227,6 +362,7 @@ export default function Stage() {
       setState('listening'); setCaption('');
     },
     onStop: () => {
+      aiAbortRef.current?.abort();
       activeRef.current = false; turnRef.current++;
       speechPendingRef.current = false;
       window.clearTimeout(captionTimerRef.current);
@@ -236,6 +372,8 @@ export default function Stage() {
       setCaption('');
     },
   });
+  const activateListenerRef = useRef(listener.activate);
+  activateListenerRef.current = listener.activate;
   commandCompleteRef.current = listener.complete;
   const useServerMic = micMode === 'server'
     || (micMode === 'auto' && (listener.status === 'unsupported' || (!!listener.error && SERVER_FALLBACK_ERRORS.has(listener.error))));
@@ -334,6 +472,96 @@ export default function Stage() {
   };
   const listenOnServerRef = useRef(listenOnServer);
   listenOnServerRef.current = listenOnServer;
+  useEffect(() => {
+    const listening = state === 'listening';
+    if ((!listening && state !== 'talking') || (state === 'talking' && !voiceOn)) {
+      bargeCandidateRef.current = null;
+      bargeHandledRef.current = false;
+      setLongListening(false);
+      setListeningActivity(false);
+      return;
+    }
+    let stopped = false;
+    let stream: MediaStream | null = null;
+    let disconnect: () => void = () => undefined;
+    let frame = 0;
+    let aboveSince = 0;
+    let listeningActivity = false;
+    let longListeningActive = false;
+
+    const monitor = async () => {
+      try {
+        if (!navigator.mediaDevices?.getUserMedia) return;
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
+        });
+        if (stopped) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        disconnect = connectMic(stream);
+        const check = () => {
+          if (stopped) return;
+          const now = performance.now();
+          const micLevel = getMicRms();
+          const outputLevel = getOutputRms();
+          const strongVoice = listening
+            ? micLevel > 0.035
+            : micLevel > 0.055 && micLevel > outputLevel * 1.35;
+          if (strongVoice) {
+            if (!aboveSince) {
+              aboveSince = now;
+              if (listening && !listeningActivity) {
+                listeningActivity = true;
+                setListeningActivity(true);
+              }
+            }
+          } else {
+            aboveSince = 0;
+            if (listening && listeningActivity) {
+              listeningActivity = false;
+              setListeningActivity(false);
+              setLongListening(false);
+              longListeningActive = false;
+            }
+          }
+
+          if (listening && aboveSince && now - aboveSince >= 4000 && !longListeningActive) {
+            longListeningActive = true;
+            setLongListening(true);
+          }
+          if (!listening && aboveSince && now - aboveSince >= 400 && !bargeHandledRef.current) {
+            if (serverMicRef.current) {
+              bargeHandledRef.current = true;
+              listenOnServerRef.current();
+            } else {
+              const candidate = bargeCandidateRef.current;
+              if (candidate && Date.now() - candidate.at < 1500
+                && !resemblesPlayback(candidate.text, lastAnswerRef.current)) {
+                bargeHandledRef.current = true;
+                handleRef.current(candidate.text);
+              }
+            }
+          }
+          frame = requestAnimationFrame(check);
+        };
+        frame = requestAnimationFrame(check);
+      } catch {
+        // Browser wake recognition remains available when a second mic meter is blocked.
+      }
+    };
+    void monitor();
+    return () => {
+      stopped = true;
+      cancelAnimationFrame(frame);
+      disconnect();
+      stream?.getTracks().forEach((track) => track.stop());
+      if (listening) {
+        setListeningActivity(false);
+        setLongListening(false);
+      }
+    };
+  }, [state, voiceOn]);
   useEffect(() => { if (!listener.supported) { setTyping(true); setCaption(''); } }, [listener.supported]);
   const microphoneHelpShown = useRef(false);
   useEffect(() => {
@@ -404,9 +632,88 @@ export default function Stage() {
   const mmss = `${String(Math.floor(remaining / 3600)).padStart(2, '0')}:${String(Math.floor((remaining % 3600) / 60)).padStart(2, '0')}:${String(remaining % 60).padStart(2, '0')}`;
   const energy = state === 'talking' ? .85 : state === 'listening' ? .6 : state === 'thinking' ? .35 : .1;
   const provName = PROVIDER_NAMES;
+  const selectScene = (next: CosmosScene) => {
+    setFeiraTarget(false);
+    setScene(next);
+    setSceneFade(true);
+    window.setTimeout(() => setSceneFade(false), 1000);
+  };
+  const ambientToggle = () => {
+    setAmbientError('');
+    if (ambientRef.current) {
+      void ambientRef.current.close().catch(() => undefined);
+      ambientRef.current = null;
+      setAmbientOn(false);
+      return;
+    }
+    try {
+      const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextCtor) {
+        setAmbientError('Este navegador não oferece áudio ambiente.');
+        return;
+      }
+      const context = new AudioContextCtor();
+      const resume = context.state === 'suspended' ? context.resume() : Promise.resolve();
+      const master = context.createGain();
+      master.gain.value = .12;
+      master.connect(context.destination);
+      [[36, 'sine', .25], [54, 'triangle', .08], [72, 'sine', .035]].forEach(([frequency, type, volume]) => {
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.type = type as OscillatorType;
+        oscillator.frequency.value = frequency as number;
+        gain.gain.value = volume as number;
+        oscillator.connect(gain);
+        gain.connect(master);
+        oscillator.start();
+      });
+      const noiseBuffer = context.createBuffer(1, context.sampleRate * 2, context.sampleRate);
+      const noiseData = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < noiseData.length; i++) noiseData[i] = (Math.random() * 2 - 1) * .32;
+      const noise = context.createBufferSource();
+      noise.buffer = noiseBuffer;
+      noise.loop = true;
+      const filter = context.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 260;
+      filter.Q.value = .7;
+      const noiseGain = context.createGain();
+      noiseGain.gain.value = .16;
+      noise.connect(filter);
+      filter.connect(noiseGain);
+      noiseGain.connect(master);
+      noise.start();
+      ambientRef.current = context;
+      void resume.then(() => {
+        if (context.state !== 'running') throw new Error('AudioContext did not resume');
+        setAmbientOn(true);
+      }).catch(() => {
+        if (ambientRef.current === context) ambientRef.current = null;
+        void context.close().catch(() => undefined);
+        setAmbientOn(false);
+        setAmbientError('Não foi possível iniciar o som ambiente. Tente novamente.');
+      });
+    } catch {
+      setAmbientOn(false);
+      setAmbientError('Não foi possível iniciar o som ambiente. Tente novamente.');
+    }
+  };
 
   return (
     <div ref={stageRef} className="stage" data-state={state} data-voice-active={listener.active} data-voice-enabled={voiceOn} onPointerDown={prime}>
+      <CosmosRenderer
+        scene={scene}
+        quality={quality}
+        visible={sceneVisible}
+        feeds={feeds.data}
+        targetCity={feiraTarget}
+        state={state}
+        getAudioLevel={getLevel}
+        onFps={setRenderFps}
+        onAssetsStatus={setAssetsStatus}
+      />
+      <div className={`scene-fade ${sceneFade ? 'scene-fade--active' : ''}`} aria-hidden="true" />
+      <NeuralWeb state={state} scene={scene} emotion={emotion} longListening={longListening} thoughtTitle={state === 'thinking' ? 'SÍNTESE EM CURSO' : ''} />
       <FutureScene />
       <Particles />
       <HoloFace state={state} getLevel={getLevel} />
@@ -414,6 +721,66 @@ export default function Stage() {
       <div className="scan" /><div className="vig" />
       <Waveform energy={energy} analyser={state === 'talking' ? getAnalyser() : null} />
 
+      <header className="stage-header" data-testid="stage-header">
+        <div className="stage-brand">
+          <span className="stage-brand__mark" aria-hidden="true">ᛟ</span>
+          <div><div className="stage-brand__name">ÍCARO</div><div className="stage-brand__sub">CENTRO DE OPERAÇÕES · UEFS</div></div>
+        </div>
+        <div className="scene-switcher" role="group" aria-label="Cenas do palco">
+          {([
+            ['galaxy', 'Galáxia', <Orbit size={14} key="g" />],
+            ['system', 'Sistema solar', <Radio size={14} key="s" />],
+            ['earth', 'Terra ao vivo', <Globe2 size={14} key="e" />],
+          ] as const).map(([value, label, icon]) => (
+            <button key={value} className="scene-button" aria-pressed={scene === value} onClick={() => selectScene(value)} data-testid={`button-scene-${value}`}>
+              {icon}<span>{label}</span>
+            </button>
+          ))}
+        </div>
+        <div className="mobile-feed" data-testid="status-cosmos-mobile">
+          {feeds.isLoading && <span>Conectando à telemetria pública…</span>}
+          {feeds.isError && <span className="mobile-feed__error">Feed indisponível <button onClick={() => void feeds.refetch()}>Tentar novamente</button></span>}
+          {feeds.data && <span>{feeds.data.stale ? 'Em cache · ' : 'AO VIVO · '}ISS {feeds.data.iss.current.latitude.toFixed(1)}° / {feeds.data.iss.current.longitude.toFixed(1)}° · {feeds.data.earthquakes.length} sismos</span>}
+        </div>
+      </header>
+      <aside className="stage-readout stage-readout--left" aria-label="Ícaro em atividade">
+        <svg className="readout-frame" viewBox="0 0 240 500" preserveAspectRatio="none" aria-hidden="true"><path d="M25 2Q12 2 9 19L3 47Q1 60 5 74L5 424Q4 440 18 446Q32 451 45 483L195 483Q211 481 214 464L235 429Q239 420 237 403L237 39Q237 22 220 19L93 18Q75 18 66 8Q58 1 43 2Z" /></svg>
+        <div className="readout-kicker"><span className="readout-dot" /> SISTEMA ATIVO</div>
+        <div className="readout-title">{scene === 'galaxy' ? 'Espaço profundo' : scene === 'system' ? 'Sistema solar' : feiraTarget ? 'Feira de Santana' : 'Órbita terrestre'}</div>
+        <div className="readout-line"><span>ESTADO</span><strong>{STATE_LABEL[state]}</strong></div>
+        <div className="readout-line"><span>CENA</span><strong>{scene === 'galaxy' ? 'GALÁXIA' : scene === 'system' ? 'SOLAR' : 'TERRA'}</strong></div>
+        <div className="readout-line"><span>FEIRA · LOCAL</span><strong>{clock}</strong></div>
+        <div className="readout-line"><span>REDE NEURAL</span><strong>{state === 'idle' ? 2 : Math.max(1, Math.round(12 + getLevel() * 84))} sinapses/s</strong></div>
+        <div className="readout-line"><span>ÚLTIMA FONTE</span><strong>{responseMeta.source}</strong></div>
+        <div className="readout-line"><span>TEMPO DE RESPOSTA</span><strong>{responseMeta.durationMs === null ? '—' : `${responseMeta.durationMs} ms`}</strong></div>
+        <div className="readout-line"><span>RENDERIZAÇÃO</span><strong>{renderFps === null ? 'medindo' : `${renderFps} FPS`}</strong></div>
+        <div className="readout-divider" />
+        <p className="readout-assets" title={assetsStatus}>{assetsStatus}</p>
+        <p>Presença neural estável. Canal de voz pronto para a próxima instrução.</p>
+      </aside>
+      <aside className="stage-readout stage-readout--right" aria-label="Dados orbitais e sísmicos">
+        <svg className="readout-frame" viewBox="0 0 240 500" preserveAspectRatio="none" aria-hidden="true"><path d="M25 2Q12 2 9 19L3 47Q1 60 5 74L5 424Q4 440 18 446Q32 451 45 483L195 483Q211 481 214 464L235 429Q239 420 237 403L237 39Q237 22 220 19L93 18Q75 18 66 8Q58 1 43 2Z" /></svg>
+        <div className="readout-kicker"><span className={`readout-dot ${feeds.data?.stale ? 'readout-dot--stale' : ''}`} /> TELEMETRIA PÚBLICA</div>
+        {feeds.isLoading && <div className="feed-skeleton" role="status" data-testid="status-cosmos-loading"><i /><i /><i /></div>}
+        {feeds.isError && <div className="feed-error" role="alert" data-testid="status-cosmos-error">Sinal indisponível <button onClick={() => void feeds.refetch()} data-testid="button-retry-cosmos">Tentar de novo</button></div>}
+        {feeds.data && <>
+          {feeds.data.stale && <div className="feed-stale" role="status" data-testid="status-cosmos-stale">Dados em cache · aguardando atualização</div>}
+          <div className="readout-title">ISS · Estação espacial</div>
+          <div className="readout-coordinate">{feeds.data.iss.current.latitude.toFixed(2)}° · {feeds.data.iss.current.longitude.toFixed(2)}°</div>
+          <div className="readout-line"><span>ALTITUDE</span><strong>{feeds.data.iss.current.altitudeKm.toFixed(1)} km</strong></div>
+          <div className="readout-line"><span>VELOCIDADE</span><strong>{Math.round(feeds.data.iss.current.velocityKmh).toLocaleString('pt-BR')} km/h</strong></div>
+          <div className="readout-line"><span>VISIBILIDADE</span><strong>{feeds.data.iss.current.visibility}</strong></div>
+          {feeds.data.iss.nextPassAt && <div className="readout-line"><span>PRÓXIMA PASSAGEM</span><strong>{timeValue(feeds.data.iss.nextPassAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}{feeds.data.iss.nextPassDistanceKm !== null ? ` · ${feeds.data.iss.nextPassDistanceKm.toFixed(0)} km` : ''}</strong></div>}
+          <div className="readout-divider" />
+          <div className="readout-title readout-title--small">Sismos recentes <span>{feeds.data.earthquakes.length}</span></div>
+          {feeds.data.earthquakes.slice(0, 2).map((quake) => (
+            <a key={quake.id} className="quake-row" href={quake.url} target="_blank" rel="noopener noreferrer" data-testid={`link-quake-${quake.id}`}>
+              <span className="quake-magnitude">M{quake.magnitude.toFixed(1)}</span><span className="quake-place" title={`${quake.place} · ${quake.depthKm.toFixed(1)} km · ${timeValue(quake.occurredAt).toLocaleString('pt-BR')}`}>{quake.place}<small>{quake.depthKm.toFixed(1)} km · {timeValue(quake.occurredAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</small></span>
+            </a>
+          ))}
+          <div className="readout-updated">ATUALIZADO {timeValue(feeds.data.updatedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · TTL {feeds.data.ttlSeconds}s</div>
+        </>}
+      </aside>
       {timerEnd && <div className="hud mono text-[13px] text-[color:var(--warn)]" data-testid="text-timer-hud">T− {mmss}</div>}
       <StageHelp open={helpOpen} onOpen={() => setHelpOpen(true)} onClose={() => setHelpOpen(false)} clock={clock} stateLabel={state === 'idle' ? 'Em espera' : STATE_LABEL[state]}>
         <h3>Microfone</h3>
@@ -477,7 +844,7 @@ export default function Stage() {
           <button className="hbtn" onClick={() => setPanel(false)} aria-label="Fechar painel" data-testid="button-close-panel"><X size={16} /></button>
         </div>
         <div className="disp flex border-b border-[color:var(--line)]" role="tablist">
-          {([['conversa', 'Conversa'], ['voz', 'Voz'], ['ferramentas', 'Ferramentas'], ['conexao', 'Conexão']] as const).map(([k, l]) => (
+          {([['conversa', 'Conversa'], ['voz', 'Voz'], ['ferramentas', 'Ferramentas'], ['conexao', 'Conexão'], ['sobre', 'Sobre']] as const).map(([k, l]) => (
             <button key={k} role="tab" aria-selected={tab === k} className="tab" onClick={() => setTab(k)} data-testid={`tab-${k}`}>{l}</button>
           ))}
         </div>
@@ -513,6 +880,18 @@ export default function Stage() {
           {tab === 'voz' && (
             <div className="space-y-5">
               <MicSettings mode={micMode} onMode={chooseMicMode} usingServer={useServerMic} busy={micTestActive} onTestStart={beginMicTest} onTestEnd={endMicTest} />
+              <div className="card space-y-3">
+                <div className="mono text-[10px] uppercase tracking-widest text-[color:var(--ok)]">Palco visual</div>
+                <label className="setting-label" htmlFor="stage-quality">Qualidade gráfica</label>
+                <select id="stage-quality" value={quality} onChange={(event) => setQuality(event.target.value as VisualQuality)} data-testid="select-stage-quality">
+                  {QUALITY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+                <p className="text-xs text-[color:var(--dim)]">Auto reduz os detalhes quando a renderização fica lenta. A preferência fica salva neste dispositivo.</p>
+                <button className="pbtn w-full" onClick={ambientToggle} aria-pressed={ambientOn} data-testid="button-ambient-toggle">
+                  {ambientOn ? <Volume2 size={14} /> : <VolumeX size={14} />} Som ambiente {ambientOn ? 'ligado' : 'desligado'}
+                </button>
+                {ambientError && <p role="alert" className="text-xs text-[color:var(--bad)]" data-testid="status-ambient-error">{ambientError}</p>}
+              </div>
               <div className="card space-y-2">
                 <div className="mono text-[10px] uppercase tracking-widest text-[color:var(--ok)]">Ativação por voz</div>
                 <p>Diga <strong>“Ok, Ícaro”</strong> ou <strong>“Let’s go, Ícaro”</strong>, seguido da pergunta, ou espere a indicação “Escuta ativa”. Cada ativação autoriza uma pergunta; após responder, o ÍCARO volta à espera. Sem pergunta em 10 segundos, a ativação expira em silêncio. Diga <strong>“Stop, Ícaro”</strong> para interromper.</p>
@@ -582,9 +961,39 @@ export default function Stage() {
               <Link href="/assistant" className="mono inline-flex items-center gap-1 text-xs text-[color:var(--holo)]" data-testid="link-assistant">Abrir chat completo <ExternalLink size={12} /></Link>
             </div>
           )}
+          {tab === 'sobre' && (
+            <div className="about-content space-y-5" data-testid="content-about">
+              <div className="about-mark" aria-hidden="true">ᛟ</div>
+              <div><div className="mono text-[10px] uppercase tracking-[.2em] text-[color:var(--ok)]">Sobre o sistema</div><h2 className="font-display mt-2 text-3xl">Um olhar para além da sala.</h2></div>
+              <p>ÍCARO é um assistente operacional sempre ativo, concebido para acompanhar a turma de Contabilidade da UEFS. Seu rosto original permanece no centro; o ambiente ao redor é uma janela para sistemas em movimento.</p>
+              <div className="card space-y-3">
+                <div className="mono text-[10px] uppercase tracking-widest text-[color:var(--dim)]">Cenas do palco</div>
+                <p><strong>Galáxia</strong> — espiral procedural de 90 mil partículas e poeira estelar.</p>
+                <p><strong>Sistema solar</strong> — oito planetas com posições calculadas pelo Astronomy Engine.</p>
+                <p><strong>Terra ao vivo</strong> — terminador solar, luzes noturnas, nuvens e telemetria pública em cache.</p>
+              </div>
+              <div className="card about-credits">
+                <div className="mono text-[10px] uppercase tracking-widest text-[color:var(--dim)]">Créditos</div>
+                <p>NASA GIBS: Blue Marble Next Generation, VIIRS Black Marble e MODIS Terra Cloud Fraction. Dados e imagens públicos da NASA.</p>
+                <p>Solar System Scope — texturas planetárias 2K, CC BY 4.0; texturas procedurais são usadas como fallback quando o host não está disponível.</p>
+                <p>Astronomy Engine — cálculo de posições planetárias, licença MIT.</p>
+                <p>A telemetria ISS e os eventos sísmicos são exibidos a partir do feed público em cache do servidor.</p>
+              </div>
+              <div className="mono text-[10px] text-[color:var(--dim)]">ITCONT · UEFS · ÍCARO sempre em órbita.</div>
+            </div>
+          )}
         </div>
       </aside>
       {panel && <div className="fixed inset-0 z-[15]" onClick={() => setPanel(false)} aria-hidden />}
+      {materializing && <div className="materialize" role="status" data-testid="overlay-materialize">
+        <div className="materialize__point" /><div className="materialize__galaxy" /><div className="materialize__earth" />
+        <div className="materialize__neural" /><div className="materialize__face-scan" /><div className="materialize__scan" />
+        <div className="materialize__mark">ᛟ</div>
+        <div className="materialize__title">ÍCARO</div><div className="materialize__status">ESTABELECENDO PRESENÇA NEURAL</div>
+        <div className="materialize__online">ÍCARO · CONSCIÊNCIA ONLINE</div>
+        <div className="materialize__progress"><i /></div>
+        <button className="hbtn materialize__skip" onClick={() => setMaterializing(false)} data-testid="button-skip-materialize"><SkipForward size={13} /> Pular</button>
+      </div>}
     </div>
   );
 }

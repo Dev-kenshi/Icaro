@@ -6,7 +6,7 @@ import {
   type IcaroWord,
   loadIcaroAvatarLibrary,
 } from './icaro-avatar';
-import { queueSpeechChunks, type SpeechQueueEngine } from './speech-plan';
+import { queueSpeechChunks, type SpeechEmotion, type SpeechEmotionMark, type SpeechQueueEngine } from './speech-plan';
 
 export const VOICE_RE = /antonio.*natural|donato|fabio|humberto|julio|nicolau|valerio|leandro|daniel|felipe|google.*portugu/i;
 
@@ -26,6 +26,8 @@ export interface SpeakOpts {
   rate: number;
   voiceURI: string | null;
   neural?: boolean;
+  emotionMarks?: readonly SpeechEmotionMark[];
+  onEmotion?: (emotion: SpeechEmotion) => void;
   onChunk: (t: string) => void;
   onStart: () => void;
   onEnd: () => void;
@@ -231,6 +233,12 @@ function makeRunAvatarProxy(run: SpeechRun): IcaroAvatarInstance {
     setAudioLevel(level) {
       if (isCurrent(run) && run.started) actual.setAudioLevel(level);
     },
+    setEmotion(emotion) {
+      if (isCurrent(run)) actual.setEmotion(emotion);
+    },
+    setListeningActivity(active) {
+      if (isCurrent(run)) actual.setListeningActivity(active);
+    },
   };
 }
 
@@ -239,9 +247,9 @@ function createRunEngine(run: SpeechRun, Constructor: NonNullable<Window['IcaroS
   const engine = new Constructor({
     avatar: proxy,
     endpoint: `${BASE_URL}api/tts-ts`,
-    fallback: async (text) => {
+    fallback: async (text, emotion) => {
       try {
-        return await fetchGeminiAudio(run, text);
+        return await fetchGeminiAudio(run, text, emotion);
       } catch (error) {
         if (isCurrent(run) && !(error instanceof Error && error.name === 'AbortError')) {
           run.error = asError(error, 'A voz reserva falhou.');
@@ -249,8 +257,9 @@ function createRunEngine(run: SpeechRun, Constructor: NonNullable<Window['IcaroS
         throw error;
       }
     },
-    onSentence(text, timeline, clock) {
+    onSentence(text, timeline, clock, emotion) {
       if (!isCurrent(run)) return;
+      if (emotion) run.options.onEmotion?.(emotion);
       run.sentenceText = text;
       run.words = timeline.words;
       run.pendingTimeline = timeline;
@@ -306,10 +315,10 @@ function createRunEngine(run: SpeechRun, Constructor: NonNullable<Window['IcaroS
   };
 
   const originalFallback = engine._fallback.bind(engine);
-  engine._fallback = async (text) => {
+  engine._fallback = async (text, emotion) => {
     if (!isCurrent(run) || run.error) return null;
     try {
-      const data = await originalFallback(text);
+      const data = await originalFallback(text, emotion);
       if (!isCurrent(run)) return null;
       if (!data) {
         if (!run.error) run.error = new Error('A voz reserva não retornou áudio válido.');
@@ -337,9 +346,9 @@ function createRunEngine(run: SpeechRun, Constructor: NonNullable<Window['IcaroS
   return engine;
 }
 
-async function fetchGeminiAudio(run: SpeechRun, text: string): Promise<ArrayBuffer> {
+async function fetchGeminiAudio(run: SpeechRun, text: string, emotion?: SpeechEmotion): Promise<ArrayBuffer> {
   if (!isCurrent(run)) throw new DOMException('Fala cancelada.', 'AbortError');
-  const cacheKey = JSON.stringify([fallbackVoice, text]);
+  const cacheKey = JSON.stringify([fallbackVoice, text, emotion ?? null]);
   const cached = fallbackAudioCache.get(cacheKey);
   if (cached) {
     fallbackAudioCache.delete(cacheKey);
@@ -361,7 +370,7 @@ async function fetchGeminiAudio(run: SpeechRun, text: string): Promise<ArrayBuff
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       signal: controller.signal,
-      body: JSON.stringify({ text: spokenText.slice(0, 1200) }),
+      body: JSON.stringify({ text: spokenText.slice(0, 1200), emotion }),
     });
     if (!response.ok) {
       const payload = await response.json().catch(() => null) as { code?: unknown; error?: unknown } | null;
@@ -385,7 +394,7 @@ async function fetchGeminiAudio(run: SpeechRun, text: string): Promise<ArrayBuff
     if (controller.signal.aborted || !isCurrent(run)) throw new DOMException('Fala cancelada.', 'AbortError');
     run.usedFallback = true;
     const entry = { audio, size: blob.size };
-    const resolvedCacheKey = JSON.stringify([fallbackVoice, text]);
+    const resolvedCacheKey = JSON.stringify([fallbackVoice, text, emotion ?? null]);
     fallbackAudioCache.delete(resolvedCacheKey);
     fallbackAudioCache.set(resolvedCacheKey, entry);
     fallbackCacheBytes += entry.size;
@@ -468,6 +477,30 @@ export function getLevel(): number {
   return ttsLevel;
 }
 
+export function getMicRms(): number {
+  if (!micAnalyser) return 0;
+  const data = new Uint8Array(micAnalyser.fftSize);
+  micAnalyser.getByteTimeDomainData(data);
+  let sum = 0;
+  for (let i = 0; i < data.length; i++) {
+    const sample = (data[i] - 128) / 128;
+    sum += sample * sample;
+  }
+  return Math.sqrt(sum / data.length);
+}
+
+export function getOutputRms(): number {
+  if (!outputAnalyser) return 0;
+  const data = new Uint8Array(outputAnalyser.fftSize);
+  outputAnalyser.getByteTimeDomainData(data);
+  let sum = 0;
+  for (let i = 0; i < data.length; i++) {
+    const sample = (data[i] - 128) / 128;
+    sum += sample * sample;
+  }
+  return Math.sqrt(sum / data.length);
+}
+
 export let lastProvider: string | null = null;
 
 export function releaseSpeechCache() {
@@ -546,7 +579,9 @@ export function speak(text: string, options: SpeakOpts) {
       currentRun = run;
       player = engine;
       try {
-        const done = queueSpeechChunks(engine as unknown as SpeechQueueEngine, text);
+        const done = queueSpeechChunks(engine as unknown as SpeechQueueEngine, text, {
+          emotionMarks: options.emotionMarks,
+        });
         void done.catch((error: unknown) => {
           if (!isCurrent(run)) return;
           run.error = asError(error, 'A reprodução da fala falhou.');
@@ -579,6 +614,10 @@ export function setSpeechAvatar(next: IcaroAvatarInstance | null) {
 
 export function setHoloAvatarState(state: 'idle' | 'listening' | 'thinking' | 'talking' | 'intro') {
   avatar?.setState(state === 'talking' ? 'speaking' : state === 'intro' ? 'idle' : state);
+}
+
+export function setListeningActivity(active: boolean) {
+  avatar?.setListeningActivity(active);
 }
 
 export function createHoloAvatar(canvas: HTMLCanvasElement): Promise<IcaroAvatarInstance> {

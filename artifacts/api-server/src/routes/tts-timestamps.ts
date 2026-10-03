@@ -119,6 +119,7 @@ router.post("/tts-ts", async (req, res): Promise<void> => {
       apiKey,
       voiceId,
       modelId: process.env.ELEVENLABS_MODEL || "eleven_multilingual_v2",
+      emotion: parsed.data.emotion,
       signal: controller.signal,
     });
 

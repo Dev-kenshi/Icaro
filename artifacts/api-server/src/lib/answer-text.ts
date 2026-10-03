@@ -4,6 +4,7 @@ export function normalizeAnswerText(answer: string): string {
   return answer
     .split(/\r\n?|\n/)
     .map((line) => line
+      .replace(/\[(?:entusiasmo|s[eé]rio|curioso|alerta|sorriso)\]/gi, "")
       .replace(/^\s*[—–―]\s*/, "")
       .replace(/(\d)[ \t]*[—–―][ \t]*(?=[+-]?\d)/g, "$1 a ")
       .replace(DASHES, ", ")

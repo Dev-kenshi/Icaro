@@ -34,6 +34,7 @@ type Options = {
   onStop: () => void;
   onQuestion: (text: string) => void;
   onTranscript: (text: string) => void;
+  onBargeSpeech?: (text: string) => void;
   isEcho?: (text: string) => boolean;
 };
 
@@ -193,6 +194,9 @@ export function useWakeListener(options: Options) {
           const result = event.results[i];
           const transcript = result[0].transcript;
           if (transcript.trim()) { failures = 0; setError(null); }
+          if (latest.current.busy && transcript.trim() && !latest.current.isEcho?.(transcript)) {
+            latest.current.onBargeSpeech?.(transcript);
+          }
           const events = gate.current.receive(
             transcript,
             result.isFinal,

@@ -5,6 +5,7 @@ import { requireAuth } from "../middlewares/require-auth";
 import aiRouter from "./ai";
 import ttsTimestampsRouter from "./tts-timestamps";
 import sttRouter from "./stt";
+import cosmosRouter from "./cosmos";
 
 const router: IRouter = Router();
 
@@ -14,5 +15,6 @@ router.use(["/ai", "/tts-ts"], requireAuth());
 router.use(sttRouter);
 router.use(aiRouter);
 router.use(ttsTimestampsRouter);
+router.use(cosmosRouter);
 
 export default router;
