@@ -1,0 +1,22 @@
+{
+  "status": "preview_only_not_saved_to_account",
+  "voiceName": "Ícaro · Pesquisador Feirense",
+  "description": "Voz masculina natural e conversacional, perfil de pesquisador de Feira de Santana, com prosódia regional sutil, sem bordões nem caricatura. Voz sintética, sem imitação de pessoa real.",
+  "previews": [
+    {
+      "sample": 1,
+      "generatedVoiceId": "RYCNU6SfXn2FjhoteE1w",
+      "file": "pesquisador-1.mp3"
+    },
+    {
+      "sample": 2,
+      "generatedVoiceId": "V0UtVtuqBZmjrt3uIJFY",
+      "file": "pesquisador-2.mp3"
+    },
+    {
+      "sample": 3,
+      "generatedVoiceId": "BEhX1598ygnB8EIuRkdf",
+      "file": "pesquisador-3.mp3"
+    }
+  ]
+}

@@ -70,3 +70,45 @@ mtime_ms = 1791070331781
 storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:c3e2d7b8-918b-46b2-b84c-6f83c6c77c98/2941864f-989f-4508-8812-7768c72fec24/24653782-4658-4c55-b271-0622bf86f0a0"
 storage_version_token = "1791070792508728"
 content_type = "image/png"
+
+[[outputs]]
+id = "71YuKEIQ6b2OrOCidKVdW"
+uri = "file://attached_assets/voice-researcher/pesquisador-1.mp3"
+type = "audio"
+title = "Pesquisador feirense · Amostra 1"
+description = "Prévia sintética com fala conversacional e texto sem bordões. Perfil solicitado: pesquisador de Feira de Santana, com sotaque sutil."
+logical_id = "0bcdbfe0-a7ca-4fbf-be1e-e97c42d8354d"
+content_hash = "sha256:a404fca8fdcb34b80056ab8dc3cb06daa55077a92f678121be639491515e4005"
+size = 490311
+mtime_ms = 1791071143742
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:c3e2d7b8-918b-46b2-b84c-6f83c6c77c98/0bcdbfe0-a7ca-4fbf-be1e-e97c42d8354d/946ce35f-4899-4fc2-8113-0f4a605b3212"
+storage_version_token = "1791071241457284"
+content_type = "audio/mpeg"
+
+[[outputs]]
+id = "Y3PiV5H5gnr3EmuXz3KVI"
+uri = "file://attached_assets/voice-researcher/pesquisador-2.mp3"
+type = "audio"
+title = "Pesquisador feirense · Amostra 2"
+description = "Prévia sintética com fala conversacional e texto sem bordões. Perfil solicitado: pesquisador de Feira de Santana, com sotaque sutil."
+logical_id = "bd34877d-cf20-4a12-a82c-e82f5667aa25"
+content_hash = "sha256:e3c625a8d780ac2ded13d192c9e98217ee673a0aad894f15668b9f13a7567edb"
+size = 511627
+mtime_ms = 1791071143742
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:c3e2d7b8-918b-46b2-b84c-6f83c6c77c98/bd34877d-cf20-4a12-a82c-e82f5667aa25/15330f5c-a1e6-4d22-8acb-3a12760deda3"
+storage_version_token = "1791071242128143"
+content_type = "audio/mpeg"
+
+[[outputs]]
+id = "qdgXm3yuFJcdSCkhxfT_r"
+uri = "file://attached_assets/voice-researcher/pesquisador-3.mp3"
+type = "audio"
+title = "Pesquisador feirense · Amostra 3"
+description = "Prévia sintética com fala conversacional e texto sem bordões. Perfil solicitado: pesquisador de Feira de Santana, com sotaque sutil."
+logical_id = "27374f26-077f-4be2-a0cd-c7bb6ea479c3"
+content_hash = "sha256:0c5cfef26b9303b2fd30288b7ae1a5f6cfaaf7732d9001d7a7ce799a4ee19c5c"
+size = 492191
+mtime_ms = 1791071143746
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:c3e2d7b8-918b-46b2-b84c-6f83c6c77c98/27374f26-077f-4be2-a0cd-c7bb6ea479c3/7a3e7d7d-614e-4927-a7e3-7f001ff5cbed"
+storage_version_token = "1791071242834438"
+content_type = "audio/mpeg"
