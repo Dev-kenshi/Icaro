@@ -351,6 +351,9 @@ export function CosmosRenderer({
     if (!host || !visible) return;
     let disposed = false;
     let frame = 0;
+    let staticFrame = 0;
+    let staticRedrawFrame = 0;
+    let lastStaticFrameAt = 0;
     let renderer: RendererLike | null = null;
     let resizeObserver: ResizeObserver | null = null;
     let cleanup: (() => void) | undefined;
@@ -377,15 +380,32 @@ export function CosmosRenderer({
     const staticDrag = { pointerId: -1, lastX: 0, lastY: 0 };
     const staticPointers = new Map<number, { x: number; y: number }>();
     const staticPinch = { startDistance: 0, startZoom: 1 };
+    const pointerParallax = { x: 0, y: 0, targetX: 0, targetY: 0 };
+    const scheduleStaticRedraw = () => {
+      if (staticRedrawFrame) return;
+      staticRedrawFrame = requestAnimationFrame(() => {
+        staticRedrawFrame = 0;
+        staticDrawRef.current?.();
+      });
+    };
+    const updatePointerParallax = (event: PointerEvent) => {
+      if (reduced || event.pointerType !== 'mouse' || event.buttons !== 0) return;
+      const rect = host.getBoundingClientRect();
+      pointerParallax.targetX = Math.max(-1, Math.min(1, ((event.clientX - rect.left) / rect.width - .5) * 2));
+      pointerParallax.targetY = Math.max(-1, Math.min(1, ((event.clientY - rect.top) / rect.height - .5) * 2));
+    };
+    const resetPointerParallax = () => {
+      pointerParallax.targetX = 0;
+      pointerParallax.targetY = 0;
+    };
+    host.addEventListener('pointermove', updatePointerParallax);
+    host.addEventListener('pointerleave', resetPointerParallax);
     const reportAsset = (kind: AssetKind, value: string) => {
       assetStatus[kind] = value;
       assetsCallbackRef.current?.(`${assetStatus.earth} · ${assetStatus.solar}`);
     };
     const applyStaticTransform = () => {
-      const canvas = host.querySelector<HTMLCanvasElement>('.cosmos-static');
-      if (!canvas) return;
-      canvas.style.transformOrigin = 'center center';
-      canvas.style.transform = `translate3d(${staticNavigation.x}px,${staticNavigation.y}px,0) scale(${staticNavigation.zoom})`;
+      scheduleStaticRedraw();
     };
     const zoomStatic = (factor: number) => {
       staticNavigation.zoom = Math.max(.7, Math.min(4, staticNavigation.zoom * factor));
@@ -495,27 +515,41 @@ export function CosmosRenderer({
       }
     };
 
-    const drawStatic = () => {
+    let staticGlobeCacheKey = '';
+    let staticGlobeCache: HTMLCanvasElement | null = null;
+    const drawStatic = (now = performance.now()) => {
       if (!host || disposed) return;
-      const canvas = document.createElement('canvas');
-      canvas.className = 'cosmos-static';
-      canvas.setAttribute('aria-hidden', 'true');
-      host.querySelector('.cosmos-static')?.remove();
-      host.appendChild(canvas);
+      const canvas = host.querySelector<HTMLCanvasElement>('.cosmos-static') ?? document.createElement('canvas');
+      if (!canvas.isConnected) {
+        canvas.className = 'cosmos-static';
+        canvas.setAttribute('aria-hidden', 'true');
+        host.appendChild(canvas);
+      }
       const context = canvas.getContext('2d');
       if (!context) return;
       const rect = host.getBoundingClientRect();
-      const ratio = Math.min(window.devicePixelRatio || 1, 1.4);
-      canvas.width = Math.max(1, Math.floor(rect.width * ratio));
-      canvas.height = Math.max(1, Math.floor(rect.height * ratio));
+      const ratio = Math.min(window.devicePixelRatio || 1, 2);
+      const pixelWidth = Math.max(1, Math.floor(rect.width * ratio));
+      const pixelHeight = Math.max(1, Math.floor(rect.height * ratio));
+      if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
+      if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
       canvas.style.width = `${rect.width}px`;
       canvas.style.height = `${rect.height}px`;
-      context.scale(ratio, ratio);
+      canvas.style.transform = 'none';
+      context.setTransform(ratio, 0, 0, ratio, 0, 0);
       const width = rect.width, height = rect.height;
       const currentScene = sceneRef.current;
       const level = Math.max(0, Math.min(1, audioLevelRef.current() || 0));
+      const motionTime = reduced ? 0 : now;
       const starsRandom = deterministicRandom(411);
       context.clearRect(0, 0, width, height);
+      context.save();
+      context.translate(
+        width * .5 + staticNavigation.x + pointerParallax.targetX * 8,
+        height * .5 + staticNavigation.y + pointerParallax.targetY * 6,
+      );
+      context.scale(staticNavigation.zoom, staticNavigation.zoom);
+      context.translate(-width * .5, -height * .5);
       if (!transparentBackgroundRef.current) {
         context.fillStyle = '#020a13';
         context.fillRect(0, 0, width, height);
@@ -528,7 +562,7 @@ export function CosmosRenderer({
       context.fillRect(0, 0, width, height);
       for (let i = 0; i < 260; i++) {
         const x = starsRandom() * width, y = starsRandom() * height;
-        const alpha = .10 + starsRandom() * .5;
+        const alpha = (.10 + starsRandom() * .5) * (reduced ? 1 : .68 + .32 * (Math.sin(motionTime * .0016 + i * 1.7) + 1) / 2);
         context.fillStyle = `rgba(177,234,255,${alpha})`;
         context.beginPath();
         context.arc(x, y, starsRandom() > .97 ? 1.25 : .55, 0, Math.PI * 2);
@@ -537,10 +571,11 @@ export function CosmosRenderer({
 
       if (currentScene === 'galaxy') {
         const centerX = width * .5, centerY = height * .43;
-        for (let i = 0; i < 9000; i++) {
+        const particleCount = reduced ? 9000 : mobileViewport ? 2400 : 4200;
+        for (let i = 0; i < particleCount; i++) {
           const arm = i % 5;
           const radius = Math.sqrt(starsRandom()) * Math.min(width, height) * .33;
-          const angle = arm * Math.PI * 2 / 5 + radius * .011 + (starsRandom() - .5) * .45;
+          const angle = arm * Math.PI * 2 / 5 + radius * .011 + (starsRandom() - .5) * .45 + motionTime * .000003;
           const x = centerX + Math.cos(angle) * radius;
           const y = centerY + Math.sin(angle) * radius * .48;
           context.fillStyle = `rgba(${100 + Math.floor(starsRandom() * 110)},${174 + Math.floor(starsRandom() * 80)},255,${.09 + starsRandom() * .55})`;
@@ -568,7 +603,7 @@ export function CosmosRenderer({
         context.fillStyle = sun;
         context.beginPath(); context.arc(0, 0, orbitRadii[0] * .5, 0, Math.PI * 2); context.fill();
         orbitRadii.forEach((radius, index) => {
-          const angle = index * 1.48 + .6;
+          const angle = index * 1.48 + .6 + motionTime * .00009 / (index + 1);
           const px = Math.cos(angle) * radius, py = Math.sin(angle) * radius * .42;
           const planetGlow = context.createRadialGradient(px - 1, py - 1, .2, px, py, 2.8 + index * .45);
           planetGlow.addColorStop(0, '#f5f0dc');
@@ -594,7 +629,23 @@ export function CosmosRenderer({
         atmosphere.addColorStop(1, 'transparent');
         context.fillStyle = atmosphere;
         context.beginPath(); context.arc(cx, cy, radius * 1.44, 0, Math.PI * 2); context.fill();
-        const globe = createProjectedEarth(Math.max(160, Math.floor(radius * 2)), staticEarthImagesRef.current, new Date());
+        const globeSize = Math.min(
+          2048,
+          Math.max(160, Math.floor(radius * 2 * Math.min(staticNavigation.zoom, 4) * ratio)),
+        );
+        const images = staticEarthImagesRef.current;
+        const globeKey = [
+          globeSize,
+          images.day?.naturalWidth ?? 0,
+          images.night?.naturalWidth ?? 0,
+          images.clouds?.naturalWidth ?? 0,
+          reduced ? 0 : Math.floor(motionTime / 60_000),
+        ].join(':');
+        if (globeKey !== staticGlobeCacheKey) {
+          staticGlobeCacheKey = globeKey;
+          staticGlobeCache = createProjectedEarth(globeSize, images, new Date());
+        }
+        const globe = staticGlobeCache;
         if (globe) {
           context.save();
           context.beginPath(); context.arc(cx, cy, radius, 0, Math.PI * 2); context.clip();
@@ -660,14 +711,14 @@ export function CosmosRenderer({
             context.fillStyle = '#d9fff3';
             context.shadowColor = '#91ffe0';
             context.shadowBlur = 12;
-            context.beginPath(); context.arc(p.x, p.y, 3, 0, Math.PI * 2); context.fill();
+            context.beginPath(); context.arc(p.x, p.y, 2.4 + Math.sin(motionTime * .006) * .65, 0, Math.PI * 2); context.fill();
             context.shadowBlur = 0;
           }
         }
         const city = project(CITY.latitude, CITY.longitude, 1.03);
         context.strokeStyle = '#d6fff1';
         context.lineWidth = 1.2;
-        context.beginPath(); context.arc(city.x, city.y, targetCity ? 8 : 5, 0, Math.PI * 2); context.stroke();
+        context.beginPath(); context.arc(city.x, city.y, targetCity ? 8 + Math.sin(motionTime * .005) * 2 : 5 + Math.sin(motionTime * .004) * 1.2, 0, Math.PI * 2); context.stroke();
         context.fillStyle = '#a5ffe8';
         context.beginPath(); context.arc(city.x, city.y, 2.2, 0, Math.PI * 2); context.fill();
       }
@@ -690,13 +741,27 @@ export function CosmosRenderer({
       }
       nodes.forEach((node, index) => {
         const pulse = stateRef.current === 'idle'
-          ? (index % 47 === Math.floor(Date.now() / 600) % 47 ? .9 : .17)
+          ? (index % 47 === Math.floor(motionTime / 600) % 47 ? .9 : .17)
           : Math.min(.95, .18 + level * .8 + (stateRef.current === 'thinking' && index % 8 === 0 ? .58 : 0));
         context.fillStyle = pulse > .65 ? `rgba(255,244,218,${pulse})` : `rgba(157,235,255,${pulse})`;
         context.beginPath(); context.arc(node.x, node.y, pulse > .65 ? 1.8 : .85, 0, Math.PI * 2); context.fill();
       });
-      applyStaticTransform();
+      context.restore();
       return () => canvas.remove();
+    };
+
+    const tickStatic = (now: number) => {
+      staticFrame = 0;
+      if (disposed || document.hidden || reduced) return;
+      const targetFps = mobileViewport ? 18 : 24;
+      if (!lastStaticFrameAt || now - lastStaticFrameAt >= 1000 / targetFps) {
+        lastStaticFrameAt = now;
+        drawStatic(now);
+      }
+      staticFrame = requestAnimationFrame(tickStatic);
+    };
+    const startStaticMotion = () => {
+      if (!reduced && !document.hidden && !staticFrame) staticFrame = requestAnimationFrame(tickStatic);
     };
 
     const tick = (now: number) => {
@@ -737,21 +802,28 @@ export function CosmosRenderer({
     const onVisibility = () => {
       if (document.hidden) {
         cancelAnimationFrame(frame);
+        cancelAnimationFrame(staticFrame);
+        cancelAnimationFrame(staticRedrawFrame);
         frame = 0;
+        staticFrame = 0;
+        staticRedrawFrame = 0;
         lastFrameAt = 0;
       } else if (renderer && !frame) {
         frame = requestAnimationFrame(tick);
+      } else {
+        startStaticMotion();
       }
     };
 
+    document.addEventListener('visibilitychange', onVisibility);
     if (staticMode) {
       navigationRef.current = staticNavigationApi;
       cleanup = drawStatic();
-      staticDrawRef.current = () => { cleanup?.(); cleanup = drawStatic(); };
-      resizeObserver = new ResizeObserver(() => { cleanup?.(); cleanup = drawStatic(); });
+      staticDrawRef.current = () => { drawStatic(); };
+      resizeObserver = new ResizeObserver(() => { staticDrawRef.current?.(); });
       resizeObserver.observe(host);
+      startStaticMotion();
     } else {
-      document.addEventListener('visibilitychange', onVisibility);
       void Promise.all([
         import('three'),
         import('astronomy-engine'),
@@ -765,7 +837,10 @@ export function CosmosRenderer({
           powerPreference: 'high-performance',
         });
         renderer = activeRenderer as unknown as RendererLike;
-        const pixelRatio = Math.min(window.devicePixelRatio || 1, qualityRef.current === 'high' ? 1.65 : 1.25);
+        const pixelRatio = Math.min(
+          window.devicePixelRatio || 1,
+          qualityRef.current === 'high' ? 2.25 : qualityRef.current === 'medium' ? 1.6 : 1.15,
+        );
         activeRenderer.setPixelRatio(pixelRatio);
         activeRenderer.setSize(width, height);
         activeRenderer.setClearColor(0x020b14, 0);
@@ -935,7 +1010,7 @@ export function CosmosRenderer({
         });
 
         const earthFallback = createEarthFallbackMaps(THREE);
-        const earthGeometry = new THREE.SphereGeometry(EARTH_RADIUS, 64, 48);
+        const earthGeometry = new THREE.SphereGeometry(EARTH_RADIUS, 96, 64);
         const earthMaterial = new THREE.ShaderMaterial({
           uniforms: {
             uDayMap: { value: earthFallback.day },
@@ -1172,7 +1247,10 @@ export function CosmosRenderer({
           if (key !== lastSceneKey) {
             lastSceneKey = key;
             show(which, city);
-            const ratio = Math.min(window.devicePixelRatio || 1, qualityName === 'high' ? 1.65 : qualityName === 'medium' ? 1.15 : .85);
+            const ratio = Math.min(
+              window.devicePixelRatio || 1,
+              qualityName === 'high' ? 2.25 : qualityName === 'medium' ? 1.6 : 1.15,
+            );
             if (activeRenderer.getPixelRatio() !== ratio) activeRenderer.setPixelRatio(ratio);
             galaxy.geometry.setDrawRange(0, qualityName === 'high' ? 90_000 : qualityName === 'medium' ? 40_000 : 8_000);
             neural.geometry.setDrawRange(0, qualityName === 'high' ? 560 : qualityName === 'medium' ? 300 : 120);
@@ -1232,12 +1310,26 @@ export function CosmosRenderer({
         renderer.__scene = world;
         renderer.__camera = camera;
         renderer.__setScene = update;
+        let animationLastTime = 0;
         renderer.__animate = (time, audioLevel, currentState) => {
-          groupGalaxy.rotation.z += .000025;
-          groupSystem.rotation.y += .00008;
-          groupEarth.rotation.y += .000035;
-          backgroundStars.rotation.y += .0000015;
-          earthMaterial.uniforms.uCloudOffset.value = (time * .0000025) % 1;
+          const delta = animationLastTime ? Math.min(2.5, (time - animationLastTime) / 16.667) : 1;
+          animationLastTime = time;
+          pointerParallax.x += (pointerParallax.targetX - pointerParallax.x) * .055;
+          pointerParallax.y += (pointerParallax.targetY - pointerParallax.y) * .055;
+          groupGalaxy.rotation.z += .00012 * delta;
+          groupGalaxy.rotation.x += (pointerParallax.y * .035 - groupGalaxy.rotation.x) * .025;
+          groupGalaxy.rotation.y += (pointerParallax.x * .045 - groupGalaxy.rotation.y) * .025;
+          groupSystem.rotation.y += .00022 * delta;
+          groupSystem.rotation.x += (pointerParallax.y * .028 - groupSystem.rotation.x) * .025;
+          groupSystem.rotation.z += (pointerParallax.x * .035 - groupSystem.rotation.z) * .025;
+          groupEarth.rotation.y += .00032 * delta;
+          groupEarth.rotation.x += (pointerParallax.y * .028 - groupEarth.rotation.x) * .025;
+          groupEarth.rotation.z += (pointerParallax.x * .035 - groupEarth.rotation.z) * .025;
+          backgroundStars.rotation.y += .000006 * delta;
+          planets.forEach(({ mesh }, index) => {
+            mesh.rotation.y += (.0012 + .00035 / (index + 1)) * delta;
+          });
+          earthMaterial.uniforms.uCloudOffset.value = (time * .00001) % 1;
           sunMaterial.uniforms.uTime.value = time / 1000;
           cityMarker.scale.setScalar(1 + .18 * Math.sin(time * .004));
           cityHalo.scale.setScalar(1 + .12 * Math.sin(time * .003));
@@ -1317,9 +1409,10 @@ export function CosmosRenderer({
           host.replaceChildren();
           navigationRef.current = staticNavigationApi;
           cleanup = drawStatic();
-          staticDrawRef.current = () => { cleanup?.(); cleanup = drawStatic(); };
-          resizeObserver = new ResizeObserver(() => { cleanup?.(); cleanup = drawStatic(); });
+          staticDrawRef.current = () => { drawStatic(); };
+          resizeObserver = new ResizeObserver(() => { staticDrawRef.current?.(); });
           resizeObserver.observe(host);
+          startStaticMotion();
         }
       });
     }
@@ -1327,7 +1420,11 @@ export function CosmosRenderer({
     return () => {
       disposed = true;
       cancelAnimationFrame(frame);
+      cancelAnimationFrame(staticFrame);
+      cancelAnimationFrame(staticRedrawFrame);
       document.removeEventListener('visibilitychange', onVisibility);
+      host.removeEventListener('pointermove', updatePointerParallax);
+      host.removeEventListener('pointerleave', resetPointerParallax);
       host.removeEventListener('pointerdown', onStaticPointerDown);
       host.removeEventListener('pointermove', onStaticPointerMove);
       host.removeEventListener('pointerup', onStaticPointerUp);

@@ -21,7 +21,7 @@ export const AVATARS: AvatarDefinition[] = [
     label: 'Ícaro Feirense',
     description: 'Holograma realista inspirado em Feira de Santana',
     kind: 'portrait',
-    image: 'avatars/feirense.png',
+    image: 'avatars/feirense-hd.png',
   },
   {
     id: 'classico',
