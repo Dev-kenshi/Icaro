@@ -56,8 +56,17 @@ check("Retrato acompanha a abertura da boca sincronizada pelo motor de fala", ()
   assert.match(engine, /this\.mouth\.open\.x/);
   assert.match(face, /currentState === 'talking'[\s\S]*?avatarRef\.current\?\.mouth\.open\.x/);
   assert.match(face, /setProperty\('--talk',\s*mouthOpen\.toFixed\(3\)\)/);
-  assert.match(css, /\.holo-avatar__jaw\s*\{[\s\S]*?translateY\(calc\(var\(--talk,0\)\*12px\)\)/);
-  assert.match(css, /scaleY\(calc\(1 \+ var\(--talk,0\)\*\.55\)\)/);
+  // A boca do retrato abre na linha medida de cada imagem: cavidade + queixo descendo.
+  assert.match(css, /--mouth-open:calc\(var\(--talk,0\) \* var\(--mouth-w,0\.15\) \* var\(--mouth-k,0\.22\) \* 100%\)/);
+  assert.match(css, /\.holo-avatar__mouth-cavity\s*\{[\s\S]*?transform:scaleY\(var\(--talk,0\)\)/);
+  assert.match(css, /\.holo-avatar__jaw\s*\{[\s\S]*?transform:translateY\(var\(--mouth-open\)\)/);
+  const avatars = read("src/lib/avatars.ts");
+  for (const id of ["feirense", "classico"]) {
+    assert.match(avatars, new RegExp(`id:\\s*'${id}',[\\s\\S]*?mouth:\\s*\\{\\s*x:\\s*0\\.\\d+,\\s*y:\\s*0\\.\\d+,\\s*width:\\s*0\\.\\d+(?:,\\s*open:\\s*0\\.\\d+)?\\s*\\}`), `avatar ${id} sem linha da boca medida`);
+  }
+  const portrait = read("src/components/stage/holo-portrait.tsx");
+  assert.match(portrait, /'--mouth-y': mouth\.y/);
+  assert.match(portrait, /holo-avatar__mouth-cavity/);
 });
 
 check("Assets do pacote permanecem originais fora das extensões de expressão e fala do P10", () => {

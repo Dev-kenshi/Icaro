@@ -9,6 +9,13 @@ export interface AvatarDefinition {
   description: string;
   /** Imagem alternativa do rosto. Enquadramento, efeitos e controles são compartilhados. */
   image?: string;
+  /**
+   * Linha da boca no retrato, em frações da imagem quadrada: centro horizontal,
+   * linha entre os lábios (ou base dos dentes superiores) e largura dos lábios.
+   * Medida em cada imagem; sem ela a boca do retrato não acompanha a fala.
+   * `open` é a abertura máxima como fração da largura (padrão 0.22).
+   */
+  mouth?: { x: number; y: number; width: number; open?: number };
 }
 
 export const AVATARS: AvatarDefinition[] = [
@@ -17,12 +24,14 @@ export const AVATARS: AvatarDefinition[] = [
     label: 'Ícaro Feirense',
     description: 'Aparência inspirada em Feira de Santana',
     image: 'avatars/feirense-hd.png',
+    mouth: { x: 0.503, y: 0.543, width: 0.15 },
   },
   {
     id: 'classico',
     label: 'Ícaro clássico',
     description: 'Aparência original do Ícaro',
     image: 'avatar-portrait/base.jpg',
+    mouth: { x: 0.5, y: 0.684, width: 0.26, open: 0.13 },
   },
 ];
 
