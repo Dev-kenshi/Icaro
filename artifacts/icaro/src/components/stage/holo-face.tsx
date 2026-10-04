@@ -89,13 +89,16 @@ export function HoloFace({
       const target = active ? levelRef.current() : 0;
       level += (target - level) * .25;
       const glow = holoGlow(level);
+      const mouthOpen = currentState === 'talking'
+        ? avatarRef.current?.mouth.open.x ?? 0
+        : currentState === 'listening' ? level : 0;
       const root = rootRef.current;
       if (root) {
         root.style.setProperty('--holo-bright', glow.brightness.toFixed(3));
         root.style.setProperty('--holo-sat', glow.saturate.toFixed(3));
         // Keep the parent transform at its static scale; the avatar motor owns head motion.
         root.style.setProperty('--holo-scale', '1');
-        root.style.setProperty('--talk', level.toFixed(3));
+        root.style.setProperty('--talk', mouthOpen.toFixed(3));
       }
       raf = requestAnimationFrame(tick);
     };

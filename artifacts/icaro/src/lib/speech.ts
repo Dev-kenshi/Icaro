@@ -274,6 +274,7 @@ function makeRunAvatarProxy(run: SpeechRun): IcaroAvatarInstance {
   return {
     ready: actual.ready,
     state: actual.state,
+    mouth: actual.mouth,
     canvas: actual.canvas,
     setState(state) {
       if (!isCurrent(run) || !run.started || state === 'speaking') return;

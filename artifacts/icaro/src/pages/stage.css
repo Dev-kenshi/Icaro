@@ -15,10 +15,10 @@
 .holo-avatar__portrait { position:absolute; z-index:1; inset:0; overflow:hidden; border-radius:50%; }
 .holo-avatar__img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; object-position:50% 100%; user-select:none; filter:drop-shadow(0 0 26px #2f9fff55); }
 .holo-avatar__jaw {
-  /* Duplicata mascarada na região da boca: reage ao nível real da voz. */
-  -webkit-mask-image:radial-gradient(ellipse 13% 7% at 50% 55%, #000 55%, transparent 100%);
-  mask-image:radial-gradient(ellipse 13% 7% at 50% 55%, #000 55%, transparent 100%);
-  transform:translateY(calc(var(--talk,0) * 7px)) scaleY(calc(1 + var(--talk,0) * .18));
+  /* Recorte móvel segue a abertura visêmica do motor usado também pelo avatar clássico. */
+  -webkit-mask-image:radial-gradient(ellipse 13% 5.5% at 50% 55%, #000 62%, transparent 100%);
+  mask-image:radial-gradient(ellipse 13% 5.5% at 50% 55%, #000 62%, transparent 100%);
+  transform:translateY(calc(var(--talk,0)*12px)) scaleY(calc(1 + var(--talk,0)*.55));
   transform-origin:50% 55%;
 }
 .stage .face .icaro-face[data-avatar-engine-hidden="true"] { opacity:0; }

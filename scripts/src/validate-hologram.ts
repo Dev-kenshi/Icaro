@@ -36,6 +36,21 @@ check("Os avatares compartilham o mesmo palco e mantêm a fala sincronizada", ()
   assert.match(stage, /src=\{media\('intro\.mp4'\)\}/);
 });
 
+check("Retrato acompanha a abertura da boca sincronizada pelo motor de fala", () => {
+  const face = read("src/components/stage/holo-face.tsx");
+  const avatar = read("src/lib/icaro-avatar.ts");
+  const speech = read("src/lib/speech.ts");
+  const engine = read("public/avatar/avatar-engine.js");
+  const css = read("src/pages/stage.css");
+  assert.match(avatar, /mouth:\s*\{\s*open:\s*\{\s*x:\s*number\s*\}\s*\}/);
+  assert.match(speech, /mouth:\s*actual\.mouth/);
+  assert.match(engine, /this\.mouth\.open\.x/);
+  assert.match(face, /currentState === 'talking'[\s\S]*?avatarRef\.current\?\.mouth\.open\.x/);
+  assert.match(face, /setProperty\('--talk',\s*mouthOpen\.toFixed\(3\)\)/);
+  assert.match(css, /\.holo-avatar__jaw\s*\{[\s\S]*?translateY\(calc\(var\(--talk,0\)\*12px\)\)/);
+  assert.match(css, /scaleY\(calc\(1 \+ var\(--talk,0\)\*\.55\)\)/);
+});
+
 check("Assets do pacote permanecem originais fora das extensões de expressão e fala do P10", () => {
   const packageFiles = (dir: string): string[] => readdirSync(dir, { withFileTypes: true })
     .flatMap((entry) => entry.isDirectory()

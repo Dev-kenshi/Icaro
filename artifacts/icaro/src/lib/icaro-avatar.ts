@@ -7,6 +7,7 @@ export interface IcaroTimeline { words: IcaroWord[]; keys?: IcaroVisemeKey[]; [k
 export interface IcaroAvatarInstance {
   ready: Promise<unknown>;
   state: string;
+  mouth: { open: { x: number } };
   setState(state: 'idle' | 'listening' | 'thinking' | 'speaking'): void;
   speak(timeline: IcaroTimeline, clock: () => number): void;
   stopSpeaking(): void;

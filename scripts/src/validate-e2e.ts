@@ -59,7 +59,7 @@ const INIT = `
   Object.defineProperty(window, 'IcaroAvatar', { configurable: true, get: () => C, set: (K) => {
     C = new Proxy(K, { construct(t, a) { const i = Reflect.construct(t, a); window.__avatars.push(i); return i; } });
   } });
-  window.__m = { states: [], mouthMax: 0, idleMouthMax: 0, blinks: 0, nods: 0, brows: 0, words: 0, captions: [] };
+  window.__m = { states: [], mouthMax: 0, idleMouthMax: 0, portraitTalkMax: 0, portraitIdleTalkMax: 0, blinks: 0, nods: 0, brows: 0, words: 0, captions: [] };
   let lastState = '', idleSince = 0, lastBlink = 0, lastNod = -1, lastWord = '', lastCaption = '';
   setInterval(() => {
     const m = window.__m, st = document.querySelector('.stage')?.getAttribute('data-state') || '';
@@ -71,6 +71,12 @@ const INIT = `
     const a = window.__avatars[window.__avatars.length - 1]; if (!a || !a.mouth) return;
     const open = a.mouth.open.x;
     if (st === 'talking') m.mouthMax = Math.max(m.mouthMax, open); else if (st === 'idle' && performance.now() - idleSince > 400) m.idleMouthMax = Math.max(m.idleMouthMax, open);
+    const portrait = document.querySelector('[data-testid="avatar-layer-feirense"]');
+    if (portrait) {
+      const portraitOpen = Number.parseFloat(getComputedStyle(portrait).getPropertyValue('--talk')) || 0;
+      if (st === 'talking') m.portraitTalkMax = Math.max(m.portraitTalkMax, portraitOpen);
+      else if (st === 'idle' && performance.now() - idleSince > 400) m.portraitIdleTalkMax = Math.max(m.portraitIdleTalkMax, portraitOpen);
+    }
     if (a.blink.t && a.blink.t !== lastBlink) { m.blinks++; lastBlink = a.blink.t; }
     if (a.nod.t !== lastNod && a.nod.t > 0) { m.nods++; lastNod = a.nod.t; }
     if (a.brow.amt > 0.05) m.brows++;
@@ -95,7 +101,7 @@ async function speakLike(p: Page, text: string, gap = 70) {
   for (let k = 1; k <= words.length; k++) { idx = await say(p, words.slice(0, k).join(' '), false, idx < 0 ? undefined : idx); await sleep(gap); }
   await say(p, text, true, idx);
 }
-const metrics = (p: Page) => p.evaluate(() => (window as any).__m as { states: string[]; mouthMax: number; idleMouthMax: number; blinks: number; nods: number; brows: number; words: number; captions: string[] });
+const metrics = (p: Page) => p.evaluate(() => (window as any).__m as { states: string[]; mouthMax: number; idleMouthMax: number; portraitTalkMax: number; portraitIdleTalkMax: number; blinks: number; nods: number; brows: number; words: number; captions: string[] });
 async function fullTurn(p: Page, question: string, timeout = 15000) {
   const before = chatCalls.length;
   await speakLike(p, `Ok Ícaro, ${question}`);
@@ -498,13 +504,16 @@ async function main() {
     assert(/ifrs/i.test(href ?? ''), String(href)); await waitState(page, 'idle', 15000);
   });
   await test('Lábios: boca abre ao falar e fica fechada em espera', async () => {
+    await page.evaluate(() => localStorage.setItem('icaro.stage.avatar-choice', 'feirense'));
     await fresh(); await sleep(1500);
     await fullTurn(page, 'o que é ativo e passivo'); await sleep(800);
     const m = await metrics(page);
     assert((await page.evaluate(() => (window as any).__avatars.at(-1).state)) !== 'speaking', 'avatar continua falando em espera');
     assert(m.mouthMax > 0.2, `abertura máxima ${m.mouthMax.toFixed(2)}`);
     assert(m.idleMouthMax < 0.12, `boca em espera ${m.idleMouthMax.toFixed(2)}`);
-    return `abertura falando ${m.mouthMax.toFixed(2)} · em espera ${m.idleMouthMax.toFixed(2)}`;
+    assert(m.portraitTalkMax > 0.2, `abertura do retrato ${m.portraitTalkMax.toFixed(2)}`);
+    assert(m.portraitIdleTalkMax < 0.12, `retrato em espera ${m.portraitIdleTalkMax.toFixed(2)}`);
+    return `motor ${m.mouthMax.toFixed(2)} · retrato ${m.portraitTalkMax.toFixed(2)} · espera ${m.portraitIdleTalkMax.toFixed(2)}`;
   });
   await test('Gestos: piscadas, acenos e sobrancelhas', async () => {
     await sleep(3000); const m = await metrics(page);
