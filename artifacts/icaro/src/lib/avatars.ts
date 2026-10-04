@@ -3,15 +3,11 @@
  * `public/avatars/` e declará-los aqui; a escolha fica salva neste dispositivo.
  */
 
-export type AvatarKind = 'engine' | 'portrait';
-
 export interface AvatarDefinition {
   id: string;
   label: string;
   description: string;
-  /** 'engine' = rosto clássico com sincronia de boca; 'portrait' = retrato holográfico realista. */
-  kind: AvatarKind;
-  /** Caminho sob `public/` para avatares do tipo 'portrait'. */
+  /** Imagem alternativa do rosto. Enquadramento, efeitos e controles são compartilhados. */
   image?: string;
 }
 
@@ -19,15 +15,13 @@ export const AVATARS: AvatarDefinition[] = [
   {
     id: 'feirense',
     label: 'Ícaro Feirense',
-    description: 'Holograma realista inspirado em Feira de Santana',
-    kind: 'portrait',
+    description: 'Aparência inspirada em Feira de Santana',
     image: 'avatars/feirense-hd.png',
   },
   {
     id: 'classico',
     label: 'Ícaro clássico',
-    description: 'Rosto original com sincronia de boca fonema a fonema',
-    kind: 'engine',
+    description: 'Aparência original do Ícaro',
   },
 ];
 

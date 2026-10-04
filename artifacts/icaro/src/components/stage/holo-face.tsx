@@ -3,16 +3,30 @@ import { holoGlow, type HoloStageState } from '@/lib/holo-state';
 import {
   createHoloAvatar,
   detachHoloAvatar,
+  failSpeechAvatarWaiters,
   setHoloAvatarState,
   setSpeechAvatar,
 } from '@/lib/speech';
 import type { IcaroAvatarInstance } from '@/lib/icaro-avatar';
 import type { AvatarLayout } from '@/lib/avatar-layout';
+import type { AvatarDefinition } from '@/lib/avatars';
+import { HoloPortrait } from '@/components/stage/holo-portrait';
 
-export function HoloFace({ state, getLevel, layout }: { state: HoloStageState; getLevel: () => number; layout: AvatarLayout }) {
+export function HoloFace({
+  definition,
+  state,
+  getLevel,
+  layout,
+}: {
+  definition: AvatarDefinition;
+  state: HoloStageState;
+  getLevel: () => number;
+  layout: AvatarLayout;
+}) {
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const avatarRef = useRef<IcaroAvatarInstance | null>(null);
+  const hasPortrait = Boolean(definition.image);
   const stateRef = useRef(state);
   stateRef.current = state;
   const levelRef = useRef(getLevel);
@@ -28,14 +42,21 @@ export function HoloFace({ state, getLevel, layout }: { state: HoloStageState; g
         return;
       }
       avatarRef.current = instance;
-      setSpeechAvatar(instance);
       void instance.ready.then(() => {
-        if (mounted) setHoloAvatarState(stateRef.current);
+        if (!mounted) return;
+        setSpeechAvatar(instance);
+        setHoloAvatarState(stateRef.current);
       }).catch((error: unknown) => {
-        if (mounted) console.error('Não foi possível carregar os arquivos do rosto do Ícaro.', error);
+        if (mounted) {
+          failSpeechAvatarWaiters(error);
+          console.error('Não foi possível carregar os arquivos do rosto do Ícaro.', error);
+        }
       });
     }).catch((error: unknown) => {
-      if (mounted) console.error('Não foi possível iniciar o rosto do Ícaro.', error);
+      if (mounted) {
+        failSpeechAvatarWaiters(error);
+        console.error('Não foi possível iniciar o rosto do Ícaro.', error);
+      }
     });
     return () => {
       mounted = false;
@@ -68,12 +89,16 @@ export function HoloFace({ state, getLevel, layout }: { state: HoloStageState; g
       const target = active ? levelRef.current() : 0;
       level += (target - level) * .25;
       const glow = holoGlow(level);
+      const mouthOpen = currentState === 'talking'
+        ? avatarRef.current?.mouth.open.x ?? 0
+        : currentState === 'listening' ? level : 0;
       const root = rootRef.current;
       if (root) {
         root.style.setProperty('--holo-bright', glow.brightness.toFixed(3));
         root.style.setProperty('--holo-sat', glow.saturate.toFixed(3));
         // Keep the parent transform at its static scale; the avatar motor owns head motion.
         root.style.setProperty('--holo-scale', '1');
+        root.style.setProperty('--talk', mouthOpen.toFixed(3));
       }
       raf = requestAnimationFrame(tick);
     };
@@ -82,17 +107,29 @@ export function HoloFace({ state, getLevel, layout }: { state: HoloStageState; g
   }, []);
 
   return (
-    <div ref={rootRef} className="face" aria-hidden data-user-hidden={layout.hidden ? 'true' : undefined} data-testid="holo-face">
+    <div
+      ref={rootRef}
+      className="face"
+      aria-hidden
+      data-avatar-id={definition.id}
+      data-user-hidden={layout.hidden ? 'true' : undefined}
+      data-testid="holo-face"
+    >
       <div className="face-orb" data-testid="holo-face-orb">
         <canvas
           ref={canvasRef}
           className="icaro-face"
-          aria-label="Rosto holográfico do Ícaro"
+          aria-hidden={hasPortrait || undefined}
+          data-avatar-engine-hidden={hasPortrait ? 'true' : undefined}
           data-testid="holo-face-canvas"
         />
+        {hasPortrait && <HoloPortrait definition={definition} />}
         <span className="orb-ring orb-ring--outer" />
         <span className="orb-ring orb-ring--main" />
         <span className="orb-ring orb-ring--inner" />
+        <span className="holo-avatar__scan" aria-hidden="true" />
+        <span className="holo-avatar__sweep" aria-hidden="true" />
+        <span className="holo-avatar__projector" aria-hidden="true" />
       </div>
     </div>
   );

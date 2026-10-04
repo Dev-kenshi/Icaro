@@ -8,3 +8,9 @@ Use a fresh supplied speech-player instance for each reply, with a shared unlock
 **Why:** The supplied player resumes old asynchronous pumps after stop, decrementing counters and clearing pump locks that were reset for a new reply. This can strand completion or duplicate playback. Callback tokens alone do not protect those internal counters.
 
 **How to apply:** Keep the supplied library unchanged and isolate its queues in the integration adapter. Stale engines must not update the real avatar, captions or current completion state. Attach handlers to prefetched promises immediately. Mouth timelines must be renewed for every sentence, not just the first.
+
+For an image-based avatar, drive its mouth layer from the same live viseme opening used by the speech engine, rather than a separate volume-only estimate.
+
+**Why:** The Feirense portrait stayed visually static when its CSS mouth movement depended on an independent audio level instead of the engine's aligned speech timeline.
+
+**How to apply:** Keep speech timing and silence gating in the shared avatar engine; expose its current mouth opening to portrait layers without changing packaged face or voice assets.

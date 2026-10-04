@@ -12,22 +12,21 @@
 .stage .face { z-index:4; }
 .stage .face[data-user-hidden="true"] { display:none; }
 
-/* Retrato holográfico realista (avatar "portrait") */
-.face--portrait { mix-blend-mode:screen; -webkit-mask-image:none; mask-image:none; }
-.holo-portrait { position:relative; width:100%; height:100%; }
-.holo-portrait__img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; object-position:50% 100%; user-select:none; filter:brightness(var(--holo-bright,1)) saturate(var(--holo-sat,1)) drop-shadow(0 0 26px #2f9fff55); }
-.holo-portrait__jaw {
-  /* Duplicata mascarada na região da boca: reage ao nível real da voz. */
-  -webkit-mask-image:radial-gradient(ellipse 13% 7% at 50% 55%, #000 55%, transparent 100%);
-  mask-image:radial-gradient(ellipse 13% 7% at 50% 55%, #000 55%, transparent 100%);
-  transform:translateY(calc(var(--talk,0) * 7px)) scaleY(calc(1 + var(--talk,0) * .18));
+.holo-avatar__portrait { position:absolute; z-index:1; inset:0; overflow:hidden; border-radius:50%; }
+.holo-avatar__img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; object-position:50% 100%; user-select:none; filter:drop-shadow(0 0 26px #2f9fff55); }
+.holo-avatar__jaw {
+  /* Recorte móvel segue a abertura visêmica do motor usado também pelo avatar clássico. */
+  -webkit-mask-image:radial-gradient(ellipse 13% 5.5% at 50% 55%, #000 62%, transparent 100%);
+  mask-image:radial-gradient(ellipse 13% 5.5% at 50% 55%, #000 62%, transparent 100%);
+  transform:translateY(calc(var(--talk,0)*12px)) scaleY(calc(1 + var(--talk,0)*.55));
   transform-origin:50% 55%;
 }
-.holo-portrait__scan { position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(0deg,#bfe9ff14 0 1px,transparent 1px 4px); mix-blend-mode:overlay; }
-.holo-portrait__sweep { position:absolute; inset:0; pointer-events:none; opacity:.3; background:linear-gradient(180deg,transparent 0%,rgba(140,225,255,.22) 50%,transparent 100%) no-repeat; background-size:100% 24%; animation:holo-sweep 5.2s linear infinite; }
-.holo-portrait__projector { position:absolute; left:50%; bottom:-2%; width:46%; height:12%; translate:-50% 0; pointer-events:none; background:radial-gradient(ellipse at 50% 100%, #5fd8ff3d 0%, transparent 70%); filter:blur(10px); }
-.stage[data-state="thinking"] .holo-portrait__img { animation:holo-think 1.6s ease-in-out infinite; }
-.stage[data-state="listening"] .holo-portrait__sweep { opacity:.5; animation-duration:3.4s; }
+.stage .face .icaro-face[data-avatar-engine-hidden="true"] { opacity:0; }
+.holo-avatar__scan { position:absolute; z-index:2; inset:0; border-radius:50%; pointer-events:none; background:repeating-linear-gradient(0deg,#bfe9ff14 0 1px,transparent 1px 4px); mix-blend-mode:overlay; }
+.holo-avatar__sweep { position:absolute; z-index:2; inset:0; border-radius:50%; pointer-events:none; opacity:.3; background:linear-gradient(180deg,transparent 0%,rgba(140,225,255,.22) 50%,transparent 100%) no-repeat; background-size:100% 24%; animation:holo-sweep 5.2s linear infinite; }
+.holo-avatar__projector { position:absolute; z-index:2; left:50%; bottom:-2%; width:46%; height:12%; translate:-50% 0; pointer-events:none; background:radial-gradient(ellipse at 50% 100%, #5fd8ff3d 0%, transparent 70%); filter:blur(10px); }
+.stage[data-state="thinking"] .holo-avatar__img { animation:holo-think 1.6s ease-in-out infinite; }
+.stage[data-state="listening"] .holo-avatar__sweep { opacity:.5; animation-duration:3.4s; }
 
 /* Elementos móveis da interface */
 .stage [data-chrome-id] { translate:var(--chrome-x,0px) var(--chrome-y,0px); }
@@ -599,7 +598,7 @@
   .cosmos-panel__label { font-size: 6px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .neural-web svg path, .neural-pulse, .glyph-ring, .neural-spore, .feed-skeleton i, .materialize__point, .materialize__galaxy, .materialize__earth, .materialize__neural, .materialize__face-scan, .materialize__online, .materialize__mark, .materialize__progress i, .cosmos-panel__drift, .holo-portrait__sweep, .holo-portrait__img { animation: none !important; }
+  .neural-web svg path, .neural-pulse, .glyph-ring, .neural-spore, .feed-skeleton i, .materialize__point, .materialize__galaxy, .materialize__earth, .materialize__neural, .materialize__face-scan, .materialize__online, .materialize__mark, .materialize__progress i, .cosmos-panel__drift, .holo-avatar__sweep, .holo-avatar__img { animation: none !important; }
   .scene-fade { transition: opacity .3s ease; }
   .materialize { animation: materialize-out .2s ease .2s forwards; }
   .materialize__online { opacity: 1; }
