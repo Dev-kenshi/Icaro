@@ -1,4 +1,15 @@
-export type KnowledgeCategory = "evento" | "contabilidade" | "tecnologia";
+import { CONHECIMENTO_AMPLIADO } from "./conhecimento";
+
+export type KnowledgeCategory =
+  | "evento"
+  | "contabilidade"
+  | "tecnologia"
+  | "matematica"
+  | "geral"
+  | "pesquisa"
+  | "ia"
+  | "universidades"
+  | "historia";
 
 export type KnowledgeEntry = {
   id: string;
@@ -21,7 +32,45 @@ const EVENT_IDENTITY = [
 ].join(" ");
 
 /** Ordem importa: gatilhos específicos vêm antes do gatilho geral da sigla. */
-export const KNOWLEDGE_BANK: KnowledgeEntry[] = [
+const CORE_KNOWLEDGE: KnowledgeEntry[] = [
+  // Roteiro da abertura: boas-vindas depois do vídeo e a primeira pergunta do
+  // cerimonial. As perguntas 2 e 3 (custo e lançamento) saem de calculo-folha.ts.
+  {
+    id: "evento-boas-vindas",
+    category: "evento",
+    title: "Boas-vindas do Ícaro na abertura",
+    triggers: [
+      ["boas vindas"],
+      ["boas vindas", "publico"],
+      ["de as boas vindas"],
+      ["cumprimente", "publico"],
+      ["apresente", "para", "publico"],
+    ],
+    answer: "Boa noite a todos! Eu sou o Ícaro, o assistente de inteligência artificial do curso de Ciências Contábeis da UEFS. Sejam muito bem-vindos à primeira Imersão Tecnológica Contábil, o I ITCONT 2026, realizada pelo Projeto de Extensão Contador do Amanhã. Nestes dois dias, vamos conversar sobre inteligência artificial, dados e o futuro da nossa profissão. Preparem suas perguntas, porque o futuro da contabilidade começa agora.",
+  },
+  {
+    id: "evento-substituir-contador",
+    category: "evento",
+    title: "A IA vai substituir o contador?",
+    triggers: [
+      ["inteligencia artificial", "substituir", "contador"],
+      ["inteligencia artificial", "substituir", "contadores"],
+      ["inteligencia artificial", "substituira", "contador"],
+      ["ia", "substituir", "contadores"],
+      ["ia", "substituir", "contador"],
+      ["voce", "substituir", "contador"],
+      ["substituir", "contador"],
+      ["substituir", "contadores"],
+      ["substitui", "contador"],
+      ["substituira", "contador"],
+      ["substituicao", "contador"],
+      ["tomar", "lugar", "contador"],
+      ["fim", "profissao", "contabil"],
+      ["acabar", "contador"],
+      ["emprego", "contador", "inteligencia artificial"],
+    ],
+    answer: "Não. Eu não vim substituir o contador, vim para ser o assistente dele. A inteligência artificial automatiza tarefas repetitivas, como classificar lançamentos, conciliar extratos e conferir documentos, e faz isso em segundos. Mas o julgamento profissional, a ética, a responsabilidade técnica e a confiança do cliente continuam sendo do contador. O contador do amanhã usa a IA para otimizar os processos contábeis e ganhar tempo para o que mais importa: analisar, orientar e ajudar na tomada de decisão.",
+  },
   {
     id: "itcont-data",
     category: "evento",
@@ -359,6 +408,10 @@ export const KNOWLEDGE_BANK: KnowledgeEntry[] = [
     answer: "Na análise financeira, a IA pode comparar indicadores, resumir relatórios e detectar padrões em séries de dados. As conclusões precisam ser revisadas com contexto, premissas e fontes confiáveis.",
   },
 ];
+
+/** Bancos ampliados (lib/conhecimento) entram depois do núcleo do evento. */
+export const EXTENDED_KNOWLEDGE_IDS = new Set(CONHECIMENTO_AMPLIADO.map((entry) => entry.id));
+export const KNOWLEDGE_BANK: KnowledgeEntry[] = [...CORE_KNOWLEDGE, ...CONHECIMENTO_AMPLIADO];
 
 const REMOTE_ONLY_RE = /\b(?:lei|legislacao|norma|aliquota|vigente|atual|hoje|agora|noticia|cotacao|previsao do tempo|prazo legal)\b/;
 const FILLER_WORDS = new Set([

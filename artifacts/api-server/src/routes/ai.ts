@@ -949,7 +949,7 @@ router.post("/ai/chat/stream", async (req, res) => {
         emotionOutput.feed(answer.slice(offset, offset + 48));
       }
       emotionOutput.flush();
-      sendEvent("done", { provider: "local", model, partial: false, layer: layered.layer });
+      sendEvent("done", { provider: "local", model, partial: false, layer: layered.layer, ...(layered.painel ? { painel: layered.painel } : {}) });
       res.end();
       return;
     }

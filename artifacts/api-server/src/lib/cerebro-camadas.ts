@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { KNOWLEDGE_BANK, normalizeKnowledgeText, resolveKnowledgeAnswer } from "./knowledge-bank";
+import { resolverCalculoFolha, type Painel } from "./calculo-folha";
+import { EXTENDED_KNOWLEDGE_IDS, KNOWLEDGE_BANK, normalizeKnowledgeText, resolveKnowledgeAnswer } from "./knowledge-bank";
 
 export type AnswerLayer = "L1" | "L2" | "L3" | "L4" | "L5" | "L6";
 export type CandidateDestination = "bank" | "base";
@@ -31,7 +32,7 @@ export type AnswerCandidate = {
 };
 
 export type LayerResolution =
-  | { kind: "answer"; answer: string; layer: "L1" | "L2" | "L3" | "L4"; sourceId: string }
+  | { kind: "answer"; answer: string; layer: "L1" | "L2" | "L3" | "L4"; sourceId: string; painel?: Painel }
   | { kind: "compose"; snippets: Array<{ id: string; title: string; text: string }>; layer: "L5" }
   | { kind: "miss"; layer: "L6" };
 
@@ -225,7 +226,10 @@ export function createCerebroLayers(options: { dataDir: string; now?: () => numb
     const embed = await getEmbedder();
     const entries: Array<Omit<VectorEntry, "vector">> = [];
     for (const entry of KNOWLEDGE_BANK) {
-      for (const trigger of entry.triggers) {
+      // Bancos ampliados entram só pelo título: centenas de entradas com todos
+      // os gatilhos tornariam a indexação lenta demais em instâncias pequenas.
+      const phrases = EXTENDED_KNOWLEDGE_IDS.has(entry.id) ? [[entry.title]] : entry.triggers;
+      for (const trigger of phrases) {
         const question = trigger.join(" ");
         entries.push({
           question: `passage: ${question}`,
@@ -325,6 +329,14 @@ export function createCerebroLayers(options: { dataDir: string; now?: () => numb
     const normalized = normalizeQuestion(question);
     const estimatedTokens = Math.max(1, Math.ceil(question.length / 4));
     if (!normalized || containsPersonalData(question)) return { kind: "miss", layer: "L6" };
+
+    // Cálculos de folha do roteiro do evento: determinísticos e sem cache,
+    // porque "desse funcionário" depende da pergunta anterior.
+    const calculo = resolverCalculoFolha(question);
+    if (calculo) {
+      track("L4", question, calculo.answer, 0, estimatedTokens);
+      return { kind: "answer", answer: calculo.answer, layer: "L4", sourceId: calculo.id, painel: calculo.painel };
+    }
 
     const exact = knowledgeMode === "auto" ? state.cache.find((entry) =>
       entry.key === digest(normalized) && entry.expiresAt > now(),

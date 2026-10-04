@@ -164,8 +164,11 @@ export function interpret(input: string): CommandResult {
   }
   const mathM = t.match(/^(?:calcule|calcular|calcula|quanto (?:e|da|sao))\s+(.+)$/);
   const bare = /^[\d\s.,+\-*/^%()x=]+$/.test(t) && /\d/.test(t) && /[+\-*/^%x]/.test(t);
-  if (mathM || bare || /^\d+(?:[.,]\d+)?\s*%\s*de\s*\d/.test(t)) {
-    const v = evaluate(prepMath(mathM ? mathM[1] : t));
+  const expr = prepMath(mathM ? mathM[1] : t);
+  // "calcule o custo de um funcionário" é pergunta para o servidor, não expressão.
+  const isExpression = !/[a-z]/.test(expr);
+  if ((mathM && isExpression) || bare || /^\d+(?:[.,]\d+)?\s*%\s*de\s*\d/.test(t)) {
+    const v = evaluate(expr);
     return { kind: 'say', text: v === null ? 'Não consegui calcular essa expressão. Exemplo: calcule 30% de 200.' : `O resultado é ${fmtNum(v)}.` };
   }
   return { kind: 'ai' };

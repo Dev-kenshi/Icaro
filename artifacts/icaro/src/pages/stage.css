@@ -603,3 +603,25 @@
   .materialize { animation: materialize-out .2s ease .2s forwards; }
   .materialize__online { opacity: 1; }
 }
+
+/* Painel financeiro holográfico (custo do funcionário / lançamento da folha) */
+.painel-fin { position:absolute; z-index:6; left:max(18px,2vw); top:max(96px,12%); width:min(500px,calc(100vw - 36px)); max-height:calc(100% - var(--dock-height,220px) - 140px); overflow:auto;
+  padding:14px 16px 16px; border:1px solid #5fd8ff8c; border-radius:12px; background:#041220e6; backdrop-filter:blur(10px);
+  box-shadow:0 0 0 1px #2f8fff33, 0 0 38px #5fd8ff33, inset 0 0 40px #5fd8ff0f; animation:painel-in .45s ease-out both; }
+.painel-fin__head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; color:var(--holo); font-size:13px; letter-spacing:.06em; text-transform:uppercase; }
+.painel-fin__close { display:grid; place-items:center; width:26px; height:26px; flex:none; border:1px solid var(--line); border-radius:7px; color:var(--dim); }
+.painel-fin__close:hover { color:var(--holo); border-color:var(--holo); }
+.painel-fin__table { width:100%; border-collapse:collapse; font-size:clamp(12px,1.15vw,15px); color:var(--ink); }
+.painel-fin__table th { text-align:right; color:var(--dim); font-weight:500; padding:4px 6px; border-bottom:1px solid var(--line); }
+.painel-fin__table th:first-child, .painel-fin__table td:first-child { text-align:left; }
+.painel-fin__table td { position:relative; text-align:right; padding:6px; border-bottom:1px solid #17344d80; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.painel-fin__table td:first-child { white-space:normal; padding-bottom:9px; }
+.painel-fin__table tbody tr { opacity:0; animation:painel-row .4s ease-out forwards; }
+.painel-fin__bar { position:absolute; left:6px; bottom:3px; height:2px; max-width:calc(100% - 12px); border-radius:2px; background:var(--holo); box-shadow:0 0 6px var(--holo); }
+.painel-fin__bar.is-credit { background:var(--ok); box-shadow:0 0 6px var(--ok); }
+.painel-fin__table tfoot td { padding-top:8px; border-bottom:0; color:var(--holo); font-weight:600; }
+.painel-fin__kpi { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-top:12px; padding:10px 12px; border:1px solid #5ef0b866; border-radius:9px; background:#5ef0b80f; color:var(--dim); font-size:12px; }
+.painel-fin__kpi strong { color:var(--ok); font-size:22px; text-shadow:0 0 14px #5ef0b866; }
+@keyframes painel-in { from { opacity:0; transform:translateX(-14px) } to { opacity:1; transform:none } }
+@keyframes painel-row { from { opacity:0; transform:translateY(4px) } to { opacity:1; transform:none } }
+@media (prefers-reduced-motion: reduce) { .painel-fin, .painel-fin__table tbody tr { animation:none; opacity:1; } }

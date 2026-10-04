@@ -4,7 +4,7 @@ import { StageHelp } from '@/components/stage/stage-help';
 import { shouldActivateStageShortcut } from '@/lib/stage-shortcuts';
 import { Mic, X, BarChart3, ExternalLink, Trash2, Menu, Keyboard, Play, Maximize, Volume2, VolumeX, Eye, EyeOff, Orbit, Globe2, Radio, SkipForward, Layers, Move, RotateCcw, Check } from 'lucide-react';
 import { getGetAiStatusQueryKey, getGetAiVoicesQueryKey, getGetCosmosFeedsQueryKey, useGetAiStatus, useGetAiVoices, useGetCosmosFeeds, useSendAiMessage, type AiChatResponse, type AiVoiceCatalog } from '@workspace/api-client-react';
-import { requestAiChatStream } from '@/lib/ai-chat-stream';
+import { requestAiChatStream, type PainelFinanceiro as PainelFinanceiroData } from '@/lib/ai-chat-stream';
 import { interpret, formatDuration } from '@/lib/commands';
 import { speak, stopSpeaking, ensureAudio, activateAudio, connectMic, getAnalyser, getLevel, getMicRms, getOutputRms, setListeningActivity, releaseSpeechCache } from '@/lib/speech';
 import type { SpeechEmotion, SpeechEmotionMark } from '@/lib/speech-plan';
@@ -24,6 +24,7 @@ import { getMicMode, micErrorMessage, recordUtterance, setMicMode, SERVER_FALLBA
 import { CosmosRenderer, type CosmosScene } from '@/components/stage/cosmos/renderer';
 import { CosmosOverview } from '@/components/stage/cosmos/CosmosOverview';
 import { NeuralWeb } from '@/components/stage/neural-web';
+import { PainelFinanceiro } from '@/components/stage/painel-financeiro';
 import './stage.css';
 
 type State = 'idle' | 'listening' | 'thinking' | 'talking' | 'intro';
@@ -125,6 +126,7 @@ export default function Stage() {
   const [renderFps, setRenderFps] = useState<number | null>(null);
   const [assetsStatus, setAssetsStatus] = useState('NASA GIBS · carregamento sob demanda');
   const [responseMeta, setResponseMeta] = useState<{ source: string; durationMs: number | null }>({ source: '—', durationMs: null });
+  const [painelFinanceiro, setPainelFinanceiro] = useState<PainelFinanceiroData | null>(null);
   const [feiraTarget, setFeiraTarget] = useState(false);
   const ambientRef = useRef<AudioContext | null>(null);
   const [typing, setTyping] = useState(false);
@@ -357,7 +359,7 @@ export default function Stage() {
         setSearchLink(url); return sayRef.current(r.text, url);
       }
       case 'ai': {
-        setState('thinking'); setCaption(''); setCaptionWords(null);
+        setState('thinking'); setCaption(''); setCaptionWords(null); setPainelFinanceiro(null);
         const history = logRef.current.slice(-12).map(({ role, content }) => ({ role, content: content.slice(0, 4000) }));
         const requestStartedAt = performance.now();
         if (provider !== 'openai' && provider !== 'claude') {
@@ -383,6 +385,7 @@ export default function Stage() {
                 ? `BASE ${res.layer}`
                 : `IA · ${PROVIDER_NAMES[providerId as Provider] ?? providerId.toUpperCase()}`;
             setResponseMeta({ source, durationMs: Math.round(performance.now() - requestStartedAt) });
+            setPainelFinanceiro(res.painel ?? null);
             sayRef.current(res.answer, undefined, res.emotionMarks);
           }).catch((error: unknown) => {
             if (controller.signal.aborted || turnRef.current !== turn) return;
@@ -936,7 +939,10 @@ export default function Stage() {
       <button className="menu hbtn disp text-lg" onClick={() => setPanel(true)} aria-label="Abrir painel" data-testid="button-open-panel" {...stageLayout.chrome('menu')}><Menu size={18} /></button>
       {state === 'intro' && <button className="hbtn absolute right-4 top-16 z-[6] text-xs" onClick={endIntro} data-testid="button-stop-intro"><X size={14} className="mr-1 inline" />Encerrar apresentação</button>}
 
+      {painelFinanceiro && <PainelFinanceiro painel={painelFinanceiro} onClose={() => setPainelFinanceiro(null)} />}
+
       <div className="caption" hidden={!stageLayout.editing && (!captionsVisible || !visibleCaption)} aria-live="polite" aria-atomic="true" data-testid="text-caption" {...stageLayout.chrome('caption')}>
+
         <span>{captionWords
           ? captionWords.words.map((word, index) => <span key={`${index}-${word}`} className={`caption-word ${index < captionWords.activeIndex ? 'said' : index === captionWords.activeIndex ? 'now' : 'upcoming'}`}>{word}{' '}</span>)
           : (visibleCaption || (stageLayout.editing ? 'As legendas do Ícaro aparecem aqui' : ''))}</span>

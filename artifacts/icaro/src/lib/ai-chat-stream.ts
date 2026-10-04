@@ -1,13 +1,28 @@
 import type { AiChatInput } from '@workspace/api-client-react';
 import type { SpeechEmotionMark } from './speech-plan';
 
+export type PainelFinanceiro = {
+  titulo: string;
+  linhas: Array<{ conta: string; debito: number; credito: number }>;
+  totais: { debito: number; credito: number };
+  destaque?: { rotulo: string; valor: number };
+};
+
 export type AiChatStreamResult = {
   answer: string;
   provider: string;
   model: string;
   layer?: string;
+  painel?: PainelFinanceiro;
   emotionMarks: SpeechEmotionMark[];
 };
+
+function isPainel(value: unknown): value is PainelFinanceiro {
+  const painel = value as PainelFinanceiro | null;
+  return !!painel && typeof painel.titulo === 'string' && Array.isArray(painel.linhas)
+    && painel.linhas.every((linha) => typeof linha?.conta === 'string' && typeof linha.debito === 'number' && typeof linha.credito === 'number')
+    && typeof painel.totais?.debito === 'number' && typeof painel.totais?.credito === 'number';
+}
 
 const EMOTIONS = new Set(['entusiasmo', 'sério', 'curioso', 'alerta', 'sorriso']);
 
@@ -64,6 +79,7 @@ export async function requestAiChatStream(
       if (typeof payload.provider === 'string') result.provider = payload.provider;
       if (typeof payload.model === 'string') result.model = payload.model;
       if (typeof payload.layer === 'string') result.layer = payload.layer;
+      if (isPainel(payload.painel)) result.painel = payload.painel;
     } else if (event === 'error') {
       throw new Error(typeof payload.error === 'string' ? payload.error : 'Os provedores não conseguiram responder.');
     }
