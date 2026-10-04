@@ -109,8 +109,8 @@ export default function Stage() {
   const helpRef = useRef(false); helpRef.current = helpOpen;
   const panelRef = useRef(false); panelRef.current = panel;
   const [tab, setTab] = useState<'conversa' | 'voz' | 'ferramentas' | 'conexao' | 'sobre'>('conversa');
-  const [scene, setScene] = useState<CosmosScene>('galaxy');
-  const [sceneMode, setSceneMode] = useState<'all' | 'single'>('all');
+  const [scene, setScene] = useState<CosmosScene>('earth');
+  const [sceneMode, setSceneMode] = useState<'all' | 'single'>('single');
   const [quality, setQuality] = useState<VisualQuality>(readQuality);
   const [avatarLayout, setAvatarLayout] = useState(readAvatarLayout);
   const [avatarId, setAvatarId] = useState(() => readAvatarChoice().id);

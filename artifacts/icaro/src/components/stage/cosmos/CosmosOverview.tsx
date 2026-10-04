@@ -154,6 +154,7 @@ export function CosmosOverview({ quality, visible, feeds, targetCity, state, get
                 scene={scene}
                 quality={quality}
                 visible={visible}
+                isOverview
                 transparentBackground
                 feeds={feeds}
                 targetCity={scene === 'earth' && targetCity}

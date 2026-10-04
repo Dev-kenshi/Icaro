@@ -42,6 +42,7 @@ type Props = {
   scene: CosmosScene;
   quality: CosmosQuality;
   visible: boolean;
+  isOverview?: boolean;
   transparentBackground?: boolean;
   feeds?: CosmosFeedsResponse;
   targetCity?: boolean;
@@ -59,6 +60,8 @@ type NavigationApi = {
 };
 
 const EARTH_RADIUS = 3.2;
+const EARTH_BACKGROUND_DIAMETER_RATIO = 1.6;
+const COSMOS_CAMERA_FOV_DEGREES = 42;
 const MAX_NEURONS = 560;
 const CITY = { latitude: -12.2664, longitude: -38.9663 };
 const WARM_WHITE = [1, .94, .78] as const;
@@ -303,6 +306,7 @@ export function CosmosRenderer({
   scene,
   quality,
   visible,
+  isOverview = false,
   transparentBackground = false,
   feeds,
   targetCity = false,
@@ -623,7 +627,11 @@ export function CosmosRenderer({
         context.restore();
       } else {
         requestStaticEarthImages();
-        const cx = width * .5, cy = height * .40, radius = Math.min(width, height) * .245;
+        const cx = width * .5;
+        const cy = height * (isOverview ? .40 : .50);
+        const radius = Math.min(width, height) * (
+          isOverview ? .245 : EARTH_BACKGROUND_DIAMETER_RATIO / 2
+        );
         const atmosphere = context.createRadialGradient(cx, cy, radius * .68, cx, cy, radius * 1.44);
         atmosphere.addColorStop(0, 'rgba(74,212,246,.20)');
         atmosphere.addColorStop(1, 'transparent');
@@ -848,7 +856,7 @@ export function CosmosRenderer({
         host.appendChild(activeRenderer.domElement);
 
         const world = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(42, width / height, .1, 1000);
+        const camera = new THREE.PerspectiveCamera(COSMOS_CAMERA_FOV_DEGREES, width / height, .1, 1000);
         const controls = new controlsModule.OrbitControls(camera, activeRenderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = .075;
@@ -858,7 +866,17 @@ export function CosmosRenderer({
         controls.zoomSpeed = .85;
         controls.target.set(0, 0, 0);
         controlsCleanup = () => controls.dispose();
-        const defaultDistances: Record<CosmosScene, number> = { galaxy: 16, system: 16, earth: 11.2 };
+        const earthHalfFovTangent = Math.tan(COSMOS_CAMERA_FOV_DEGREES * Math.PI / 360)
+          * Math.min(1, width / height);
+        const earthApparentHalfAngle = Math.atan(
+          EARTH_BACKGROUND_DIAMETER_RATIO * earthHalfFovTangent,
+        );
+        const backgroundEarthDistance = EARTH_RADIUS / Math.sin(earthApparentHalfAngle);
+        const defaultDistances: Record<CosmosScene, number> = {
+          galaxy: 16,
+          system: 16,
+          earth: isOverview ? 11.2 : backgroundEarthDistance,
+        };
         const distanceLimits: Record<CosmosScene, [number, number]> = {
           galaxy: [1.8, 48],
           system: [1.5, 42],
