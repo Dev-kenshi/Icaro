@@ -5,7 +5,7 @@
  * Uso: pnpm --filter @workspace/scripts run validate:hologram
  */
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
 
@@ -34,6 +34,15 @@ check("Os avatares compartilham o mesmo palco e mantêm a fala sincronizada", ()
   assert.doesNotMatch(face, /<video\b/i);
   assert.doesNotMatch(stage, /holo-talk\.mp4|holo-boot\.mp4|holo-idle\.jpg/i);
   assert.match(stage, /src=\{media\('intro\.mp4'\)\}/);
+});
+
+check("Os dois perfis usam a mesma apresentação holográfica e carregam retratos próprios", () => {
+  const avatars = read("src/lib/avatars.ts");
+  const face = read("src/components/stage/holo-face.tsx");
+  assert.match(avatars, /id:\s*'feirense',[\s\S]*?image:\s*'avatars\/feirense-hd\.png'/);
+  assert.match(avatars, /id:\s*'classico',[\s\S]*?image:\s*'avatar-portrait\/base\.jpg'/);
+  assert.ok(existsSync(path.join(ROOT, "public/avatar-portrait/base.jpg")), "retrato clássico ausente");
+  assert.match(face, /<HoloPortrait definition=\{definition\} \/>/);
 });
 
 check("Retrato acompanha a abertura da boca sincronizada pelo motor de fala", () => {
