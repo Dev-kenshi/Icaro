@@ -22,6 +22,7 @@ export const AVATARS: AvatarDefinition[] = [
     id: 'classico',
     label: 'Ícaro clássico',
     description: 'Aparência original do Ícaro',
+    image: 'avatar-portrait/base.jpg',
   },
 ];
 
