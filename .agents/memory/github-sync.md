@@ -11,6 +11,12 @@ When HTTPS `git push` fails but the Replit GitHub connection can make authentica
 
 Only sync committed project files by default. Do not add newly uploaded, untracked attachments to Git unless the user explicitly asks; they may be context or private material rather than project assets.
 
+When comparing Git trees through CodeExecution, do not parse raw tab-delimited `git ls-tree` output after it passes through `shellExec`. Convert the fields to a visible delimiter in the shell first.
+
+**Why:** The returned shell output can strip literal tabs, which can make a complete tree comparison appear to contain hundreds of unrelated additions and deletions.
+
+**How to apply:** Format each tree entry as fields separated by a visible character such as `|` before returning it to JavaScript for comparison.
+
 ## Ícaro workspace sync expectation
 
 Completed Replit Agent changes for Ícaro should be synchronized to the connected GitHub repository rather than left only in the workspace.
