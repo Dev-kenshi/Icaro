@@ -29,23 +29,28 @@ function wmsUrl(layer: string, format: string) {
     STYLES: '',
     SRS: 'EPSG:4326',
     BBOX: '-180,-90,180,90',
-    WIDTH: '1024',
-    HEIGHT: '512',
+    WIDTH: '2048',
+    HEIGHT: '1024',
     FORMAT: format,
   });
   return `${WMS_ROOT}?${params}`;
 }
 
-function makeTexture(THREE: ThreeModule, draw: (context: CanvasRenderingContext2D, width: number, height: number) => void) {
+function makeTexture(
+  THREE: ThreeModule,
+  draw: (context: CanvasRenderingContext2D, width: number, height: number) => void,
+  width = 1024,
+  height = 512,
+) {
   const canvas = document.createElement('canvas');
-  canvas.width = 1024;
-  canvas.height = 512;
+  canvas.width = width;
+  canvas.height = height;
   const context = canvas.getContext('2d');
   if (!context) throw new Error('Canvas texture context is unavailable');
   draw(context, canvas.width, canvas.height);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 2;
+  texture.anisotropy = 8;
   return texture;
 }
 
@@ -67,7 +72,7 @@ function drawMapPolygon(context: CanvasRenderingContext2D, width: number, height
   context.fill();
 }
 
-export function createPlanetFallbackTexture(THREE: ThreeModule, index: number) {
+export function createPlanetFallbackTexture(THREE: ThreeModule, index: number, width = 1024, height = 512) {
   return makeTexture(THREE, (context, width, height) => {
     const random = seededRandom(index + 51);
     const base = PLANET_COLORS[index] ?? '#8296a5';
@@ -132,11 +137,13 @@ export function createPlanetFallbackTexture(THREE: ThreeModule, index: number) {
       const y = random() * height;
       context.fillRect(0, y, width, 1 + random() * 3);
     }
-  });
+  }, width, height);
 }
 
 export function createEarthFallbackMaps(THREE: ThreeModule) {
-  const day = createPlanetFallbackTexture(THREE, 2);
+  const width = 2048;
+  const height = 1024;
+  const day = createPlanetFallbackTexture(THREE, 2, width, height);
   const night = makeTexture(THREE, (context, width, height) => {
     context.fillStyle = '#020712';
     context.fillRect(0, 0, width, height);
@@ -148,7 +155,7 @@ export function createEarthFallbackMaps(THREE: ThreeModule) {
       context.fillStyle = glow;
       context.fillRect(x * width - 40, y * height - 40, 80, 80);
     });
-  });
+  }, width, height);
   const clouds = makeTexture(THREE, (context, width, height) => {
     context.clearRect(0, 0, width, height);
     const random = seededRandom(903);
@@ -159,7 +166,7 @@ export function createEarthFallbackMaps(THREE: ThreeModule) {
       context.ellipse(x, y, 8 + random() * 30, 2 + random() * 8, random() * Math.PI, 0, Math.PI * 2);
       context.fill();
     }
-  });
+  }, width, height);
   return { day, night, clouds };
 }
 
@@ -181,7 +188,7 @@ export function createCloudMaskTexture(THREE: ThreeModule, image: HTMLImageEleme
   context.putImageData(pixels, 0, 0);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.NoColorSpace;
-  texture.anisotropy = 2;
+  texture.anisotropy = 8;
   return texture;
 }
 
