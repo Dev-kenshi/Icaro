@@ -7,7 +7,9 @@ When HTTPS `git push` fails but the Replit GitHub connection can make authentica
 
 **Why:** REST access from the connector does not provide Git transport credentials; assuming identical commit IDs can cause confusion or unsafe history changes.
 
-**How to apply:** Verify the remote tip, require the local branch to descend linearly from it and the worktree to be clean, create blobs/trees/commits via the API, advance the ref with `force: false`, and verify both the remote SHA and tree. Keep any local-history mismatch explicit; do not reset or rewrite local branches without the user's approval.
+**How to apply:** Verify the remote tip and compare complete trees. If the branches have a common ancestor but have diverged, only replace the remote tree with the verified local committed tree when that matches the user's sync request and no independent remote-only files or changes would be lost. Create a new commit parented to the remote tip and advance the ref with `force: false`; recheck the tip immediately before updating it, then verify the remote SHA and tree. Never reset or rewrite local branches without approval.
+
+Only sync committed project files by default. Do not add newly uploaded, untracked attachments to Git unless the user explicitly asks; they may be context or private material rather than project assets.
 
 ## Ícaro workspace sync expectation
 
