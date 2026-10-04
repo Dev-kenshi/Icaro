@@ -13,7 +13,6 @@ import { resemblesPlayback } from '@/lib/wake-turn-gate';
 import { wakeAccessErrorMessage } from '@/lib/wake-access';
 import { Particles, Waveform } from '@/components/stage/canvases';
 import { HoloFace } from '@/components/stage/holo-face';
-import { HoloPortrait } from '@/components/stage/holo-portrait';
 import { avatarById, readAvatarChoice, saveAvatarChoice } from '@/lib/avatars';
 import { useStageLayout } from '@/hooks/use-stage-layout';
 import { FutureScene } from '@/components/stage/future-scene';
@@ -818,11 +817,7 @@ export default function Stage() {
       <NeuralWeb state={state} scene={scene} emotion={emotion} longListening={longListening} thoughtTitle={state === 'thinking' ? 'SÍNTESE EM CURSO' : ''} />
       <FutureScene />
       <Particles />
-      {avatarById(avatarId).kind === 'engine' ? (
-        <HoloFace state={state} getLevel={getLevel} layout={avatarLayout} />
-      ) : (
-        <HoloPortrait definition={avatarById(avatarId)} state={state} getLevel={getLevel} layout={avatarLayout} />
-      )}
+      <HoloFace definition={avatarById(avatarId)} state={state} getLevel={getLevel} layout={avatarLayout} />
       <video ref={introRef} className="intro" src={media('intro.mp4')} playsInline onEnded={endIntro} style={{ opacity: state === 'intro' ? 1 : 0, pointerEvents: 'none' }} data-testid="video-intro" />
       <div className="scan" /><div className="vig" />
       <Waveform energy={energy} analyser={state === 'talking' ? getAnalyser() : null} />

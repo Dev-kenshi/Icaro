@@ -45,6 +45,12 @@ const fallbackAudioCache = new Map<string, { audio: ArrayBuffer; size: number; p
 const fallbackRequests = new Set<AbortController>();
 let fallbackCacheBytes = 0;
 let avatar: IcaroAvatarInstance | null = null;
+let speechAvatarLoadError: Error | null = null;
+const speechAvatarWaiters = new Set<{
+  resolve: (instance: IcaroAvatarInstance) => void;
+  reject: (error: Error) => void;
+  timer: number;
+}>();
 let player: IcaroSpeechInstance | null = null;
 let audioContext: AudioContext | null = null;
 let outputAnalyser: AnalyserNode | null = null;
@@ -77,6 +83,55 @@ interface SpeechRun {
 
 function asError(error: unknown, fallback: string): Error {
   return error instanceof Error ? error : new Error(fallback);
+}
+
+function waitForSpeechAvatar(): Promise<IcaroAvatarInstance> {
+  const active = avatar;
+  if (active) {
+    return active.ready.then(() => {
+      if (avatar !== active) throw new Error('O rosto do Ícaro mudou antes do início do áudio.');
+      return active;
+    });
+  }
+  if (speechAvatarLoadError) return Promise.reject(speechAvatarLoadError);
+
+  return new Promise((resolve, reject) => {
+    const waiter = {
+      resolve,
+      reject,
+      timer: 0,
+    };
+    waiter.timer = window.setTimeout(() => {
+      speechAvatarWaiters.delete(waiter);
+      reject(new Error('O rosto do Ícaro ainda está carregando. Tente novamente em instantes.'));
+    }, 15_000);
+    speechAvatarWaiters.add(waiter);
+  });
+}
+
+function resolveSpeechAvatarWaiters(instance: IcaroAvatarInstance) {
+  if (!speechAvatarWaiters.size) return;
+  const waiters = [...speechAvatarWaiters];
+  const ready = instance.ready.then(() => {
+    if (avatar !== instance) throw new Error('O rosto do Ícaro mudou antes do início do áudio.');
+    return instance;
+  });
+
+  waiters.forEach((waiter) => {
+    speechAvatarWaiters.delete(waiter);
+    window.clearTimeout(waiter.timer);
+    void ready.then(waiter.resolve, (error: unknown) => waiter.reject(asError(error, 'Não foi possível carregar o rosto do Ícaro.')));
+  });
+}
+
+export function failSpeechAvatarWaiters(error: unknown) {
+  const failure = asError(error, 'Não foi possível carregar o rosto do Ícaro.');
+  speechAvatarLoadError = failure;
+  [...speechAvatarWaiters].forEach((waiter) => {
+    speechAvatarWaiters.delete(waiter);
+    window.clearTimeout(waiter.timer);
+    waiter.reject(failure);
+  });
 }
 
 function isCurrent(run: SpeechRun): boolean {
@@ -560,7 +615,6 @@ export function stopSpeaking() {
 export function speak(text: string, options: SpeakOpts) {
   stopSpeaking();
   const my = ++token;
-  const activeAvatar = avatar;
   if (!text.trim()) {
     options.onChunk(text);
     options.onEnd();
@@ -570,6 +624,8 @@ export function speak(text: string, options: SpeakOpts) {
   const begin = async () => {
     let begunRun: SpeechRun | null = null;
     try {
+      const activeAvatar = await waitForSpeechAvatar();
+      if (my !== token) return;
       await loadIcaroAvatarLibrary();
       if (my !== token) return;
       const Constructor = window.IcaroSpeech;
@@ -626,9 +682,14 @@ export function speak(text: string, options: SpeakOpts) {
 
 export function setSpeechAvatar(next: IcaroAvatarInstance | null) {
   if (avatar === next) return;
-  stopSpeaking();
+  if (avatar) stopSpeaking();
   avatar = next;
-  if (!next) closeSharedAudio();
+  if (!next) {
+    closeSharedAudio();
+    return;
+  }
+  speechAvatarLoadError = null;
+  resolveSpeechAvatarWaiters(next);
 }
 
 export function setHoloAvatarState(state: 'idle' | 'listening' | 'thinking' | 'talking' | 'intro') {
@@ -640,6 +701,7 @@ export function setListeningActivity(active: boolean) {
 }
 
 export function createHoloAvatar(canvas: HTMLCanvasElement): Promise<IcaroAvatarInstance> {
+  speechAvatarLoadError = null;
   return loadIcaroAvatarLibrary().then(() => {
     const Constructor = window.IcaroAvatar;
     if (!Constructor) throw new Error('A biblioteca IcaroAvatar não foi carregada.');

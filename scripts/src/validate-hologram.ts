@@ -15,14 +15,22 @@ const read = (rel: string) => readFileSync(path.join(ROOT, rel), "utf8");
 const checks: Array<[string, () => void | Promise<void>]> = [];
 const check = (name: string, fn: () => void | Promise<void>) => checks.push([name, fn]);
 
-check("Palco usa IcaroAvatar em canvas e não depende de vídeos faciais", () => {
+check("Os avatares compartilham o mesmo palco e mantêm a fala sincronizada", () => {
   const face = read("src/components/stage/holo-face.tsx");
   const stage = read("src/pages/stage.tsx");
   const speech = read("src/lib/speech.ts");
+  const css = read("src/pages/stage.css");
   assert.match(face, /<canvas[\s\S]*?data-testid="holo-face-canvas"/);
   assert.match(face, /createHoloAvatar\(canvas\)/);
+  assert.match(face, /setSpeechAvatar\(instance\)/);
+  assert.match(face, /<HoloPortrait definition=\{definition\} \/>/);
+  assert.match(face, /className="face"/);
+  assert.match(face, /className="face-orb"/);
+  assert.match(stage, /<HoloFace\s+definition=\{avatarById\(avatarId\)\}\s+state=\{state\}\s+getLevel=\{getLevel\}\s+layout=\{avatarLayout\}\s*\/>/);
   assert.match(speech, /new Constructor\(canvas, \{ assets: avatarAssetsUrl\(\) \}\)/);
-  assert.match(stage, /<HoloFace\s+state=\{state\}\s+getLevel=\{getLevel\}[^>]*\/>/);
+  assert.match(speech, /await waitForSpeechAvatar\(\)/);
+  assert.match(css, /\.holo-avatar__scan/);
+  assert.match(css, /\.holo-avatar__sweep/);
   assert.doesNotMatch(face, /<video\b/i);
   assert.doesNotMatch(stage, /holo-talk\.mp4|holo-boot\.mp4|holo-idle\.jpg/i);
   assert.match(stage, /src=\{media\('intro\.mp4'\)\}/);
