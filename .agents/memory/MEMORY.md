@@ -15,3 +15,4 @@
 - [WebGL preview limitation](webgl-preview-limitation.md) — headless screenshots may show the 2D fallback when WebGL creation fails; they verify layout, not true 3D animation.
 - [Vendor avatar integrity](avatar-vendor-integrity.md) — preserve packaged face and speech assets unless a specific expression or voice change is explicitly requested.
 - [Voice engine scope](voice-engine-scope.md) — preserve the server default; compare account-owned Brazilian Portuguese voices, and ask before adding public voices.
+- [GitHub sync through the connector](github-sync.md) — REST-based pushes can leave the local branch with different commit IDs; reconcile local history deliberately.
