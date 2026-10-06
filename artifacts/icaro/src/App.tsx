@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import Stage from '@/pages/stage';
+import Overview from '@/pages/overview';
 import Analysis from '@/pages/analysis';
 import Assistant from '@/pages/assistant';
 import AdminCerebro from '@/pages/admin-cerebro';
@@ -33,6 +34,7 @@ function Shelled() {
   return (
     <AppShell>
       <Switch>
+        <Route path="/overview" component={Overview} />
         <Route path="/analysis" component={Analysis} />
         <Route path="/assistant" component={Assistant} />
         <Route path="/admin/cerebro" component={AdminCerebro} />

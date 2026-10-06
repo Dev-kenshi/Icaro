@@ -3,7 +3,7 @@ import { Link } from 'wouter';
 import { StageHelp } from '@/components/stage/stage-help';
 import { shouldActivateStageShortcut } from '@/lib/stage-shortcuts';
 import { Mic, X, BarChart3, ExternalLink, Trash2, Menu, Keyboard, Play, Maximize, Volume2, VolumeX, Eye, EyeOff, Orbit, Globe2, Radio, SkipForward, Layers, Move, RotateCcw, Check } from 'lucide-react';
-import { getGetAiStatusQueryKey, getGetAiVoicesQueryKey, getGetCosmosFeedsQueryKey, useGetAiStatus, useGetAiVoices, useGetCosmosFeeds, useSendAiMessage, type AiChatResponse, type AiVoiceCatalog } from '@workspace/api-client-react';
+import { getGetAiStatusQueryKey, getGetAiVoicesQueryKey, getGetCosmosFeedsQueryKey, getHealthCheckQueryKey, useGetAiStatus, useGetAiVoices, useGetCosmosFeeds, useHealthCheck, useSendAiMessage, type AiChatResponse, type AiVoiceCatalog } from '@workspace/api-client-react';
 import { requestAiChatStream } from '@/lib/ai-chat-stream';
 import { interpret, formatDuration } from '@/lib/commands';
 import { speak, stopSpeaking, ensureAudio, activateAudio, connectMic, getAnalyser, getLevel, getMicRms, getOutputRms, setListeningActivity, releaseSpeechCache } from '@/lib/speech';
@@ -32,7 +32,7 @@ type Entry = { role: 'user' | 'assistant'; content: string; link?: string };
 type Note = { text: string; at: number };
 type VisualQuality = 'auto' | 'high' | 'medium' | 'low';
 
-const STATE_LABEL: Record<State, string> = { idle: 'Online', listening: 'Ouvindo', thinking: 'Pensando', talking: 'Falando', intro: 'Apresentação' };
+const STATE_LABEL: Record<State, string> = { idle: 'Em espera', listening: 'Ouvindo', thinking: 'Pensando', talking: 'Falando', intro: 'Apresentação' };
 const AUTO_PROVIDER_IDS = new Set(['groq', 'gemini', 'cerebras', 'openrouter', 'mistral', 'github', 'nvidia', 'cloudflare', 'huggingface', 'cohere']);
 const PROVIDER_NAMES: Record<Provider, string> = {
   auto: 'Automático',
@@ -71,7 +71,7 @@ const readVoiceSelection = (): StoredVoiceSelection | null => {
 };
 const QUALITY_KEY = 'icaro.stage.quality';
 const QUALITY_OPTIONS: { value: VisualQuality; label: string }[] = [
-  { value: 'auto', label: 'Auto' }, { value: 'high', label: 'Alta' }, { value: 'medium', label: 'Média' }, { value: 'low', label: 'Baixa' },
+  { value: 'auto', label: 'Automática' }, { value: 'high', label: 'Alta' }, { value: 'medium', label: 'Média' }, { value: 'low', label: 'Baixa' },
 ];
 const readQuality = (): VisualQuality => {
   try {
@@ -88,6 +88,7 @@ function errMsg(e: unknown) {
 }
 
 export default function Stage() {
+  const health = useHealthCheck({ query: { queryKey: getHealthCheckQueryKey() } });
   const status = useGetAiStatus({ query: { queryKey: getGetAiStatusQueryKey() } });
   const feeds = useGetCosmosFeeds({ query: { queryKey: getGetCosmosFeedsQueryKey(), refetchInterval: 30000 } });
   const sendMessage = useSendAiMessage();
@@ -163,6 +164,9 @@ export default function Stage() {
 
   const stageRef = useRef<HTMLDivElement>(null);
   const dockRef = useRef<HTMLDivElement>(null);
+  const panelTriggerRef = useRef<HTMLButtonElement>(null);
+  const panelCloseRef = useRef<HTMLButtonElement>(null);
+  const panelWasOpenRef = useRef(false);
   const introRef = useRef<HTMLVideoElement>(null);
   const activeRef = useRef(false);
   const turnRef = useRef(0);
@@ -221,6 +225,22 @@ export default function Stage() {
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [avatarControlsOpen]);
+  useEffect(() => {
+    if (panel) {
+      panelCloseRef.current?.focus();
+      const closeOnEscape = (event: KeyboardEvent) => {
+        if (event.key === 'Escape') setPanel(false);
+      };
+      window.addEventListener('keydown', closeOnEscape);
+      panelWasOpenRef.current = true;
+      return () => window.removeEventListener('keydown', closeOnEscape);
+    }
+    if (panelWasOpenRef.current) {
+      panelWasOpenRef.current = false;
+      panelTriggerRef.current?.focus();
+    }
+    return undefined;
+  }, [panel]);
   useEffect(() => () => {
     void ambientRef.current?.close().catch(() => undefined);
     ambientRef.current = null;
@@ -858,7 +878,8 @@ export default function Stage() {
         <svg className="readout-frame" viewBox="0 0 240 500" preserveAspectRatio="none" aria-hidden="true"><path d="M25 2Q12 2 9 19L3 47Q1 60 5 74L5 424Q4 440 18 446Q32 451 45 483L195 483Q211 481 214 464L235 429Q239 420 237 403L237 39Q237 22 220 19L93 18Q75 18 66 8Q58 1 43 2Z" /></svg>
         <div className="readout-kicker"><span className="readout-dot" /> SISTEMA ATIVO</div>
         <div className="readout-title">{scene === 'galaxy' ? 'Espaço profundo' : scene === 'system' ? 'Sistema solar' : feiraTarget ? 'Feira de Santana' : 'Órbita terrestre'}</div>
-        <div className="readout-line"><span>ESTADO</span><strong>{STATE_LABEL[state]}</strong></div>
+        <div className="readout-line" role="status" aria-live="polite"><span>ESTADO</span><strong>{STATE_LABEL[state]}</strong></div>
+        <div className="readout-line" role="status" aria-live="polite"><span>API</span><strong>{health.isLoading ? 'Verificando…' : health.isError ? 'Indisponível' : 'Operacional'}</strong></div>
         <div className="readout-line"><span>CENA</span><strong>{scene === 'galaxy' ? 'GALÁXIA' : scene === 'system' ? 'SOLAR' : 'TERRA'}</strong></div>
         <div className="readout-line"><span>FEIRA · LOCAL</span><strong>{clock}</strong></div>
         <div className="readout-line"><span>REDE NEURAL</span><strong>{state === 'idle' ? 2 : Math.max(1, Math.round(12 + getLevel() * 84))} sinapses/s</strong></div>
@@ -933,7 +954,7 @@ export default function Stage() {
           <button type="button" className="hbtn" onClick={() => stageLayout.setEditing(false)} data-testid="button-layout-done"><Check size={13} /> Concluir</button>
         </div>
       )}
-      <button className="menu hbtn disp text-lg" onClick={() => setPanel(true)} aria-label="Abrir painel" data-testid="button-open-panel" {...stageLayout.chrome('menu')}><Menu size={18} /></button>
+      <button ref={panelTriggerRef} className="menu hbtn disp text-lg" onClick={() => setPanel(true)} aria-label="Abrir painel" aria-expanded={panel} aria-controls="icaro-panel" data-testid="button-open-panel" {...stageLayout.chrome('menu')}><Menu size={18} /></button>
       {state === 'intro' && <button className="hbtn absolute right-4 top-16 z-[6] text-xs" onClick={endIntro} data-testid="button-stop-intro"><X size={14} className="mr-1 inline" />Encerrar apresentação</button>}
 
       <div className="caption" hidden={!stageLayout.editing && (!captionsVisible || !visibleCaption)} aria-live="polite" aria-atomic="true" data-testid="text-caption" {...stageLayout.chrome('caption')}>
@@ -962,17 +983,18 @@ export default function Stage() {
             <Move size={16} /> {stageLayout.editing ? 'Concluir' : 'Reorganizar'}
           </button>
         </div>
-        <button className="mic" onClick={toggleMic} aria-label={recording ? 'Parar gravação' : useServerMic ? 'Falar com Ícaro pelo microfone' : listener.active ? 'Voltar ao modo de espera' : 'Ativar Ícaro manualmente'} aria-pressed={listener.active || recording} data-testid="button-mic" data-recording={recording || undefined}><Mic size={34} /></button>
+        <button className="mic" onClick={toggleMic} aria-label={recording ? 'Parar gravação' : useServerMic ? 'Falar com Ícaro pelo microfone' : listener.active ? 'Voltar ao modo de espera' : 'Ativar Ícaro manualmente'} aria-describedby="mic-status-announcement" aria-pressed={listener.active || recording} data-testid="button-mic" data-recording={recording || undefined}><Mic size={34} /></button>
+        <span id="mic-status-announcement" className="sr-only" role="status" aria-live="polite">{listenLabel}</span>
         <button onClick={() => setTyping((v) => !v)} className="hbtn" aria-label="Digitar pergunta" aria-expanded={typing} data-testid="button-toggle-typing"><Keyboard size={18} /></button>
       </div>
 
-      <aside className="panel" data-open={panel} aria-hidden={!panel} inert={!panel} style={{ visibility: panel ? 'visible' : 'hidden' }} aria-label="Painel do ÍCARO">
+      <aside id="icaro-panel" className="panel" data-open={panel} role="dialog" aria-modal={panel || undefined} aria-labelledby="icaro-panel-title" aria-hidden={!panel} inert={!panel} style={{ visibility: panel ? 'visible' : 'hidden' }}>
         <div className="flex items-center justify-between border-b border-[color:var(--line)] px-5 py-4">
           <div className="flex items-center gap-3">
             <img src={media(HOLO_MEDIA.avatar)} alt="" className="h-9 w-9 rounded-full border border-[color:var(--line)] object-cover" />
-            <div><div className="disp font-semibold tracking-[.2em] text-[color:var(--holo)]">ÍCARO</div><div className="mono text-[10px] text-[color:var(--dim)]">ITCONT 2026 · Contabilidade UEFS</div></div>
+            <div><div id="icaro-panel-title" className="disp font-semibold tracking-[.2em] text-[color:var(--holo)]">Painel do Ícaro</div><div className="mono text-[10px] text-[color:var(--dim)]">ITCONT 2026 · Contabilidade UEFS</div></div>
           </div>
-          <button className="hbtn" onClick={() => setPanel(false)} aria-label="Fechar painel" data-testid="button-close-panel"><X size={16} /></button>
+          <button ref={panelCloseRef} className="hbtn" onClick={() => setPanel(false)} aria-label="Fechar painel" data-testid="button-close-panel"><X size={16} /></button>
         </div>
         <div className="disp flex border-b border-[color:var(--line)]" role="tablist">
           {([['conversa', 'Conversa'], ['voz', 'Voz'], ['ferramentas', 'Ferramentas'], ['conexao', 'Conexão'], ['sobre', 'Sobre']] as const).map(([k, l]) => (
@@ -992,7 +1014,7 @@ export default function Stage() {
                     {m.link && <a href={m.link} target="_blank" rel="noopener noreferrer" className="mono text-xs underline">Abrir pesquisa <ExternalLink size={12} /></a>}
                   </div>
                 ))}
-                {sendMessage.isPending && <div className="h-3 w-24 animate-pulse rounded bg-[color:var(--line)]" />}
+                {sendMessage.isPending && <div role="status" aria-live="polite" className="flex items-center gap-2 text-xs text-[color:var(--dim)]" data-testid="status-stage-ai-loading"><span className="h-2 w-2 animate-pulse rounded-full bg-[color:var(--holo)]" />Ícaro está preparando uma resposta…</div>}
                 <div ref={logEnd} />
               </div>
               <div className="flex flex-wrap gap-2">
@@ -1017,7 +1039,7 @@ export default function Stage() {
                 <select id="stage-quality" value={quality} onChange={(event) => setQuality(event.target.value as VisualQuality)} data-testid="select-stage-quality">
                   {QUALITY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
-                <p className="text-xs text-[color:var(--dim)]">Auto reduz os detalhes quando a renderização fica lenta. A preferência fica salva neste dispositivo.</p>
+                <p className="text-xs text-[color:var(--dim)]">A qualidade automática reduz os detalhes quando a renderização fica lenta. A preferência fica salva neste dispositivo.</p>
                 <button className="pbtn w-full" onClick={ambientToggle} aria-pressed={ambientOn} data-testid="button-ambient-toggle">
                   {ambientOn ? <Volume2 size={14} /> : <VolumeX size={14} />} Som ambiente {ambientOn ? 'ligado' : 'desligado'}
                 </button>
@@ -1126,8 +1148,8 @@ export default function Stage() {
                 )}
               </div>
               <div className="flex flex-wrap gap-2">
-                <button className="pbtn" onClick={() => { localStorage.removeItem(NOTES_KEY); setNotes([]); }} data-testid="button-clear-notes"><Trash2 size={14} /> Apagar anotações</button>
-                <button className="pbtn" onClick={() => setLog([])} data-testid="button-clear-log"><Trash2 size={14} /> Limpar conversa</button>
+                <button className="pbtn" onClick={() => { if (notes.length && window.confirm(`Apagar as ${notes.length} anotação(ões) salvas neste dispositivo? Esta ação não pode ser desfeita.`)) { localStorage.removeItem(NOTES_KEY); setNotes([]); } }} disabled={!notes.length} data-testid="button-clear-notes"><Trash2 size={14} /> Apagar anotações</button>
+                <button className="pbtn" onClick={() => { if (log.length && window.confirm('Limpar todo o histórico desta conversa? Esta ação não pode ser desfeita.')) setLog([]); }} disabled={!log.length} data-testid="button-clear-log"><Trash2 size={14} /> Limpar conversa</button>
               </div>
             </div>
           )}

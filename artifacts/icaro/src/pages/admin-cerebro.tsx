@@ -10,6 +10,7 @@ import {
   YAxis,
 } from "recharts";
 import { Button } from "@/components/ui/button";
+import { useAuthUser } from "@/components/login/login-gate";
 
 type LayerKey = "L1" | "L2" | "L3" | "L4" | "L5" | "L6";
 type Stats = {
@@ -54,13 +55,20 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export default function AdminCerebro() {
+  const user = useAuthUser();
   const [stats, setStats] = useState<Stats | null>(null);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
+    if (user?.role !== "admin") {
+      setError("Acesso restrito a administradores.");
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -75,13 +83,15 @@ export default function AdminCerebro() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.role]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 
   const reviewCandidate = async (candidate: Candidate, action: "bank" | "base" | "discard") => {
+    if (action === "discard" && !window.confirm(`Descartar esta resposta candidata?\n\n“${candidate.question.slice(0, 180)}”\n\nEssa ação não pode ser desfeita.`)) return;
     setBusyId(candidate.id);
     setError(null);
+    setNotice(null);
     try {
       if (action === "discard") {
         await requestJson(`/api/admin/cerebro/candidates/${candidate.id}`, { method: "DELETE" });
@@ -91,9 +101,10 @@ export default function AdminCerebro() {
           body: JSON.stringify({ destination: action }),
         });
       }
+      setNotice(action === "discard" ? "Resposta candidata descartada." : action === "bank" ? "Resposta aprovada no banco local." : "Resposta aprovada na base.");
       await refresh();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Não foi possível revisar a candidata.");
+      setError(cause instanceof Error ? cause.message : "Não foi possível revisar a resposta.");
     } finally {
       setBusyId(null);
     }
@@ -112,30 +123,31 @@ export default function AdminCerebro() {
             <Activity size={14} /> Administração · Ícaro
           </div>
           <h1 className="font-display text-4xl tracking-tight sm:text-5xl">Cérebro em camadas</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Acompanhe respostas sem IA, uso de tokens e revise respostas candidatas antes de adicioná-las à base local.
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+            Acompanhe respostas sem IA, uso de tokens e revise respostas pendentes antes de adicioná-las à base local.
           </p>
         </div>
-        <Button type="button" variant="outline" onClick={() => void refresh()} disabled={loading} className="gap-2">
+          <Button type="button" variant="outline" onClick={() => void refresh()} disabled={loading} aria-busy={loading} className="gap-2">
           <RefreshCw size={15} className={loading ? "animate-spin" : ""} /> Atualizar
         </Button>
       </div>
 
       {error && (
-        <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive" data-testid="status-admin-error">
-          {error}
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive" data-testid="status-admin-error">
+          <span>{error}</span><Button type="button" size="sm" variant="outline" onClick={() => void refresh()} disabled={loading}>Tentar novamente</Button>
         </div>
       )}
+      {notice && <div role="status" aria-live="polite" className="rounded-xl border border-secondary/30 bg-secondary/10 p-3 text-sm text-primary" data-testid="status-admin-success">{notice}</div>}
 
-      {loading && !stats ? (
-        <div className="rounded-2xl border border-border bg-card p-8 text-sm text-muted-foreground">Carregando indicadores…</div>
+        {loading && !stats ? (
+        <div role="status" aria-live="polite" className="rounded-2xl border border-border bg-card p-8 text-sm text-muted-foreground">Carregando indicadores e respostas pendentes…</div>
       ) : stats ? (
         <>
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Indicadores do cérebro">
             <Metric label="Perguntas processadas" value={stats.total.toLocaleString("pt-BR")} />
             <Metric label="Tokens gastos" value={stats.tokensSpent.toLocaleString("pt-BR")} />
             <Metric label="Tokens economizados" value={stats.tokensSaved.toLocaleString("pt-BR")} />
-            <Metric label="Pendentes de revisão" value={candidates.length.toLocaleString("pt-BR")} />
+            <Metric label="Respostas para revisar" value={candidates.length.toLocaleString("pt-BR")} />
           </section>
 
           <section className="grid gap-6 xl:grid-cols-[1.2fr_.8fr]">
@@ -186,7 +198,7 @@ export default function AdminCerebro() {
           <section className="space-y-4">
             <div className="flex items-end justify-between gap-3">
               <div>
-                <h2 className="font-display text-3xl">Candidatas para revisão</h2>
+                <h2 className="font-display text-3xl">Respostas para revisão</h2>
                 <p className="mt-1 text-sm text-muted-foreground">Respostas geradas sem identificadores pessoais detectáveis.</p>
               </div>
               <span className="rounded-full border border-border px-3 py-1 text-xs text-muted-foreground">{candidates.length} pendentes</span>
@@ -212,7 +224,7 @@ export default function AdminCerebro() {
               </article>
             )) : (
               <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-                Nenhuma candidata aguardando revisão.
+                Nenhuma resposta aguardando revisão.
               </div>
             )}
           </section>

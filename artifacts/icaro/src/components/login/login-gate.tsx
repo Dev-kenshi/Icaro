@@ -1,7 +1,10 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { fetchMe, login, logout, type AuthUser } from '@/lib/auth';
 import { RainCanvas } from './rain-canvas';
 import './login.css';
+
+const AuthUserContext = createContext<AuthUser | null>(null);
+export const useAuthUser = () => useContext(AuthUserContext);
 
 export function LoginGate({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -12,19 +15,21 @@ export function LoginGate({ children }: { children: ReactNode }) {
     fetchMe().then(setUser).catch((e: Error) => setFatal(e.message)).finally(() => setChecking(false));
   }, []);
 
-  if (checking) return <div className="lg" aria-busy="true"><RainCanvas /><p className="lg-boot">INICIALIZANDO…</p></div>;
+  if (checking) return <div className="lg" aria-busy="true"><RainCanvas /><p className="lg-boot" role="status">Verificando sua sessão…</p></div>;
   if (user) {
     return (
-      <>
+      <AuthUserContext.Provider value={user}>
         {children}
         <button
           className="lg-out"
+          type="button"
+          aria-label={`Sair da conta ${user.username}`}
           data-testid="button-logout"
           onClick={() => logout().finally(() => setUser(null))}
         >
           Sair · {user.username}
         </button>
-      </>
+      </AuthUserContext.Provider>
     );
   }
   return <LoginScreen onAuth={setUser} initialError={fatal} />;
@@ -63,18 +68,18 @@ function LoginScreen({ onAuth, initialError }: { onAuth: (u: AuthUser) => void; 
           <circle cx="60" cy="60" r="6" className="lg-core" />
         </svg>
         <h1 className="lg-title">ÍCARO</h1>
-        <p className="lg-sub">TERMINAL DE ACESSO // CONTADOR DO AMANHÃ</p>
+        <p className="lg-sub">Assistente de operações · Contabilidade UEFS</p>
         <form onSubmit={submit} className="lg-form" autoComplete="off">
           <label>
-            <span>IDENTIDADE</span>
-            <input value={username} onChange={(e) => setUsername(e.target.value)} autoCapitalize="none" spellCheck={false} data-testid="input-username" required />
+            <span>Nome de usuário</span>
+            <input value={username} onChange={(e) => setUsername(e.target.value)} autoCapitalize="none" autoComplete="username" spellCheck={false} aria-label="Nome de usuário" data-testid="input-username" required />
           </label>
           <label>
-            <span>CÓDIGO</span>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} data-testid="input-password" required />
+            <span>Senha</span>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" aria-label="Senha" data-testid="input-password" required />
           </label>
           <p className="lg-err" role="alert" data-testid="text-login-error">{error}</p>
-          <button type="submit" disabled={busy} data-testid="button-login">{busy ? 'VERIFICANDO…' : 'ENTRAR'}</button>
+          <button type="submit" disabled={busy} aria-busy={busy} data-testid="button-login">{busy ? 'Verificando…' : 'Entrar'}</button>
         </form>
       </section>
     </main>

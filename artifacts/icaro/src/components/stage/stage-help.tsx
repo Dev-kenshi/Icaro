@@ -28,7 +28,7 @@ export function StageHelp({ open, onOpen, onClose, clock, stateLabel, children }
           <button onClick={onClose} aria-label="Fechar ajuda" data-testid="button-close-help"><X size={16} /></button>
         </div>
         <h3>Como usar</h3>
-        <p>Diga “Ok, Ícaro” ou “Let’s go, Ícaro”, seguido da pergunta, ou pressione Enter / seta direita (avançar slide). “Stop, Ícaro” interrompe.</p>
+        <p>Diga “Ok, Ícaro” e faça sua pergunta. Enter, seta para a direita ou Page Down também ativam a escuta quando o foco não está em um campo ou controle; use o botão do microfone quando preferir. Pressione Escape para fechar esta ajuda.</p>
         <p>Cada ativação autoriza uma pergunta; sem pergunta em 10 segundos, expira em silêncio.</p>
         <h3>Privacidade</h3>
         <p>Em espera, Navegador usa reconhecimento local: o áudio e a transcrição não são enviados a um serviço de voz. Requer suporte local e o pacote de português; sem isso, a escuta fica desligada. Após ativar, só a pergunta autorizada segue para o ÍCARO. Com Servidor, a gravação começa apenas após tocar no microfone e o áudio é enviado para transcrição.</p>
