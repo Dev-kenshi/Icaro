@@ -26,3 +26,9 @@ Completed Replit Agent changes for Ícaro should be synchronized to the connecte
 **How to apply:** Sync completed, verified changes to the connected branch without rewriting history. Replit Auto-sync handles existing commits, not every file save; do not create commits for partial edits or claim per-edit automation unless the Git pane supports it. Before merging, run a read-only Git fetch to verify shell authentication: the Git pane can show OAuth as active while the shell's HTTPS remote still rejects credentials. If fetch fails, stop and have the user reconnect the Git provider before any push or history changes.
 
 **Why:** The Git pane showed GitHub as active and the GitHub App had repository access, but shell fetches still failed authentication. The workspace had no Git credential helper, so UI status alone did not prove CLI access.
+
+For REST-based GitHub writes, use only an API client and connector slug explicitly exposed by the connected integration. A Git source-control connection can mention `connectorFetch` without exposing that callback or an API connector to CodeExecution; do not guess a slug from the connection ID or improvise around missing auth.
+
+**Why:** The OAuth Git pane remained active, but the workspace integration view exposed no REST client after the GitHub App connection was removed.
+
+**How to apply:** Before creating Git trees, commits, or refs, verify that the current Replit connection provides an executable authenticated REST client. If it does not, stop before remote writes and ask for the GitHub API integration to be reconnected.
