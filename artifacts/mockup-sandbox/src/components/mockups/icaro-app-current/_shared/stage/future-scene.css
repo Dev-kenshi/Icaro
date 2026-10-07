@@ -1,0 +1,20 @@
+.future-scene { position:absolute; inset:0; overflow:hidden; pointer-events:none; background:#000306; }
+.future-scene__glow { position:absolute; inset:0; background:radial-gradient(ellipse at 50% 38%,#07345a26,transparent 60%); }
+.future-scene__stars { position:absolute; inset:-10%; background-repeat:repeat; animation:icaro-stars 32s ease-in-out infinite alternate; }
+.future-scene__stars--near {
+  opacity:.6; background-size:360px 290px;
+  background-image:
+    radial-gradient(circle at 12% 24%,#76c9ff 0 1px,#2f84be22 2px,transparent 4px),
+    radial-gradient(circle at 62% 78%,#47bbff 0 1px,#126db530 2px,transparent 5px),
+    radial-gradient(circle at 81% 31%,#9ddcff 0 1px,transparent 3px),
+    radial-gradient(circle at 33% 61%,#2766a1 0 2px,transparent 4px);
+}
+.future-scene__stars--far {
+  opacity:.45; background-size:227px 193px; animation-duration:49s;
+  background-image:
+    radial-gradient(circle at 35% 16%,#5fb6eb 0 .5px,transparent 2px),
+    radial-gradient(circle at 85% 73%,#579ed4 0 .7px,transparent 2px),
+    radial-gradient(circle at 13% 56%,#598ac2 0 .6px,transparent 2px);
+}
+@keyframes icaro-stars { from { transform:translate(-8px,-12px); opacity:.4; } to { transform:translate(12px,18px); opacity:.7; } }
+@media (prefers-reduced-motion:reduce) { .future-scene__stars { animation:none; } }

@@ -4,7 +4,9 @@ import { RainCanvas } from './rain-canvas';
 import './login.css';
 
 const AuthUserContext = createContext<AuthUser | null>(null);
+const AuthSignOutContext = createContext<(() => void) | null>(null);
 export const useAuthUser = () => useContext(AuthUserContext);
+export const useAuthSignOut = () => useContext(AuthSignOutContext);
 
 export function LoginGate({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -17,18 +19,21 @@ export function LoginGate({ children }: { children: ReactNode }) {
 
   if (checking) return <div className="lg" aria-busy="true"><RainCanvas /><p className="lg-boot" role="status">Verificando sua sessão…</p></div>;
   if (user) {
+    const signOut = () => { void logout().finally(() => setUser(null)); };
     return (
       <AuthUserContext.Provider value={user}>
-        {children}
-        <button
-          className="lg-out"
-          type="button"
-          aria-label={`Sair da conta ${user.username}`}
-          data-testid="button-logout"
-          onClick={() => logout().finally(() => setUser(null))}
-        >
-          Sair · {user.username}
-        </button>
+        <AuthSignOutContext.Provider value={signOut}>
+          {children}
+          <button
+            className="lg-out"
+            type="button"
+            aria-label={`Sair da conta ${user.username}`}
+            data-testid="button-logout"
+            onClick={signOut}
+          >
+            Sair · {user.username}
+          </button>
+        </AuthSignOutContext.Provider>
       </AuthUserContext.Provider>
     );
   }

@@ -1,0 +1,454 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=Space+Mono:wght@400;700&display=swap');
+
+.icaro-app-responsive {
+  --button-outline: rgba(30, 48, 44, .14);
+  --badge-outline: rgba(30, 48, 44, .08);
+  --opaque-button-border-intensity: -8;
+  --elevate-1: rgba(30, 48, 44, .035);
+  --elevate-2: rgba(30, 48, 44, .08);
+  --background: 39 44% 95%;
+  --foreground: 166 25% 16%;
+  --border: 34 22% 82%;
+  --card: 42 40% 98%;
+  --card-foreground: 166 25% 16%;
+  --card-border: 34 22% 84%;
+  --sidebar: 166 32% 15%;
+  --sidebar-foreground: 42 40% 97%;
+  --sidebar-border: 166 24% 25%;
+  --sidebar-primary: 164 76% 56%;
+  --sidebar-primary-foreground: 166 35% 12%;
+  --sidebar-accent: 166 28% 22%;
+  --sidebar-accent-foreground: 42 40% 97%;
+  --sidebar-ring: 164 76% 56%;
+  --popover: 42 40% 98%;
+  --popover-foreground: 166 25% 16%;
+  --popover-border: 34 22% 84%;
+  --primary: 166 32% 15%;
+  --primary-foreground: 42 40% 97%;
+  --secondary: 164 76% 38%;
+  --secondary-foreground: 42 40% 98%;
+  --muted: 38 24% 89%;
+  --muted-foreground: 165 12% 38%;
+  --accent: 24 94% 57%;
+  --accent-foreground: 166 35% 12%;
+  --destructive: 2 68% 48%;
+  --destructive-foreground: 42 40% 98%;
+  --input: 34 22% 78%;
+  --ring: 164 76% 38%;
+  --chart-1: 164 76% 38%;
+  --chart-2: 24 94% 57%;
+  --chart-3: 194 62% 42%;
+  --chart-4: 2 68% 48%;
+  --chart-5: 46 82% 48%;
+  --app-font-sans: 'DM Sans', sans-serif;
+  --app-font-serif: 'Instrument Serif', Georgia, serif;
+  --app-font-mono: 'Space Mono', monospace;
+  --font-sans: var(--app-font-sans);
+  --font-serif: var(--app-font-serif);
+  --font-mono: var(--app-font-mono);
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-card-border: hsl(var(--card-border));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-popover-border: hsl(var(--popover-border));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary-border: hsl(var(--primary));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-secondary-border: hsl(var(--secondary));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-muted-border: hsl(var(--muted));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-accent-border: hsl(var(--accent));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-destructive-border: hsl(var(--destructive));
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+  --sidebar-primary-border: hsl(var(--sidebar-primary));
+  --sidebar-accent-border: hsl(var(--sidebar-accent));
+  --primary-border: hsl(var(--primary));
+  --secondary-border: hsl(var(--secondary));
+  --muted-border: hsl(var(--muted));
+  --accent-border: hsl(var(--accent));
+  --destructive-border: hsl(var(--destructive));
+  --radius: .7rem;
+  color-scheme: light;
+  min-width: 320px;
+  min-height: 100dvh;
+  color: hsl(var(--foreground));
+  background-color: hsl(var(--background));
+  background-image: radial-gradient(circle at 12% 5%, rgba(35,177,142,.10), transparent 28rem), radial-gradient(circle at 90% 84%, rgba(242,126,54,.075), transparent 32rem);
+  font-family: var(--app-font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.icaro-app-responsive *,
+.icaro-app-responsive *::before,
+.icaro-app-responsive *::after { box-sizing: border-box; }
+.icaro-app-responsive :where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 3px;
+}
+.icaro-app-responsive :where(a, button, input, textarea, select) { -webkit-tap-highlight-color: transparent; }
+.icaro-app-responsive button:not(:disabled),
+.icaro-app-responsive a { touch-action: manipulation; }
+.icaro-app-responsive ::selection { background: hsl(var(--accent) / .28); color: hsl(var(--foreground)); }
+.icaro-app-responsive .font-display { font-family: var(--app-font-serif); }
+.icaro-app-responsive .font-mono-data { font-family: var(--app-font-mono); }
+.icaro-app-responsive .eyebrow { color: hsl(var(--muted-foreground)); }
+.icaro-app-responsive .surface-lift { box-shadow: 0 12px 34px rgba(31,60,51,.075), inset 0 1px rgba(255,255,255,.7); }
+
+.icaro-app-responsive .icaro-shell { min-height: 100dvh; }
+.icaro-app-responsive .icaro-sidebar {
+  position: fixed;
+  z-index: 40;
+  inset: 0 auto 0 0;
+  display: flex;
+  flex-direction: column;
+  width: 256px;
+  padding: 0 16px max(16px, env(safe-area-inset-bottom));
+  overflow-y: auto;
+  color: hsl(var(--sidebar-foreground));
+  background: hsl(var(--sidebar));
+  border-right: 1px solid hsl(var(--sidebar-border));
+  box-shadow: 12px 0 44px rgba(19,48,40,.10);
+  transition: transform .26s cubic-bezier(.22,1,.36,1);
+}
+.icaro-app-responsive .icaro-brand-row { display:flex; align-items:center; justify-content:space-between; min-height:82px; padding: 0 7px; }
+.icaro-app-responsive .icaro-brand { display:flex; align-items:center; gap:12px; color:inherit; text-decoration:none; }
+.icaro-app-responsive .icaro-brand-mark {
+  display:grid;
+  width:38px;
+  height:38px;
+  place-items:center;
+  border-radius:13px;
+  color:#12362d;
+  background:linear-gradient(145deg,#71e7be,#43c99e);
+  font:700 21px/1 var(--app-font-serif);
+  box-shadow:inset 0 1px rgba(255,255,255,.42), 0 5px 18px rgba(31,177,132,.18);
+}
+.icaro-app-responsive .icaro-brand-name { font:400 29px/.9 var(--app-font-serif); letter-spacing:-.03em; }
+.icaro-app-responsive .icaro-icon-button {
+  display:grid;
+  width:42px;
+  height:42px;
+  place-items:center;
+  border:0;
+  border-radius:12px;
+  color:inherit;
+  background:transparent;
+  cursor:pointer;
+}
+.icaro-app-responsive .icaro-icon-button:hover { background:rgba(255,255,255,.10); }
+.icaro-app-responsive .icaro-close-drawer { display:none; }
+.icaro-app-responsive .icaro-dataset-card {
+  margin: 4px 0 25px;
+  padding: 14px 13px;
+  border:1px solid rgba(200,243,221,.15);
+  border-radius:15px;
+  background:linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.025));
+}
+.icaro-app-responsive .icaro-sidebar-eyebrow,
+.icaro-app-responsive .icaro-sidebar-label,
+.icaro-app-responsive .icaro-connection-title {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:rgba(236,249,238,.58);
+  font:700 10px/1.2 var(--app-font-mono);
+  letter-spacing:.13em;
+  text-transform:uppercase;
+}
+.icaro-app-responsive .icaro-sidebar-eyebrow svg { color:#71e7be; }
+.icaro-app-responsive .icaro-dataset-name { margin-top:10px; overflow:hidden; color:#f8f1df; font-size:13px; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
+.icaro-app-responsive .icaro-dataset-card p { margin:5px 0 0; color:rgba(236,249,238,.62); font-size:11px; line-height:1.45; }
+.icaro-app-responsive .icaro-sidebar-label { padding:0 12px 9px; color:rgba(236,249,238,.40); font-size:9px; }
+.icaro-app-responsive .icaro-navigation { display:grid; gap:5px; }
+.icaro-app-responsive .icaro-nav-link {
+  display:flex;
+  min-height:46px;
+  align-items:center;
+  gap:12px;
+  padding:0 13px;
+  border-radius:12px;
+  color:rgba(248,249,234,.72);
+  font-size:13px;
+  font-weight:600;
+  text-decoration:none;
+  transition:background-color .18s, color .18s, transform .18s;
+}
+.icaro-app-responsive .icaro-nav-link:hover { color:#fff8e9; background:rgba(255,255,255,.075); }
+.icaro-app-responsive .icaro-nav-link.is-current { color:#12362d; background:#62dfb0; box-shadow:inset 0 1px rgba(255,255,255,.45),0 7px 20px rgba(18,199,142,.13); }
+.icaro-app-responsive .icaro-nav-link.is-current svg { color:#164d3d; }
+.icaro-app-responsive .icaro-nav-signal { width:7px; height:7px; margin-left:auto; border-radius:50%; background:#ffa46c; box-shadow:0 0 0 4px rgba(255,164,108,.12); }
+.icaro-app-responsive .icaro-sidebar-bottom { display:grid; gap:12px; margin-top:auto; padding-top:26px; }
+.icaro-app-responsive .icaro-connection { padding:12px; border:1px solid rgba(200,243,221,.14); border-radius:13px; background:rgba(1,22,17,.17); }
+.icaro-app-responsive .icaro-connection-title { justify-content:space-between; margin-bottom:9px; }
+.icaro-app-responsive .icaro-connection-light { width:7px; height:7px; border-radius:50%; background:#7be0a6; box-shadow:0 0 0 4px rgba(123,224,166,.13); }
+.icaro-app-responsive .icaro-connection-status { display:flex; align-items:center; gap:7px; color:#ecf4e8; font-size:11px; font-weight:600; }
+.icaro-app-responsive .icaro-connection-status svg { color:#79deb3; }
+.icaro-app-responsive .icaro-connection-caption { margin:5px 0 0 22px; color:rgba(236,249,238,.48); font-size:10px; }
+.icaro-app-responsive .icaro-import-button {
+  display:flex;
+  min-height:46px;
+  align-items:center;
+  justify-content:center;
+  gap:9px;
+  border:0;
+  border-radius:12px;
+  color:#15362e;
+  background:linear-gradient(120deg,#75e7bd,#50d7aa);
+  font:700 13px var(--app-font-sans);
+  cursor:pointer;
+  box-shadow:0 8px 20px rgba(24,185,132,.14),inset 0 1px rgba(255,255,255,.48);
+}
+.icaro-app-responsive .icaro-import-button:hover:not(:disabled) { background:#8bf0c7; }
+.icaro-app-responsive .icaro-import-button:disabled { cursor:wait; opacity:.62; }
+.icaro-app-responsive .icaro-import-error { padding:10px; border:1px solid rgba(255,145,132,.3); border-radius:11px; color:#ffd1c7; background:rgba(156,49,42,.18); font-size:11px; }
+.icaro-app-responsive .icaro-file-input { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; clip-path:inset(50%); }
+.icaro-app-responsive .icaro-preview-links { display:flex; justify-content:space-between; gap:10px; padding:2px 4px 0; }
+.icaro-app-responsive .icaro-preview-links a { display:inline-flex; align-items:center; gap:6px; min-height:36px; color:rgba(236,249,238,.55); font-size:11px; text-decoration:none; }
+.icaro-app-responsive .icaro-preview-links a:hover { color:#9af0ce; }
+.icaro-app-responsive .icaro-drawer-scrim { display:none; }
+.icaro-app-responsive .icaro-mobile-nav { display:none; }
+.icaro-app-responsive .icaro-shell-main { min-height:100dvh; margin-left:256px; }
+.icaro-app-responsive .icaro-topbar {
+  position:sticky;
+  z-index:20;
+  top:0;
+  display:flex;
+  min-height:72px;
+  align-items:center;
+  gap:12px;
+  padding:10px clamp(22px,3.5vw,46px);
+  border-bottom:1px solid rgba(116,102,73,.17);
+  background:rgba(249,246,235,.91);
+  backdrop-filter:blur(18px);
+}
+.icaro-app-responsive .icaro-menu-trigger { display:none; color:hsl(var(--foreground)); }
+.icaro-app-responsive .icaro-local-note { display:flex; align-items:center; gap:8px; color:hsl(var(--muted-foreground)); font-size:12px; }
+.icaro-app-responsive .icaro-local-note svg { color:hsl(var(--secondary)); }
+.icaro-app-responsive .icaro-preview-menu { position:relative; margin-left:auto; }
+.icaro-app-responsive .icaro-preview-menu summary {
+  display:flex;
+  min-height:40px;
+  align-items:center;
+  gap:8px;
+  padding:0 13px;
+  border:1px solid hsl(var(--border));
+  border-radius:999px;
+  color:hsl(var(--foreground));
+  background:rgba(255,255,255,.48);
+  font-size:11px;
+  font-weight:700;
+  cursor:pointer;
+  list-style:none;
+}
+.icaro-app-responsive .icaro-preview-menu summary::-webkit-details-marker { display:none; }
+.icaro-app-responsive .icaro-preview-menu summary:hover { border-color:hsl(var(--secondary)); }
+.icaro-app-responsive .lg-out { display:none; }
+.icaro-app-responsive .icaro-preview-popover {
+  position:absolute;
+  z-index:30;
+  top:calc(100% + 9px);
+  right:0;
+  display:grid;
+  min-width:170px;
+  gap:3px;
+  padding:7px;
+  border:1px solid hsl(var(--border));
+  border-radius:14px;
+  background:hsl(var(--card));
+  box-shadow:0 16px 35px rgba(30,48,44,.14);
+}
+.icaro-app-responsive .icaro-preview-popover a { display:flex; min-height:40px; align-items:center; gap:9px; padding:0 10px; border-radius:9px; color:hsl(var(--foreground)); font-size:12px; text-decoration:none; }
+.icaro-app-responsive .icaro-preview-popover a:hover { background:hsl(var(--muted)); }
+.icaro-app-responsive .icaro-user { display:flex; align-items:center; gap:11px; }
+.icaro-app-responsive .icaro-username { color:hsl(var(--muted-foreground)); font-size:11px; }
+.icaro-app-responsive .icaro-user-avatar { display:grid; width:36px; height:36px; place-items:center; border-radius:50%; color:#f8f1df; background:hsl(var(--primary)); font-size:11px; font-weight:700; }
+.icaro-app-responsive .icaro-content { width:min(100%,1520px); margin:0 auto; padding:clamp(25px,3vw,44px) clamp(20px,3.5vw,46px) 54px; }
+
+.icaro-app-responsive .icaro-stage-switcher { position:fixed; z-index:80; top:max(12px,env(safe-area-inset-top)); left:50%; transform:translateX(-50%); }
+.icaro-app-responsive .icaro-stage-switcher-trigger {
+  display:flex;
+  min-height:42px;
+  align-items:center;
+  gap:9px;
+  padding:4px 13px 4px 5px;
+  border:1px solid rgba(132,220,183,.38);
+  border-radius:999px;
+  color:#f8f1df;
+  background:rgba(16,43,35,.90);
+  box-shadow:0 9px 28px rgba(0,0,0,.24);
+  backdrop-filter:blur(14px);
+  font:600 12px var(--app-font-sans);
+  cursor:pointer;
+}
+.icaro-app-responsive .icaro-stage-switcher-trigger .icaro-brand-mark { width:31px; height:31px; border-radius:50%; font-size:18px; }
+.icaro-app-responsive .icaro-stage-switcher-menu {
+  display:grid;
+  min-width:206px;
+  gap:3px;
+  margin-top:8px;
+  padding:7px;
+  border:1px solid rgba(132,220,183,.32);
+  border-radius:15px;
+  background:rgba(13,38,31,.96);
+  box-shadow:0 16px 38px rgba(0,0,0,.35);
+  backdrop-filter:blur(18px);
+}
+.icaro-app-responsive .icaro-stage-switcher-menu a { display:flex; min-height:42px; align-items:center; gap:10px; padding:0 10px; border-radius:9px; color:#eaf5e8; font-size:12px; text-decoration:none; }
+.icaro-app-responsive .icaro-stage-switcher-menu a:hover,
+.icaro-app-responsive .icaro-stage-switcher-menu a[aria-current="page"] { color:#c9f6de; background:rgba(100,220,174,.13); }
+
+/* Login remains the extracted screen and rain canvas; the applied warm entry styling is scoped here. */
+.icaro-app-responsive .lg {
+  --holo:#55dcb2;
+  --holo2:#ff9b55;
+  --ink:#f8f1df;
+  --dim:#bdd0c8;
+  --bad:#ffad9f;
+  z-index:100;
+  background:radial-gradient(ellipse at 50% 36%,rgba(31,113,94,.52),transparent 42%),radial-gradient(circle at 88% 80%,rgba(219,111,52,.18),transparent 28%),#102b27;
+  color:var(--ink);
+  font-family:var(--app-font-sans);
+}
+.icaro-app-responsive .lg-vignette { background:linear-gradient(180deg,rgba(9,29,25,.12),rgba(9,29,25,.7)),radial-gradient(ellipse at center,transparent 15%,rgba(9,29,25,.54) 100%); }
+.icaro-app-responsive .lg-hazard { display:none; }
+.icaro-app-responsive .lg-card { width:min(92vw,430px); padding:clamp(26px,6vw,42px); border:1px solid rgba(108,224,184,.4); border-radius:26px; background:rgba(15,43,37,.86); clip-path:none; box-shadow:0 24px 90px rgba(4,20,17,.38),inset 0 1px rgba(255,255,255,.1); }
+.icaro-app-responsive .lg-card::before { opacity:.22; border-radius:inherit; }
+.icaro-app-responsive .lg-emblem { width:76px; height:76px; margin-bottom:12px; filter:none; }
+.icaro-app-responsive .lg-ring-a { stroke-dasharray:42 16; }
+.icaro-app-responsive .lg-ring-b { stroke:var(--holo2); }
+.icaro-app-responsive .lg-wing { fill:rgba(71,215,173,.15); stroke:var(--holo); }
+.icaro-app-responsive .lg-core { fill:var(--holo2); }
+.icaro-app-responsive .lg-title { color:var(--ink); font:400 2.8rem/1.05 var(--app-font-serif); letter-spacing:.18em; text-indent:.18em; text-shadow:none; }
+.icaro-app-responsive .lg-sub { max-width:25rem; margin:5px auto 28px; color:var(--dim); font:500 .78rem/1.5 var(--app-font-sans); letter-spacing:.01em; }
+.icaro-app-responsive .lg-form { gap:17px; }
+.icaro-app-responsive .lg-form label { gap:7px; color:#c5f4e2; font:600 .78rem/1.3 var(--app-font-sans); letter-spacing:.02em; }
+.icaro-app-responsive .lg-form input { min-height:50px; border:1px solid rgba(189,208,200,.3); border-left:3px solid var(--holo); border-radius:10px; background:rgba(6,24,21,.65); color:var(--ink); font:500 1rem var(--app-font-sans); letter-spacing:.01em; }
+.icaro-app-responsive .lg-form input:focus-visible { border-color:var(--holo); box-shadow:0 0 0 3px rgba(71,215,173,.18); }
+.icaro-app-responsive .lg-err { color:var(--bad); }
+.icaro-app-responsive .lg-form button { min-height:50px; border:0; border-radius:10px; clip-path:none; color:#10322a; background:var(--holo); font:700 .9rem var(--app-font-sans); letter-spacing:.04em; }
+.icaro-app-responsive .lg-form button:hover:not(:disabled) { background:#75e8c1; }
+.icaro-app-responsive .lg-out { right:max(12px,env(safe-area-inset-right)); bottom:max(12px,env(safe-area-inset-bottom)); padding:10px 14px; border:1px solid rgba(108,224,184,.35); border-radius:999px; color:#cbf3e4; background:rgba(15,43,37,.9); font:600 .75rem var(--app-font-sans); letter-spacing:0; }
+
+@media (min-width:768px) and (max-width:1279px) {
+  .icaro-app-responsive .icaro-sidebar { width:84px; align-items:center; padding-inline:10px; }
+  .icaro-app-responsive .icaro-brand-row { min-height:82px; justify-content:center; padding:0; }
+  .icaro-app-responsive .icaro-brand { justify-content:center; }
+  .icaro-app-responsive .icaro-brand-name,
+  .icaro-app-responsive .icaro-dataset-card,
+  .icaro-app-responsive .icaro-sidebar-label,
+  .icaro-app-responsive .icaro-nav-link span,
+  .icaro-app-responsive .icaro-connection,
+  .icaro-app-responsive .icaro-import-button span,
+  .icaro-app-responsive .icaro-preview-links { display:none; }
+  .icaro-app-responsive .icaro-navigation { width:100%; gap:7px; }
+  .icaro-app-responsive .icaro-nav-link { width:58px; min-height:52px; justify-content:center; padding:0; }
+  .icaro-app-responsive .icaro-nav-link svg { width:20px; height:20px; }
+  .icaro-app-responsive .icaro-nav-signal { display:none !important; }
+  .icaro-app-responsive .icaro-sidebar-bottom { width:100%; justify-items:center; }
+  .icaro-app-responsive .icaro-import-button { width:54px; height:50px; }
+  .icaro-app-responsive .icaro-shell-main { margin-left:84px; }
+  .icaro-app-responsive .icaro-mobile-nav { display:none; }
+}
+
+@media (max-width:767px) {
+  .icaro-app-responsive .icaro-sidebar { width:min(310px,86vw); transform:translateX(-105%); }
+  .icaro-app-responsive .icaro-sidebar.is-open { transform:translateX(0); }
+  .icaro-app-responsive .icaro-close-drawer { display:grid; }
+  .icaro-app-responsive .icaro-drawer-scrim { position:fixed; z-index:35; inset:0; display:block; border:0; background:rgba(14,39,32,.42); backdrop-filter:blur(2px); }
+  .icaro-app-responsive .icaro-shell-main { margin-left:0; }
+  .icaro-app-responsive .icaro-topbar { min-height:62px; gap:9px; padding:8px 14px; }
+  .icaro-app-responsive .icaro-menu-trigger { display:grid; flex:none; }
+  .icaro-app-responsive .icaro-local-note { display:none; }
+  .icaro-app-responsive .icaro-preview-menu { margin-left:0; }
+  .icaro-app-responsive .icaro-preview-menu summary { min-height:40px; padding:0 11px; font-size:10px; }
+  .icaro-app-responsive .icaro-user { margin-left:auto; gap:8px; }
+  .icaro-app-responsive .icaro-username { display:none; }
+  .icaro-app-responsive .icaro-user-avatar { width:34px; height:34px; }
+  .icaro-app-responsive .icaro-content { padding:25px 17px calc(98px + env(safe-area-inset-bottom)); }
+  .icaro-app-responsive .icaro-mobile-nav {
+    position:fixed;
+    z-index:30;
+    inset:auto 0 0;
+    display:flex;
+    min-height:65px;
+    align-items:stretch;
+    justify-content:space-between;
+    gap:0;
+    overflow-x:auto;
+    padding:5px 4px max(6px,env(safe-area-inset-bottom));
+    border-top:1px solid rgba(116,102,73,.20);
+    background:rgba(252,249,239,.96);
+    box-shadow:0 -10px 28px rgba(31,60,51,.10);
+    backdrop-filter:blur(18px);
+    scrollbar-width:none;
+  }
+  .icaro-app-responsive .icaro-mobile-nav::-webkit-scrollbar { display:none; }
+  .icaro-app-responsive .icaro-mobile-link,
+  .icaro-app-responsive .icaro-mobile-import {
+    display:flex;
+    flex:1 0 56px;
+    min-width:54px;
+    min-height:54px;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:4px;
+    padding:4px 2px;
+    border:0;
+    border-radius:12px;
+    color:hsl(var(--muted-foreground));
+    background:transparent;
+    font:600 9px/1.1 var(--app-font-sans);
+    text-decoration:none;
+    cursor:pointer;
+  }
+  .icaro-app-responsive .icaro-mobile-link.is-current { color:hsl(var(--secondary)); background:rgba(45,181,134,.09); }
+  .icaro-app-responsive .icaro-mobile-import { color:#bd6530; }
+  .icaro-app-responsive .icaro-mobile-import:disabled { opacity:.55; }
+  .icaro-app-responsive .icaro-stage-switcher { top:max(10px,env(safe-area-inset-top)); }
+  .icaro-app-responsive .icaro-stage-switcher-trigger { min-height:40px; padding-right:11px; font-size:11px; }
+  .icaro-app-responsive .icaro-stage-switcher-menu { max-height:min(66dvh,520px); overflow:auto; }
+  .icaro-app-responsive .lg-card { padding:26px 22px 24px; border-radius:22px; }
+  .icaro-app-responsive .lg-out { bottom:calc(74px + env(safe-area-inset-bottom)); }
+}
+
+@media (max-width:380px) {
+  .icaro-app-responsive .icaro-mobile-link,
+  .icaro-app-responsive .icaro-mobile-import { flex-basis:52px; min-width:50px; font-size:8px; }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .icaro-app-responsive *,
+  .icaro-app-responsive *::before,
+  .icaro-app-responsive *::after {
+    scroll-behavior:auto !important;
+    animation-duration:.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;
+  }
+}

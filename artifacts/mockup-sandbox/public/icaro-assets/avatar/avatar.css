@@ -1,0 +1,34 @@
+/* Rosto do Ícaro + legenda sincronizada. Use junto com o fundo/HUD que já existe no projeto. */
+.icaro-face {
+  display: block;
+  width: min(100vh, 100vw);
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
+  mix-blend-mode: screen;           /* preto vira transparente: partículas do fundo passam por trás */
+  filter: brightness(calc(1 + var(--icaro-lvl, 0) * .22)) saturate(1.05);
+  -webkit-mask-image: radial-gradient(ellipse 50% 52% at 50% 46%, #000 70%, transparent 100%);
+  mask-image: radial-gradient(ellipse 50% 52% at 50% 46%, #000 70%, transparent 100%);
+  transition: filter .08s linear;
+  pointer-events: none;
+}
+@media (max-aspect-ratio: 4/5) { .icaro-face { width: 108vw; margin-left: -4vw; } }
+
+.icaro-cap {
+  max-width: min(920px, calc(100vw - 32px));
+  margin: 0 auto;
+  text-align: center;
+  font-size: clamp(16px, 1.7vw, 23px);
+  line-height: 1.5;
+  color: rgba(214, 238, 255, .55);
+  text-shadow: 0 0 10px rgba(30, 123, 255, .8), 0 2px 6px #000;
+  opacity: 0;
+  transition: opacity .35s ease;
+  min-height: 3em;
+}
+.icaro-cap.on { opacity: 1; }
+.icaro-cap .w { transition: color .12s ease, text-shadow .12s ease; }
+.icaro-cap .w.said { color: #eaf8ff; }
+.icaro-cap .w.now { color: #fff; text-shadow: 0 0 12px rgba(111, 243, 255, .95), 0 0 2px #fff; }
+.icaro-cap.user { color: #8fb1cc; font-style: italic; }
+
+@media (prefers-reduced-motion: reduce) { .icaro-cap .w { transition: none; } }

@@ -12,7 +12,13 @@
     "allowImportingTsExtensions": true,
     "types": ["node", "vite/client"],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@/lib/*": ["./src/components/mockups/icaro-app-current/_shared/lib/*"],
+      "@/hooks/*": ["./src/components/mockups/icaro-app-current/_shared/hooks/*"],
+      "@/hooks/use-mobile": ["./src/hooks/use-mobile.tsx"],
+      "@/hooks/use-toast": ["./src/hooks/use-toast.ts"],
+      "@/components/stage/*": ["./src/components/mockups/icaro-app-current/_shared/stage/*"],
+      "@/components/login/login-gate": ["./src/components/mockups/icaro-app-current/_shared/login-gate.tsx"]
     }
   }
 }
