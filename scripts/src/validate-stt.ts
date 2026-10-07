@@ -1,6 +1,6 @@
 // Valida a transcrição pelo servidor (/api/ai/stt) com o serviço Groq simulado.
 process.env.SESSION_SECRET ||= `teste-stt-${"x".repeat(32)}`;
-process.env.ICARO_USER1_CODE ||= "codigo-teste";
+process.env.ICARO_USER1_PASSWORD ||= "codigo-teste";
 process.env.GROQ_API_KEY = "gsk_falsa_para_teste";
 process.env.grok = "";
 
@@ -32,7 +32,7 @@ const check = (condition: unknown, message: string) => {
 const login = await realFetch(`${api}/auth/login`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ username: "user1", password: process.env.ICARO_USER1_PASSWORD ?? process.env.ICARO_USER1_CODE }),
+  body: JSON.stringify({ username: "user1", password: process.env.ICARO_USER1_PASSWORD }),
 });
 const cookie = (login.headers.get("set-cookie") || "").split(";")[0];
 const audio = new Uint8Array(4000).fill(7);

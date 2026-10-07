@@ -18,9 +18,9 @@ services:
         value: production
       - key: SESSION_SECRET
         generateValue: true
-      - key: ICARO_ADMIN_CODE
+      - key: ICARO_ADMIN_PASSWORD
         sync: false
-      - key: ICARO_USER1_CODE
+      - key: ICARO_USER1_PASSWORD
         sync: false
       - key: GROQ_API_KEY
         sync: false

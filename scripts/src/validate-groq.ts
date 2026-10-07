@@ -362,7 +362,7 @@ try {
   const loginResponse = await fetch("http://localhost:80/api/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username: "user1", password: process.env.ICARO_USER1_PASSWORD ?? process.env.ICARO_USER1_CODE ?? "" }),
+    body: JSON.stringify({ username: "user1", password: process.env.ICARO_USER1_PASSWORD ?? "" }),
   });
   if (!loginResponse.ok) throw new Error(`login de teste falhou: ${loginResponse.status}`);
   const sessionCookie = (loginResponse.headers.get("set-cookie") ?? "").split(";")[0];

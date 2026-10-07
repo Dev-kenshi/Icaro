@@ -215,7 +215,7 @@ async function main() {
     args: ['--autoplay-policy=no-user-gesture-required', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--no-sandbox'],
   });
   context = await browser.newContext({ viewport: { width: 1366, height: 800 }, locale: 'pt-BR' });
-  const loginRes = await context.request.post(new URL('api/auth/login', BASE).toString(), { data: { username: 'user1', password: process.env.ICARO_USER1_PASSWORD ?? process.env.ICARO_USER1_CODE ?? '' } });
+  const loginRes = await context.request.post(new URL('api/auth/login', BASE).toString(), { data: { username: 'user1', password: process.env.ICARO_USER1_PASSWORD ?? '' } });
   if (!loginRes.ok()) throw new Error(`Login de teste falhou: ${loginRes.status()}`);
   await context.addInitScript(INIT);
   await context.route('**/api/ai/status', (route: Route) => route.fulfill({

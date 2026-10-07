@@ -72,8 +72,6 @@ timeoutMs = 20000
 [userenv]
 
 [userenv.shared]
-ICARO_ADMIN_CODE = "539426"
-ICARO_USER1_CODE = "54632"
 ELEVENLABS_VOICE_ID = "A26KfvFuSKaMzhhYkSlQ"
 
 [nix]
