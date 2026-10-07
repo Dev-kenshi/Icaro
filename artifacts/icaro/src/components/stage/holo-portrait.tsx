@@ -10,6 +10,9 @@ export function HoloPortrait({ definition }: { definition: AvatarDefinition }) {
     <div className="holo-avatar__portrait" data-testid={`avatar-layer-${definition.id}`} aria-hidden="true">
       <img className="holo-avatar__img" src={src} alt="" draggable={false} data-testid={`img-avatar-${definition.id}`} />
       <img className="holo-avatar__img holo-avatar__jaw" src={src} alt="" draggable={false} />
+      {definition.id === 'classico' && (
+        <span className="holo-avatar__mouth-opening" data-testid="avatar-mouth-classico" />
+      )}
     </div>
   );
 }

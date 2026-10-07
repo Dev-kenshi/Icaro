@@ -56,6 +56,76 @@ export const GetCosmosFeedsResponse = zod.object({
 
 
 /**
+ * Requires an ÍCARO user or administrator session. Returns only details published on the event page; no attendee records are stored.
+ * @summary Get public ITCONT event information
+ */
+export const getItcontEventPathSlugMin = 3;
+export const getItcontEventPathSlugMax = 100;
+
+
+export const getItcontEventPathSlugRegExp = new RegExp('^[a-z0-9-]+$');
+
+
+export const GetItcontEventParams = zod.object({
+  "slug": zod.coerce.string().min(getItcontEventPathSlugMin).max(getItcontEventPathSlugMax).regex(getItcontEventPathSlugRegExp)
+})
+
+export const getItcontEventResponseEventStartsOnRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getItcontEventResponseEventEndsOnRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getItcontEventResponseSessionsItemDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getItcontEventResponseSessionsItemStartsAtRegExp = new RegExp('^\\d{2}:\\d{2}:\\d{2}$');
+export const getItcontEventResponseSessionsItemEndsAtRegExp = new RegExp('^\\d{2}:\\d{2}:\\d{2}$');
+export const getItcontEventResponseRegistrationCategoriesItemPriceCentsMin = 0;
+
+export const getItcontEventResponseRegistrationCategoriesItemCurrencyRegExp = new RegExp('^[A-Z]{3}$');
+export const getItcontEventResponseRegistrationCategoriesItemAvailableUntilRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const GetItcontEventResponse = zod.object({
+  "event": zod.object({
+  "slug": zod.string(),
+  "title": zod.string(),
+  "summary": zod.string(),
+  "description": zod.string(),
+  "startsOn": zod.string().regex(getItcontEventResponseEventStartsOnRegExp),
+  "endsOn": zod.string().regex(getItcontEventResponseEventEndsOnRegExp),
+  "timezone": zod.string(),
+  "venue": zod.string(),
+  "address": zod.string(),
+  "city": zod.string(),
+  "state": zod.string(),
+  "country": zod.string(),
+  "organizerName": zod.string(),
+  "organizingProject": zod.string(),
+  "bannerUrl": zod.string().url(),
+  "logoUrl": zod.string().url(),
+  "sourceUrl": zod.string().url(),
+  "updatedAt": zod.coerce.date()
+}),
+  "sessions": zod.array(zod.object({
+  "date": zod.string().regex(getItcontEventResponseSessionsItemDateRegExp),
+  "title": zod.string(),
+  "startsAt": zod.string().regex(getItcontEventResponseSessionsItemStartsAtRegExp),
+  "endsAt": zod.string().regex(getItcontEventResponseSessionsItemEndsAtRegExp),
+  "sortOrder": zod.number().int()
+})),
+  "guests": zod.array(zod.object({
+  "name": zod.string(),
+  "imageUrl": zod.string().url(),
+  "sortOrder": zod.number().int()
+})),
+  "registrationCategories": zod.array(zod.object({
+  "name": zod.string(),
+  "priceCents": zod.number().int().min(getItcontEventResponseRegistrationCategoriesItemPriceCentsMin),
+  "currency": zod.string().regex(getItcontEventResponseRegistrationCategoriesItemCurrencyRegExp),
+  "availableUntil": zod.string().regex(getItcontEventResponseRegistrationCategoriesItemAvailableUntilRegExp),
+  "registrationUrl": zod.string().url(),
+  "sortOrder": zod.number().int()
+}))
+})
+
+
+/**
  * @summary Synthesize ÍCARO's voice from text
  */
 export const speakAiTextBodyTextMax = 1200;

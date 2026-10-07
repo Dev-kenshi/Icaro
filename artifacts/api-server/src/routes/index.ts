@@ -6,15 +6,17 @@ import aiRouter from "./ai";
 import ttsTimestampsRouter from "./tts-timestamps";
 import sttRouter from "./stt";
 import cosmosRouter from "./cosmos";
+import itcontRouter from "./itcont";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
-router.use(["/ai", "/tts-ts"], requireAuth());
+router.use(["/ai", "/tts-ts", "/itcont"], requireAuth());
 router.use(sttRouter);
 router.use(aiRouter);
 router.use(ttsTimestampsRouter);
 router.use(cosmosRouter);
+router.use(itcontRouter);
 
 export default router;

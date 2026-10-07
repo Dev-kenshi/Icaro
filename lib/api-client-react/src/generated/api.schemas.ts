@@ -5,6 +5,65 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface ItcontEvent {
+  slug: string;
+  title: string;
+  summary: string;
+  description: string;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  startsOn: string;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  endsOn: string;
+  timezone: string;
+  venue: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  organizerName: string;
+  organizingProject: string;
+  bannerUrl: string;
+  logoUrl: string;
+  sourceUrl: string;
+  updatedAt: string;
+}
+
+export interface ItcontEventSession {
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  date: string;
+  title: string;
+  /** @pattern ^\d{2}:\d{2}:\d{2}$ */
+  startsAt: string;
+  /** @pattern ^\d{2}:\d{2}:\d{2}$ */
+  endsAt: string;
+  sortOrder: number;
+}
+
+export interface ItcontEventGuest {
+  name: string;
+  imageUrl: string;
+  sortOrder: number;
+}
+
+export interface ItcontRegistrationCategory {
+  name: string;
+  /** @minimum 0 */
+  priceCents: number;
+  /** @pattern ^[A-Z]{3}$ */
+  currency: string;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  availableUntil: string;
+  registrationUrl: string;
+  sortOrder: number;
+}
+
+export interface ItcontEventDetail {
+  event: ItcontEvent;
+  sessions: ItcontEventSession[];
+  guests: ItcontEventGuest[];
+  registrationCategories: ItcontRegistrationCategory[];
+}
+
 export type AiSpeechInputEmotion = typeof AiSpeechInputEmotion[keyof typeof AiSpeechInputEmotion];
 
 

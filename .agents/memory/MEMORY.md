@@ -18,3 +18,4 @@
 - [GitHub sync through the connector](github-sync.md) — REST-based pushes can leave the local branch with different commit IDs; reconcile local history deliberately.
 - [Ícaro Nielsen review scope](icaro-nielsen-scope.md) — apply usability heuristics to the complete user-facing interface, not the developer API.
 - [Ícaro responsive navigation](icaro-responsive-navigation.md) — keep phone drawer/bottom nav, tablet icon rail, and full desktop sidebar; avoid overlays on signed-in content.
+- [ITCONT data scope](itcont-data-scope.md) — keep public event/guest details and image links only; never copy images or import registrants, payroll, accounts, or ops data.

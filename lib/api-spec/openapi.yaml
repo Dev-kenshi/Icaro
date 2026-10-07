@@ -43,6 +43,38 @@ paths:
                 $ref: "#/components/schemas/CosmosFeedsResponse"
         "502":
           description: Public feed sources are temporarily unavailable
+  /itcont/events/{slug}:
+    get:
+      operationId: getItcontEvent
+      tags: [itcont]
+      summary: Get public ITCONT event information
+      description: Requires an ÍCARO user or administrator session. Returns only details published on the event page; no attendee records are stored.
+      security:
+        - IcaroSession: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 3
+            maxLength: 100
+            pattern: '^[a-z0-9-]+$'
+      responses:
+        "200":
+          description: Event details, program, guests, and public registration categories
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItcontEventDetail"
+        "400":
+          description: Invalid event slug
+        "401":
+          description: Authentication required
+        "404":
+          description: Event not found
+        "500":
+          description: Internal server error
   /ai/tts:
     post:
       operationId: speakAiText
@@ -299,7 +331,101 @@ paths:
         "404":
           description: Candidate not found or already reviewed
 components:
+  securitySchemes:
+    IcaroSession:
+      type: apiKey
+      in: cookie
+      name: icaro_session
   schemas:
+    ItcontEventDetail:
+      type: object
+      additionalProperties: false
+      required: [event, sessions, guests, registrationCategories]
+      properties:
+        event:
+          $ref: "#/components/schemas/ItcontEvent"
+        sessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ItcontEventSession"
+        guests:
+          type: array
+          items:
+            $ref: "#/components/schemas/ItcontEventGuest"
+        registrationCategories:
+          type: array
+          items:
+            $ref: "#/components/schemas/ItcontRegistrationCategory"
+    ItcontEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - slug
+        - title
+        - summary
+        - description
+        - startsOn
+        - endsOn
+        - timezone
+        - venue
+        - address
+        - city
+        - state
+        - country
+        - organizerName
+        - organizingProject
+        - bannerUrl
+        - logoUrl
+        - sourceUrl
+        - updatedAt
+      properties:
+        slug: { type: string }
+        title: { type: string }
+        summary: { type: string }
+        description: { type: string }
+        startsOn: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        endsOn: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        timezone: { type: string }
+        venue: { type: string }
+        address: { type: string }
+        city: { type: string }
+        state: { type: string }
+        country: { type: string }
+        organizerName: { type: string }
+        organizingProject: { type: string }
+        bannerUrl: { type: string, format: uri }
+        logoUrl: { type: string, format: uri }
+        sourceUrl: { type: string, format: uri }
+        updatedAt: { type: string, format: date-time }
+    ItcontEventSession:
+      type: object
+      additionalProperties: false
+      required: [date, title, startsAt, endsAt, sortOrder]
+      properties:
+        date: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        title: { type: string }
+        startsAt: { type: string, pattern: '^\d{2}:\d{2}:\d{2}$' }
+        endsAt: { type: string, pattern: '^\d{2}:\d{2}:\d{2}$' }
+        sortOrder: { type: integer }
+    ItcontEventGuest:
+      type: object
+      additionalProperties: false
+      required: [name, imageUrl, sortOrder]
+      properties:
+        name: { type: string }
+        imageUrl: { type: string, format: uri }
+        sortOrder: { type: integer }
+    ItcontRegistrationCategory:
+      type: object
+      additionalProperties: false
+      required: [name, priceCents, currency, availableUntil, registrationUrl, sortOrder]
+      properties:
+        name: { type: string }
+        priceCents: { type: integer, minimum: 0 }
+        currency: { type: string, pattern: '^[A-Z]{3}$' }
+        availableUntil: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        registrationUrl: { type: string, format: uri }
+        sortOrder: { type: integer }
     AiSpeechInput:
       type: object
       additionalProperties: false

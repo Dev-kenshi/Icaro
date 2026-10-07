@@ -51,6 +51,7 @@ check("Retrato acompanha a abertura da boca sincronizada pelo motor de fala", ()
   const speech = read("src/lib/speech.ts");
   const engine = read("public/avatar/avatar-engine.js");
   const css = read("src/pages/stage.css");
+  const portrait = read("src/components/stage/holo-portrait.tsx");
   assert.match(avatar, /mouth:\s*\{\s*open:\s*\{\s*x:\s*number\s*\}\s*\}/);
   assert.match(speech, /mouth:\s*actual\.mouth/);
   assert.match(engine, /this\.mouth\.open\.x/);
@@ -58,6 +59,9 @@ check("Retrato acompanha a abertura da boca sincronizada pelo motor de fala", ()
   assert.match(face, /setProperty\('--talk',\s*mouthOpen\.toFixed\(3\)\)/);
   assert.match(css, /\.holo-avatar__jaw\s*\{[\s\S]*?translateY\(calc\(var\(--talk,0\)\*12px\)\)/);
   assert.match(css, /scaleY\(calc\(1 \+ var\(--talk,0\)\*\.55\)\)/);
+  assert.match(portrait, /definition\.id === 'classico'[\s\S]*?holo-avatar__mouth-opening/);
+  assert.match(css, /\.stage \.face\[data-avatar-id="classico"\]\s+\.holo-avatar__jaw \{ display:none;\s*\}/);
+  assert.match(css, /\.holo-avatar__mouth-opening\s*\{[\s\S]*?top:68\.7%[\s\S]*?opacity:var\(--talk,0\)[\s\S]*?scaleY\(var\(--talk,0\)\)/);
 });
 
 check("Assets do pacote permanecem originais fora das extensões de expressão e fala do P10", () => {

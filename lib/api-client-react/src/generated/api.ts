@@ -32,6 +32,7 @@ import type {
   CosmosFeedsResponse,
   GetAiVoicesParams,
   HealthStatus,
+  ItcontEventDetail,
   TtsTimestampsInput,
   TtsTimestampsResult
 } from './api.schemas';
@@ -207,6 +208,84 @@ export function useGetCosmosFeeds<TData = Awaited<ReturnType<typeof getCosmosFee
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetCosmosFeedsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetItcontEventUrl = (slug: string,) => {
+
+
+
+
+  return `/api/itcont/events/${slug}`
+}
+
+/**
+ * Requires an ÍCARO user or administrator session. Returns only details published on the event page; no attendee records are stored.
+ * @summary Get public ITCONT event information
+ */
+export const getItcontEvent = async (slug: string, options?: Parameters<typeof customFetch>[1]): Promise<ItcontEventDetail> => {
+
+  return customFetch<ItcontEventDetail>(getGetItcontEventUrl(slug),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetItcontEventQueryKey = (slug: string,) => {
+    return [
+    `/api/itcont/events/${slug}`
+    ] as const;
+    }
+
+
+export const getGetItcontEventQueryOptions = <TData = Awaited<ReturnType<typeof getItcontEvent>>, TError = ErrorType<void>>(slug: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getItcontEvent>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetItcontEventQueryKey(slug);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getItcontEvent>>> = ({ signal }) => getItcontEvent(slug, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: slug !== null && slug !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getItcontEvent>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetItcontEventQueryResult = NonNullable<Awaited<ReturnType<typeof getItcontEvent>>>
+export type GetItcontEventQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get public ITCONT event information
+ */
+
+export function useGetItcontEvent<TData = Awaited<ReturnType<typeof getItcontEvent>>, TError = ErrorType<void>>(
+ slug: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getItcontEvent>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetItcontEventQueryOptions(slug,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

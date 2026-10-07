@@ -21,6 +21,21 @@
   transform:translateY(calc(var(--talk,0)*12px)) scaleY(calc(1 + var(--talk,0)*.55));
   transform-origin:50% 55%;
 }
+/* No retrato clássico a boca está em ~69% da imagem; o recorte do outro rosto não a alcança.
+   A abertura visual segue o mesmo --talk derivado da timeline de visemas, sem áudio separado. */
+.stage .face[data-avatar-id="classico"] .holo-avatar__jaw { display:none; }
+.holo-avatar__mouth-opening {
+  position:absolute; z-index:1; left:50%; top:68.7%; width:26%; height:4.8%;
+  border:1px solid #74e7ffb3; border-radius:50% / 42%;
+  background:radial-gradient(ellipse at 50% 50%,#02070d 0 53%,#315769 68%,#061018 100%);
+  box-shadow:0 0 8px #42ceff77; opacity:var(--talk,0);
+  transform:translate(-50%,-50%) scaleY(var(--talk,0)); transform-origin:center;
+  pointer-events:none;
+}
+.holo-avatar__mouth-opening::before {
+  content:''; position:absolute; top:7%; left:22%; right:22%; height:24%;
+  border-radius:0 0 45% 45%; background:#d9f8ff; box-shadow:0 1px 4px #68d8ff;
+}
 .stage .face .icaro-face[data-avatar-engine-hidden="true"] { opacity:0; }
 .holo-avatar__scan { position:absolute; z-index:2; inset:0; border-radius:50%; pointer-events:none; background:repeating-linear-gradient(0deg,#bfe9ff14 0 1px,transparent 1px 4px); mix-blend-mode:overlay; }
 .holo-avatar__sweep { position:absolute; z-index:2; inset:0; border-radius:50%; pointer-events:none; opacity:.3; background:linear-gradient(180deg,transparent 0%,rgba(140,225,255,.22) 50%,transparent 100%) no-repeat; background-size:100% 24%; animation:holo-sweep 5.2s linear infinite; }

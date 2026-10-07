@@ -8,6 +8,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "validate:voice": "tsx ./src/validate-voice.ts",
     "validate:hologram": "tsx ./src/validate-hologram.ts",
+    "seed:itcont": "tsx ../lib/db/src/seed/itcont.ts",
+    "validate:itcont": "tsx ../artifacts/api-server/src/validate-itcont.ts",
     "validate:groq": "tsx ./src/validate-groq.ts",
     "validate:knowledge": "tsx ./src/validate-fast-knowledge.ts",
     "validate:stt": "tsx ./src/validate-stt.ts",
