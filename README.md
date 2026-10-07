@@ -151,4 +151,6 @@ Rode o validador depois de editar. Ele aponta gatilhos fracos, duplicados e resp
 
 ## Créditos
 
+**Desenvolvedor do projeto:** Emanuel Macêdo Luz
+
 Projeto de Extensão **Contador do Amanhã**, curso de Ciências Contábeis da **UEFS**, Feira de Santana, Bahia. Motor de rosto `icaro-humano` em `vendor/`. Desenvolvido com apoio do Replit Agent e do Claude.
