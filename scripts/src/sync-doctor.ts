@@ -259,6 +259,15 @@ function exportChanges(reason: string) {
   console.log(`  alterações exportadas em .sync-out/ (${files.length} arquivo(s))`);
 }
 
+/** Commita o que houver de alteração local segura; devolve false se não havia nada. */
+function commitLocal(): boolean {
+  gitOk(SAFE_ADD);
+  if (gitOk(["diff", "--cached", "--quiet"])) return false; // só arquivos ignorados (ex.: .log)
+  const c = git(["commit", "-q", "-m", `sync: alterações locais ${new Date().toISOString().slice(0, 16)}`]);
+  if (c.code !== 0) stop(`não consegui commitar: ${c.err || c.out}`);
+  return true;
+}
+
 async function fix() {
   if (exists(".git/index.lock")) stop("Há um .git/index.lock: confirme que nenhum git está rodando e apague o arquivo.");
   if (exists(".git/rebase-merge") || exists(".git/rebase-apply")) stop("Há um rebase pendente: termine com `git rebase --continue` ou desfaça com `git rebase --abort`.");
@@ -270,22 +279,14 @@ async function fix() {
   const auth = !n.plain && n.auth;
   if (!n.plain && !n.auth) {
     console.log(`  o GitHub recusou a credencial do workspace${token ? " e o token" : " e não há GITHUB_TOKEN"}.`);
-    if (git(["status", "--porcelain"]).out) {
-      gitOk(SAFE_ADD);
-      gitOk(["commit", "-q", "-m", `sync: alterações locais ${new Date().toISOString().slice(0, 16)}`]);
-    }
+    commitLocal();
     exportChanges("sem credencial válida para o GitHub");
     stop("Sem acesso ao GitHub. Configure o secret GITHUB_TOKEN (token com acesso ao Dev-kenshi/Icaro) ou reconecte o GitHub, e rode de novo.", 3);
   }
   console.log(`  usando ${auth ? "o token GITHUB_TOKEN (só neste comando)" : "a credencial do workspace"}.`);
 
   log("2/6 Alterações locais");
-  if (git(["status", "--porcelain"]).out) {
-    gitOk(SAFE_ADD);
-    const c = git(["commit", "-q", "-m", `sync: alterações locais ${new Date().toISOString().slice(0, 16)}`]);
-    if (c.code !== 0) stop(`não consegui commitar: ${c.err}`);
-    console.log("  alterações locais guardadas num commit.");
-  } else console.log("  nada pendente.");
+  console.log(commitLocal() ? "  alterações locais guardadas num commit." : "  nada pendente.");
 
   log("3/6 Buscando o GitHub");
   const f = git(["fetch", "origin", BRANCH], { auth, timeout: 120_000 });
