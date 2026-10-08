@@ -29,6 +29,11 @@ import './stage.css';
 type State = 'idle' | 'listening' | 'thinking' | 'talking' | 'intro';
 type PanelTab = 'conversa' | 'voz' | 'ferramentas' | 'conexao' | 'sobre';
 type Provider = 'auto' | 'groq' | 'gemini' | 'openai' | 'claude' | 'cerebras' | 'openrouter' | 'mistral' | 'github' | 'nvidia' | 'cloudflare' | 'huggingface' | 'cohere';
+const CLASSIC_PROVIDER_ORDER = ['groq', 'gemini', 'openai', 'claude'] as Provider[];
+const classicProviderRank = (id: string) => {
+  const index = (CLASSIC_PROVIDER_ORDER as readonly string[]).indexOf(id);
+  return index === -1 ? CLASSIC_PROVIDER_ORDER.length : index;
+};
 type Entry = { role: 'user' | 'assistant'; content: string; link?: string };
 type Note = { text: string; at: number };
 type VisualQuality = 'auto' | 'high' | 'medium' | 'low';
@@ -174,7 +179,7 @@ export default function Stage() {
   const [typing, setTyping] = useState(false);
   const [text, setText] = useState('');
   const [log, setLog] = useState<Entry[]>([]);
-  const [provider, setProvider] = useState<Provider>('auto');
+  const [provider, setProvider] = useState<Provider>('groq');
   const bargeCandidateRef = useRef<{ text: string; at: number } | null>(null);
   const bargeHandledRef = useRef(false);
   const pitch = .95, rate = .92, voiceURI = null;
@@ -1365,12 +1370,13 @@ export default function Stage() {
                     name: 'Automático',
                     available: status.data?.providers.some((item) => AUTO_PROVIDER_IDS.has(item.id) && item.available) ?? false,
                   },
-                  ...(status.data?.providers ?? []).map((item) => ({
+                  ...(status.data?.providers ?? []).slice().sort((x, y) => classicProviderRank(x.id) - classicProviderRank(y.id)).map((item) => ({
                     id: item.id as Provider,
                     name: item.name,
                     available: item.available,
                   })),
-                ].map(({ id: p, name, available: ok }) => {
+                ].map(({ id: p, name, available: listed }) => {
+                  const ok = p === 'groq' ? status.data?.groqAvailable ?? listed : listed;
                   return (
                     <button key={p} disabled={!ok} onClick={() => setProvider(p)} className="card flex w-full items-center justify-between text-left disabled:opacity-50" style={{ borderColor: provider === p ? 'var(--holo)' : undefined }} data-testid={`button-provider-${p}`}>
                       <span className="disp font-semibold">{name || provName[p]}</span>

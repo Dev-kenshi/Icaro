@@ -6,6 +6,7 @@ import { useDataset } from '@/lib/dataset-context';
 type ChatMessage = { role: AiChatHistoryMessageRole; content: string; model?: string; isError?: boolean };
 type Provider = 'auto' | 'groq' | 'gemini' | 'openai' | 'claude' | 'cerebras' | 'openrouter' | 'mistral' | 'github' | 'nvidia' | 'cloudflare' | 'huggingface' | 'cohere';
 type ProviderStatusData = {
+  groqAvailable?: boolean;
   providers: Array<{
     id: Provider;
     name: string;
@@ -25,14 +26,16 @@ export default function Assistant() {
   const { dataset } = useDataset();
   const status = useGetAiStatus({ query: { queryKey: getGetAiStatusQueryKey() } });
   const sendMessage = useSendAiMessage();
-  const [provider, setProvider] = useState<Provider>('auto');
+  const [provider, setProvider] = useState<Provider>('groq');
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   const providers = status.data?.providers ?? [];
-  const available = provider === 'auto'
-    ? providers.some((item) => AUTO_PROVIDER_IDS.has(item.id) && item.available)
-    : providers.some((item) => item.id === provider && item.available);
+  const available = provider === 'groq'
+    ? status.data?.groqAvailable ?? false
+    : provider === 'auto'
+      ? providers.some((item) => AUTO_PROVIDER_IDS.has(item.id) && item.available)
+      : providers.some((item) => item.id === provider && item.available);
   const history = useMemo(() => messages.slice(-12).map(({ role, content }) => ({ role, content })), [messages]);
   const submit = () => {
     const trimmed = question.trim();
@@ -83,7 +86,8 @@ function ProviderPicker({ value, setValue, status }: { value: Provider; setValue
   return <div className="relative">
     <select value={value} onChange={(event) => setValue(event.target.value as Provider)} className="appearance-none rounded-lg border border-border bg-background py-2 pl-3 pr-8 text-xs font-semibold text-primary outline-none" aria-label="Selecionar provedor" data-testid="select-ai-provider">
       <option value="auto" disabled={!autoAvailable}>Automático {autoAvailable ? '· roteamento ativo' : '· sem provedores disponíveis'}</option>
-      {providerRows.map((item) => <option key={item.id} value={item.id} disabled={!item.available}>{item.name} · {item.available ? 'disponível' : item.configured ? item.state.replaceAll('_', ' ') : 'não configurado'}</option>)}
+      <option value="groq" disabled={!status?.groqAvailable}>Groq · {status?.groqAvailable ? 'disponível · padrão gratuito' : 'indisponível'}</option>
+      {providerRows.filter((item) => item.id !== 'groq').map((item) => <option key={item.id} value={item.id} disabled={!item.available}>{item.name} · {item.available ? 'disponível' : item.configured ? item.state.replaceAll('_', ' ') : 'não configurado'}</option>)}
     </select>
     <ChevronDown size={14} className="pointer-events-none absolute right-2 top-2.5 text-muted-foreground" />
   </div>;

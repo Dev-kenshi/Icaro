@@ -339,9 +339,9 @@ router.post("/ai/tts", async (req, res) => {
     }
   }
   try {
-    const spokenText = !voiceId && speech.family() === "gemini" ? applyTtsPronunciation(text) : text;
+    const speechText = !voiceId && speech.family() === "gemini" ? applyTtsPronunciation(text) : text;
     // Emotion is used by the avatar UI; do not prepend directions to spoken text.
-    const result = await speech.synthesize(spokenText, voiceId);
+    const result = voiceId ? await speech.synthesize(speechText, voiceId) : await speech.synthesize(speechText);
     if (result.family === "gemini" && result.cache === "miss") speechProviderAuthRejected = false;
     res.setHeader("Content-Type", result.contentType);
     res.setHeader("X-Speech-Provider", result.family);
@@ -731,7 +731,7 @@ router.post("/ai/chat", async (req, res) => {
         userMessage: safeUserMessage,
         maxTokens: responseTokenLimit,
       });
-      const answer = normalizeAnswerText(presenterize(result.answer));
+      const answer = normalizeAnswerText(result.answer);
       if (!answer) {
         req.log.error({ provider: "groq" }, "Groq returned no text");
         res.status(502).json({ error: "A Groq retornou uma resposta vazia." });
@@ -810,7 +810,7 @@ router.post("/ai/chat", async (req, res) => {
     }
   }
 
-  const apiKey = getClaudeApiKey();
+  const apiKey = process.env.ANTHROPIC_API_KEY?.trim() || process.env.CLAUDE_API_KEY_ROMULA?.trim();
   if (!apiKey) {
     res.status(503).json({
       error: "Claude ainda não está configurado. Adicione uma chave Anthropic aos Secrets do projeto.",

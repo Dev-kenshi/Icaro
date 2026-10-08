@@ -560,6 +560,10 @@ components:
         - claudeAvailable
         - speechAvailable
         - providers
+    AiProviderId:
+      type: string
+      description: Provedores clássicos de chat exibidos individualmente no painel de conexão.
+      enum: [gemini, openai, groq, claude]
     AiProviderHealth:
       type: object
       additionalProperties: false
