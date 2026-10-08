@@ -39,4 +39,4 @@ Before running a sync helper in fix mode, verify that the exact Git transport cr
 
 **Why:** A failed fix-mode attempt can change local Git history even when no remote fetch or push succeeds.
 
-**How to apply:** Run a read-only remote access check first. If fix mode stops for authentication, preserve its local commit and export directory, reconnect GitHub through Replit's Git Providers settings, then retry only after Git access succeeds.
+**How to apply:** Run a read-only remote access check first. If fix mode stops for authentication, preserve its local commit and export directory, reconnect GitHub through Replit's Git Providers settings, then retry only after Git access succeeds. Exclude generated directories recursively (`:!.sync-out/**`) and test both tracked and untracked contents; excluding only the directory name can still stage its children.
