@@ -109,20 +109,36 @@ check('Rosto em canvas sem máscaras de corte ou vídeo facial', () => {
   assert.match(css, /container-type:\s*size/);
   assert.match(css, /100cqh/);
   assert.match(css, /prefers-reduced-motion/);
-  for (const file of ['avatar-engine.js', 'speech-player.js', 'visemes-ptbr.js', 'assets/base.jpg']) {
+  // P10 extension files may carry expression/speech additions; everything else must match the vendor package.
+  for (const file of ['visemes-ptbr.js', 'assets/base.jpg']) {
     assert.deepEqual(
       readFileSync(path.join(app, 'public/avatar', file)),
       readFileSync(path.join(root, 'vendor/icaro-humano/avatar', file)),
     );
   }
+  const engine = read('public/avatar/avatar-engine.js');
+  assert.match(engine, /setEmotion\(/);
+  assert.match(engine, /setListeningActivity\(/);
+  const player = read('public/avatar/speech-player.js');
+  assert.match(player, /gapAfter/);
+  assert.match(player, /playbackRate/);
 });
 
 check('API rejeita pedidos vazios e inválidos, sem chamar a voz', async () => {
   const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(',')[0];
   assert.ok(domain, 'Domínio de desenvolvimento necessário para a validação HTTP');
+  const password = process.env.ICARO_USER1_PASSWORD;
+  assert.ok(password, 'ICARO_USER1_PASSWORD é necessária para o login de validação');
+  const login = await fetch(`https://${domain}/api/auth/login`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: 'user1', password }), signal: AbortSignal.timeout(10_000),
+  });
+  assert.equal(login.status, 200, `Login de validação falhou: ${login.status}`);
+  const cookie = (login.headers.get('set-cookie') ?? '').split(';')[0];
+  assert.ok(cookie.startsWith('icaro_session='), 'Sessão de validação não criada');
   for (const body of [{ text: '' }, { text: 'a'.repeat(601) }, { text: 42 }]) {
     const response = await fetch(`https://${domain}/api/tts-ts`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookie },
       body: JSON.stringify(body), signal: AbortSignal.timeout(10_000),
     });
     assert.ok([400, 413].includes(response.status), `Código inesperado: ${response.status}`);
