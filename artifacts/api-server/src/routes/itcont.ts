@@ -6,6 +6,7 @@ import {
 } from "@workspace/api-zod";
 import {
   db,
+  hasDatabase,
   itcontEvents,
   itcontEventGuests,
   itcontEventSessions,
@@ -18,6 +19,10 @@ router.get("/itcont/events/:slug", async (req, res): Promise<void> => {
   const params = GetItcontEventParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: "Identificador do evento inválido." });
+    return;
+  }
+  if (!hasDatabase) {
+    res.status(503).json({ error: "Programação do evento indisponível: banco de dados não configurado neste servidor." });
     return;
   }
 
