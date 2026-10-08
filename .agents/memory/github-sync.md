@@ -32,3 +32,11 @@ For REST-based GitHub writes, use only an API client and connector slug explicit
 **Why:** The OAuth Git pane remained active, but the workspace integration view exposed no REST client after the GitHub App connection was removed.
 
 **How to apply:** Before creating Git trees, commits, or refs, verify that the current Replit connection provides an executable authenticated REST client. If it does not, stop before remote writes and ask for the GitHub API integration to be reconnected.
+
+## Sync Doctor preflight
+
+Before running a sync helper in fix mode, verify that the exact Git transport credential works. A failed authentication check may still create a local commit and export a patch bundle before exiting.
+
+**Why:** A failed fix-mode attempt can change local Git history even when no remote fetch or push succeeds.
+
+**How to apply:** Run a read-only remote access check first. If fix mode stops for authentication, preserve its local commit and export directory, reconnect GitHub through Replit's Git Providers settings, then retry only after Git access succeeds.

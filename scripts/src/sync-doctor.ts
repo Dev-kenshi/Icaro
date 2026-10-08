@@ -54,7 +54,7 @@ function trackedFiles(): string[] {
   return r.code === 0 ? r.out.split(/\r?\n/).filter(Boolean) : [];
 }
 // Commit automático: tudo do projeto, menos logs, .env e a pasta exportada.
-const SAFE_ADD = ["add", "-A", "--", ".", ":!*.log", ":!.env", ":!.env.*", ":!.sync-out"];
+const SAFE_ADD = ["add", "-A", "--", ".", ":!*.log", ":!.env", ":!.env.*", ":!.sync-out/**"];
 const TEXT_EXT = /\.(?:ts|tsx|js|mjs|cjs|json|ya?ml|md|css|html|toml|txt|sh)$/i;
 
 // ------------------------------------------------------------- validações

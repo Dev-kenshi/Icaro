@@ -50,3 +50,6 @@ Thumbs.db
 
 # Ícaro voice cache / cloned voice id (runtime data)
 artifacts/api-server/.data
+
+# Sync Doctor recovery export stays local; never add it to a sync commit.
+.sync-out/
