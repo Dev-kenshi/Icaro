@@ -74,7 +74,7 @@ function LoginScreen({ onAuth, initialError }: { onAuth: (u: AuthUser) => void; 
         </svg>
         <h1 className="lg-title">ÍCARO</h1>
         <p className="lg-sub">Assistente de operações · Contabilidade UEFS</p>
-        <form onSubmit={submit} className="lg-form" autoComplete="off">
+        <form onSubmit={submit} className="lg-form">
           <label>
             <span>Nome de usuário</span>
             <input value={username} onChange={(e) => setUsername(e.target.value)} autoCapitalize="none" autoComplete="username" spellCheck={false} aria-label="Nome de usuário" data-testid="input-username" required />

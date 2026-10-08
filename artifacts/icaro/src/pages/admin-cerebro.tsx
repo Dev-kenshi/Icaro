@@ -60,6 +60,7 @@ export default function AdminCerebro() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [busyAction, setBusyAction] = useState<"bank" | "base" | "discard" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -90,6 +91,7 @@ export default function AdminCerebro() {
   const reviewCandidate = async (candidate: Candidate, action: "bank" | "base" | "discard") => {
     if (action === "discard" && !window.confirm(`Descartar esta resposta candidata?\n\n“${candidate.question.slice(0, 180)}”\n\nEssa ação não pode ser desfeita.`)) return;
     setBusyId(candidate.id);
+    setBusyAction(action);
     setError(null);
     setNotice(null);
     try {
@@ -107,6 +109,7 @@ export default function AdminCerebro() {
       setError(cause instanceof Error ? cause.message : "Não foi possível revisar a resposta.");
     } finally {
       setBusyId(null);
+      setBusyAction(null);
     }
   };
 
@@ -140,7 +143,13 @@ export default function AdminCerebro() {
       {notice && <div role="status" aria-live="polite" className="rounded-xl border border-secondary/30 bg-secondary/10 p-3 text-sm text-primary" data-testid="status-admin-success">{notice}</div>}
 
         {loading && !stats ? (
-        <div role="status" aria-live="polite" className="rounded-2xl border border-border bg-card p-8 text-sm text-muted-foreground">Carregando indicadores e respostas pendentes…</div>
+        <div role="status" aria-live="polite" className="space-y-4 rounded-2xl border border-border bg-card p-6 sm:p-8">
+          <span className="text-sm text-muted-foreground">Carregando indicadores e respostas pendentes…</span>
+          <div aria-hidden="true" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {[0, 1, 2, 3].map((item) => <div key={item} className="h-20 animate-pulse rounded-xl bg-muted" />)}
+          </div>
+          <div aria-hidden="true" className="h-48 animate-pulse rounded-xl bg-muted/70" />
+        </div>
       ) : stats ? (
         <>
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Indicadores do cérebro">
@@ -199,7 +208,7 @@ export default function AdminCerebro() {
             <div className="flex items-end justify-between gap-3">
               <div>
                 <h2 className="font-display text-3xl">Respostas para revisão</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Respostas geradas sem identificadores pessoais detectáveis.</p>
+                <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">Respostas candidatas podem conter dados pessoais: revise pergunta e resposta antes de aprovar. A detecção automática não garante que todos os identificadores tenham sido removidos.</p>
               </div>
               <span className="rounded-full border border-border px-3 py-1 text-xs text-muted-foreground">{candidates.length} pendentes</span>
             </div>
@@ -211,16 +220,17 @@ export default function AdminCerebro() {
                 <h3 className="mt-3 font-semibold leading-6">{candidate.question}</h3>
                 <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{candidate.answer}</p>
                 <div className="mt-5 flex flex-wrap gap-2">
-                  <Button size="sm" onClick={() => void reviewCandidate(candidate, "bank")} disabled={busyId === candidate.id} className="gap-1.5">
-                    <Check size={14} /> Aprovar no banco local
+                  <Button size="sm" onClick={() => void reviewCandidate(candidate, "bank")} disabled={busyId !== null} aria-busy={busyId === candidate.id && busyAction === "bank"} className="gap-1.5">
+                    <Check size={14} /> {busyId === candidate.id && busyAction === "bank" ? "Salvando revisão…" : "Aprovar no banco local"}
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => void reviewCandidate(candidate, "base")} disabled={busyId === candidate.id}>
-                    Aprovar na base
+                  <Button size="sm" variant="outline" onClick={() => void reviewCandidate(candidate, "base")} disabled={busyId !== null} aria-busy={busyId === candidate.id && busyAction === "base"}>
+                    {busyId === candidate.id && busyAction === "base" ? "Salvando revisão…" : "Aprovar na base"}
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => void reviewCandidate(candidate, "discard")} disabled={busyId === candidate.id} className="gap-1.5 text-destructive hover:text-destructive">
-                    <Trash2 size={14} /> Descartar
+                  <Button size="sm" variant="ghost" onClick={() => void reviewCandidate(candidate, "discard")} disabled={busyId !== null} aria-busy={busyId === candidate.id && busyAction === "discard"} aria-label={`Descartar resposta candidata: ${candidate.question.slice(0, 90)}`} className="gap-1.5 text-destructive hover:text-destructive">
+                    <Trash2 size={14} /> {busyId === candidate.id && busyAction === "discard" ? "Descartando…" : "Descartar"}
                   </Button>
                 </div>
+                <p className="mt-3 text-[11px] leading-5 text-muted-foreground">Aprovar adiciona esta resposta ao destino escolhido. Descartar remove a candidata e não pode ser desfeito.</p>
               </article>
             )) : (
               <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">

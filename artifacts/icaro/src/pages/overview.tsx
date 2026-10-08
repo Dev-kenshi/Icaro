@@ -10,7 +10,8 @@ export default function Overview() {
   const { dataset } = useDataset();
   const numericEntries = dataset ? Object.entries(dataset.stats.numericSummary) : [];
   const strongest = numericEntries[0];
-  const completeness = dataset ? Math.round(((dataset.rows.length * dataset.columns.length - Object.values(dataset.stats.missingByColumn).reduce((a, b) => a + b, 0)) / (dataset.rows.length * dataset.columns.length)) * 100) : 0;
+  const totalCells = dataset ? dataset.rows.length * dataset.columns.length : 0;
+  const completeness = dataset && totalCells > 0 ? Math.round(((totalCells - Object.values(dataset.stats.missingByColumn).reduce((a, b) => a + b, 0)) / totalCells) * 100) : null;
 
   return (
     <div className="space-y-8">
@@ -18,7 +19,7 @@ export default function Overview() {
         <div>
           <div className="eyebrow mb-3">Visão geral / inteligência operacional</div>
           <h1 className="max-w-3xl font-display text-5xl leading-[.92] tracking-tight text-primary sm:text-6xl">Do arquivo bruto ao próximo movimento.</h1>
-          <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground">Ícaro organiza o que está no seu CSV para você enxergar padrões, lacunas e decisões possíveis, sem inventar o que os dados não dizem.</p>
+            <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground">Ícaro organiza o que está no seu CSV para você enxergar padrões, lacunas e decisões possíveis, sem inventar o que os dados não dizem.</p>
         </div>
         <Link href="/analysis" className="group inline-flex shrink-0 items-center gap-2 rounded-xl border border-primary/15 bg-card px-4 py-3 text-sm font-semibold text-primary shadow-xs transition hover:-translate-y-0.5 hover:border-secondary" data-testid="link-open-analysis">
           <ScanSearch size={16} /> Abrir exploração <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
@@ -32,7 +33,7 @@ export default function Overview() {
             <div className="mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-secondary/15 text-secondary"><FileText size={23} /></div>
             <div className="eyebrow mb-3 text-secondary">Primeiro passo</div>
             <h2 className="font-display text-4xl leading-none text-primary">Traga um CSV para dentro.</h2>
-            <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground">Comece com uma exportação de vendas, atendimento, operações ou qualquer tabela que você conhece. A leitura acontece no navegador; nada é enviado até você pedir uma análise ao copiloto.</p>
+            <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground">Comece com uma exportação de vendas, atendimento, operações ou qualquer tabela que você conhece. A leitura acontece neste navegador. Ao enviar uma pergunta ao copiloto, serão compartilhados o nome do arquivo, as colunas, um resumo e até 12 linhas iniciais.</p>
             <div className="mt-7 flex flex-wrap gap-3 text-xs text-muted-foreground">
               {['Cabeçalho reconhecido', 'Valores vazios identificados', 'Colunas numéricas classificadas'].map((item) => <span key={item} className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-2"><CheckCircle2 size={14} className="text-secondary" />{item}</span>)}
             </div>
@@ -43,7 +44,7 @@ export default function Overview() {
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard label="Linhas observadas" value={dataset.rows.length.toLocaleString('pt-BR')} detail={dataset.name} icon={Table2} />
             <MetricCard label="Colunas lidas" value={dataset.columns.length.toString()} detail={`${dataset.stats.numericColumns.length} numéricas`} icon={BarChart3} />
-            <MetricCard label="Completude" value={`${completeness}%`} detail="células preenchidas" icon={CheckCircle2} />
+            <MetricCard label="Completude" value={completeness === null ? '—' : `${completeness}%`} detail={completeness === null ? 'sem células para avaliar' : 'células preenchidas'} icon={CheckCircle2} />
             <MetricCard label="Campos numéricos" value={dataset.stats.numericColumns.length.toString()} detail={dataset.stats.textColumns.length ? `${dataset.stats.textColumns.length} categóricos` : 'nenhum categórico'} icon={TrendingUp} />
           </section>
           <section className="grid gap-5 xl:grid-cols-[1.2fr_.8fr]">
@@ -54,13 +55,13 @@ export default function Overview() {
                 <InfoRow label="Primeira coluna" value={dataset.columns[0] ?? 'Não disponível'} />
                 <InfoRow label="Última coluna" value={dataset.columns.at(-1) ?? 'Não disponível'} />
                 <InfoRow label="Maior volume vazio" value={Object.entries(dataset.stats.missingByColumn).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'Nenhum'} />
-                <InfoRow label="Amostra para IA" value={`${Math.min(dataset.rows.length, 50)} linhas selecionáveis`} />
+                <InfoRow label="Amostra ao perguntar" value={`até ${Math.min(dataset.rows.length, 12)} linhas iniciais`} />
               </div>
             </div>
             <div className="rounded-2xl border border-border bg-primary p-6 text-primary-foreground shadow-md sm:p-7">
               <div className="eyebrow text-primary-foreground/50">Ponto de partida</div>
               <h2 className="mt-2 font-display text-3xl">Uma pergunta boa vem depois da leitura.</h2>
-              {strongest ? <p className="mt-4 text-sm leading-6 text-primary-foreground/70">A coluna <strong className="text-secondary">{strongest[0]}</strong> é o primeiro campo quantitativo encontrado. Veja escala, dispersão e valores ausentes antes de pedir uma interpretação.</p> : <p className="mt-4 text-sm leading-6 text-primary-foreground/70">Este arquivo não tem uma coluna numérica clara. Use a exploração para entender categorias, preenchimento e recortes antes de decidir o próximo passo.</p>}
+              {strongest ? <p className="mt-4 text-sm leading-6 text-primary-foreground/70">A coluna <strong className="text-secondary">{strongest[0]}</strong> é o primeiro campo quantitativo encontrado. Veja escala, dispersão e valores ausentes antes de pedir uma interpretação. Ao enviar uma pergunta, Ícaro compartilha o nome do arquivo, as colunas, o resumo e até 12 linhas iniciais.</p> : <p className="mt-4 text-sm leading-6 text-primary-foreground/70">Este arquivo não tem uma coluna numérica clara. Use a exploração para entender categorias, preenchimento e recortes antes de decidir o próximo passo.</p>}
               <Link href="/assistant" className="mt-7 inline-flex items-center gap-2 text-sm font-semibold text-secondary hover:text-accent" data-testid="link-ask-copilot">Perguntar ao copiloto <ArrowRight size={15} /></Link>
             </div>
           </section>

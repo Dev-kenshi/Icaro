@@ -18,7 +18,9 @@
     "validate:e2e": "tsx ./src/validate-e2e.ts",
     "validate:voice-output": "tsx ./src/validate-voice-output.ts",
     "validate:health-100": "tsx ./src/validate-health-100.ts",
-    "repair:health": "tsx ./src/repair-health.ts"
+    "repair:health": "tsx ./src/repair-health.ts",
+    "sync:check": "tsx ./src/sync-doctor.ts",
+    "sync:fix": "tsx ./src/sync-doctor.ts --fix"
   },
   "devDependencies": {
     "@types/node": "catalog:",

@@ -27,12 +27,20 @@ import { NeuralWeb } from '@/components/stage/neural-web';
 import './stage.css';
 
 type State = 'idle' | 'listening' | 'thinking' | 'talking' | 'intro';
+type PanelTab = 'conversa' | 'voz' | 'ferramentas' | 'conexao' | 'sobre';
 type Provider = 'auto' | 'groq' | 'gemini' | 'openai' | 'claude' | 'cerebras' | 'openrouter' | 'mistral' | 'github' | 'nvidia' | 'cloudflare' | 'huggingface' | 'cohere';
 type Entry = { role: 'user' | 'assistant'; content: string; link?: string };
 type Note = { text: string; at: number };
 type VisualQuality = 'auto' | 'high' | 'medium' | 'low';
 
 const STATE_LABEL: Record<State, string> = { idle: 'Em espera', listening: 'Ouvindo', thinking: 'Pensando', talking: 'Falando', intro: 'Apresentação' };
+const PANEL_TABS: { key: PanelTab; label: string }[] = [
+  { key: 'conversa', label: 'Conversa' },
+  { key: 'voz', label: 'Voz' },
+  { key: 'ferramentas', label: 'Ferramentas' },
+  { key: 'conexao', label: 'Conexão' },
+  { key: 'sobre', label: 'Sobre' },
+];
 const AUTO_PROVIDER_IDS = new Set(['groq', 'gemini', 'cerebras', 'openrouter', 'mistral', 'github', 'nvidia', 'cloudflare', 'huggingface', 'cohere']);
 const PROVIDER_NAMES: Record<Provider, string> = {
   auto: 'Automático',
@@ -109,7 +117,7 @@ export default function Stage() {
   const [helpOpen, setHelpOpen] = useState(false);
   const helpRef = useRef(false); helpRef.current = helpOpen;
   const panelRef = useRef(false); panelRef.current = panel;
-  const [tab, setTab] = useState<'conversa' | 'voz' | 'ferramentas' | 'conexao' | 'sobre'>('conversa');
+  const [tab, setTab] = useState<PanelTab>('conversa');
   const [scene, setScene] = useState<CosmosScene>('earth');
   const [sceneMode, setSceneMode] = useState<'all' | 'single'>('single');
   const [quality, setQuality] = useState<VisualQuality>(readQuality);
@@ -166,6 +174,7 @@ export default function Stage() {
   const dockRef = useRef<HTMLDivElement>(null);
   const panelTriggerRef = useRef<HTMLButtonElement>(null);
   const panelCloseRef = useRef<HTMLButtonElement>(null);
+  const panelTabRefs = useRef<Partial<Record<PanelTab, HTMLButtonElement>>>({});
   const panelWasOpenRef = useRef(false);
   const introRef = useRef<HTMLVideoElement>(null);
   const activeRef = useRef(false);
@@ -228,12 +237,33 @@ export default function Stage() {
   useEffect(() => {
     if (panel) {
       panelCloseRef.current?.focus();
-      const closeOnEscape = (event: KeyboardEvent) => {
-        if (event.key === 'Escape') setPanel(false);
+      const keepFocusInPanel = (event: KeyboardEvent) => {
+        if (event.key === 'Escape') {
+          setPanel(false);
+          return;
+        }
+        if (event.key !== 'Tab') return;
+        const dialog = document.getElementById('icaro-panel');
+        const focusable = dialog?.querySelectorAll<HTMLElement>(
+          'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+        );
+        if (!focusable?.length) {
+          event.preventDefault();
+          return;
+        }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && (document.activeElement === first || !dialog?.contains(document.activeElement))) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && (document.activeElement === last || !dialog?.contains(document.activeElement))) {
+          event.preventDefault();
+          first.focus();
+        }
       };
-      window.addEventListener('keydown', closeOnEscape);
+      window.addEventListener('keydown', keepFocusInPanel);
       panelWasOpenRef.current = true;
-      return () => window.removeEventListener('keydown', closeOnEscape);
+      return () => window.removeEventListener('keydown', keepFocusInPanel);
     }
     if (panelWasOpenRef.current) {
       panelWasOpenRef.current = false;
@@ -996,12 +1026,45 @@ export default function Stage() {
           </div>
           <button ref={panelCloseRef} className="hbtn" onClick={() => setPanel(false)} aria-label="Fechar painel" data-testid="button-close-panel"><X size={16} /></button>
         </div>
-        <div className="disp flex border-b border-[color:var(--line)]" role="tablist">
-          {([['conversa', 'Conversa'], ['voz', 'Voz'], ['ferramentas', 'Ferramentas'], ['conexao', 'Conexão'], ['sobre', 'Sobre']] as const).map(([k, l]) => (
-            <button key={k} role="tab" aria-selected={tab === k} className="tab" onClick={() => setTab(k)} data-testid={`tab-${k}`}>{l}</button>
+        <div className="disp flex border-b border-[color:var(--line)]" role="tablist" aria-label="Seções do painel">
+          {PANEL_TABS.map(({ key, label }, index) => (
+            <button
+              key={key}
+              ref={(node) => { if (node) panelTabRefs.current[key] = node; }}
+              id={`panel-tab-${key}`}
+              type="button"
+              role="tab"
+              aria-selected={tab === key}
+              aria-controls={`panel-content-${key}`}
+              tabIndex={tab === key ? 0 : -1}
+              className="tab"
+              onClick={() => setTab(key)}
+              onKeyDown={(event) => {
+                const offset = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+                if (!offset && event.key !== 'Home' && event.key !== 'End') return;
+                event.preventDefault();
+                const nextIndex = event.key === 'Home'
+                  ? 0
+                  : event.key === 'End'
+                    ? PANEL_TABS.length - 1
+                    : (index + offset + PANEL_TABS.length) % PANEL_TABS.length;
+                const nextTab = PANEL_TABS[nextIndex].key;
+                setTab(nextTab);
+                panelTabRefs.current[nextTab]?.focus();
+              }}
+              data-testid={`tab-${key}`}
+            >
+              {label}
+            </button>
           ))}
         </div>
-        <div className="flex-1 overflow-y-auto p-5 text-sm">
+        <div
+          id={`panel-content-${tab}`}
+          role="tabpanel"
+          aria-labelledby={`panel-tab-${tab}`}
+          tabIndex={0}
+          className="flex-1 overflow-y-auto p-5 text-sm"
+        >
           {tab === 'conversa' && (
             <div className="flex h-full flex-col gap-4">
               <div className="mono text-[11px] text-[color:var(--dim)]">Motor: <span className="text-[color:var(--ok)]">{provName[provider]}</span> · persona ÍCARO</div>
