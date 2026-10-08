@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Minus, Plus, LocateFixed } from 'lucide-react';
+import { Gauge, Minus, Plus, LocateFixed } from 'lucide-react';
 import type { CosmosFeedsResponse } from '@workspace/api-client-react';
 import {
   createCloudMaskTexture,
@@ -75,6 +75,14 @@ const PLANET_NAMES = ['Mercúrio', 'Vênus', 'Terra', 'Marte', 'Júpiter', 'Satu
 /** Sidereal periods in years; the visual period compresses them while keeping their order. */
 const PLANET_PERIOD_YEARS = [.2408, .6152, 1, 1.8808, 11.862, 29.457, 84.011, 164.79] as const;
 const visualOrbitSeconds = (years: number) => 14 * Math.pow(years / .2408, .55);
+const SPIN_SPEED_KEY = 'icaro.cosmos.spin-speed.v1';
+const SPIN_SPEEDS = [.5, 1, 2, 4] as const;
+function readSpinSpeed(): number {
+  try {
+    const raw = Number(localStorage.getItem(SPIN_SPEED_KEY));
+    return (SPIN_SPEEDS as readonly number[]).includes(raw) ? raw : 1;
+  } catch { return 1; }
+}
 const GALAXY_SPIN_RAD_PER_SECOND = .035;
 const EARTH_SPIN_RAD_PER_SECOND = .06;
 const EARTH_RESUME_DELAY_MS = 5000;
@@ -400,6 +408,14 @@ export function CosmosRenderer({
   const [hintSeen, setHintSeen] = useState(readHintSeen);
   const [focusLabel, setFocusLabel] = useState<string | null>(null);
   const [texturesLoading, setTexturesLoading] = useState(false);
+  const [spinSpeed, setSpinSpeed] = useState(readSpinSpeed);
+  const spinSpeedRef = useRef(spinSpeed);
+  spinSpeedRef.current = spinSpeed;
+  const cycleSpinSpeed = () => setSpinSpeed((current) => {
+    const next = SPIN_SPEEDS[(SPIN_SPEEDS.indexOf(current as typeof SPIN_SPEEDS[number]) + 1) % SPIN_SPEEDS.length] ?? 1;
+    try { localStorage.setItem(SPIN_SPEED_KEY, String(next)); } catch { /* storage can be disabled */ }
+    return next;
+  });
   const autoMotion = motion === 'on' || (motion === 'system' && !reducedMotion);
   const autoMotionRef = useRef(autoMotion);
   autoMotionRef.current = autoMotion;
@@ -1678,29 +1694,30 @@ export function CosmosRenderer({
           const seconds = delta * 16.667 / 1000;
           animationLastTime = time;
           const moving = !motionPaused();
+          const spin = spinSpeedRef.current;
           if (moving) motionTime += delta * 16.667;
           pointerParallax.x += (pointerParallax.targetX - pointerParallax.x) * .055;
           pointerParallax.y += (pointerParallax.targetY - pointerParallax.y) * .055;
           // Galaxy: the inner disk spins about its pole (positive Y keeps the arms trailing);
           // the outer group only carries the subtle mouse parallax.
-          if (moving && activeScene === 'galaxy') galaxyDisk.rotation.y += GALAXY_SPIN_RAD_PER_SECOND * seconds;
+          if (moving && activeScene === 'galaxy') galaxyDisk.rotation.y += GALAXY_SPIN_RAD_PER_SECOND * seconds * spin;
           groupGalaxy.rotation.x += (pointerParallax.y * .035 - groupGalaxy.rotation.x) * .025;
           groupGalaxy.rotation.z += (pointerParallax.x * .045 - groupGalaxy.rotation.z) * .025;
           groupSystem.rotation.x += (pointerParallax.y * .028 - groupSystem.rotation.x) * .025;
           groupSystem.rotation.z += (pointerParallax.x * .035 - groupSystem.rotation.z) * .025;
           if (moving && activeScene === 'earth' && !cityViewActive && time > earthPausedUntil) {
-            groupEarth.rotation.y += EARTH_SPIN_RAD_PER_SECOND * seconds;
+            groupEarth.rotation.y += EARTH_SPIN_RAD_PER_SECOND * seconds * spin;
           }
           groupEarth.rotation.x += (pointerParallax.y * .028 - groupEarth.rotation.x) * .025;
           groupEarth.rotation.z += (pointerParallax.x * .035 - groupEarth.rotation.z) * .025;
           if (moving) {
-            backgroundStars.rotation.y += .000006 * delta;
+            backgroundStars.rotation.y += .000006 * delta * spin;
             if (activeScene === 'system') {
-              orbitClock += seconds;
+              orbitClock += seconds * spin;
               placePlanets();
             }
             planets.forEach(({ mesh }, index) => {
-              mesh.rotation.y += (.0012 + .00035 / (index + 1)) * delta;
+              mesh.rotation.y += (.0012 + .00035 / (index + 1)) * delta * spin;
             });
           }
           if (focus) {
@@ -1877,6 +1894,9 @@ export function CosmosRenderer({
             )}
           </div>
           <div className="cosmos-navigation__buttons">
+            <button type="button" className="cosmos-navigation__speed" aria-label={`Velocidade do giro automático: ${spinSpeed}×`} title="Velocidade do giro automático" onClick={() => { cycleSpinSpeed(); touch(); }} data-testid={`button-cosmos-speed-${scene}`}>
+              <Gauge size={14} aria-hidden="true" /><span>{spinSpeed}×</span>
+            </button>
             <button type="button" aria-label="Afastar" title="Afastar (−)" onClick={() => { navigationRef.current?.zoomOut(); touch(); }} data-testid={`button-cosmos-zoom-out-${scene}`}>
               <Minus size={15} aria-hidden="true" />
             </button>

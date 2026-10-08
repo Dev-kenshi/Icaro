@@ -36,6 +36,7 @@ export function StageHelp({ open, onOpen, onClose, clock, stateLabel, children }
           <li>Use pinça, roda do mouse ou os botões + e − para aproximar e afastar.</li>
           <li>Toque num planeta para segui-lo; “Soltar” encerra o acompanhamento.</li>
           <li>Toque duas vezes ou use “Recentralizar” para voltar à vista inicial.</li>
+          <li>O botão de velocidade (0,5×, 1×, 2× ou 4×) ajusta o giro automático da Terra, dos planetas e da galáxia.</li>
         </ul>
         <h3>Atalhos de teclado</h3>
         <dl className="sh-keys">

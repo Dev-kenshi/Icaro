@@ -770,3 +770,7 @@
 @media (prefers-reduced-motion: reduce) {
   .stage-notice__pulse { animation: none !important; }
 }
+
+/* Speed control for the automatic scene spin. */
+.cosmos-navigation__buttons .cosmos-navigation__speed { display: inline-flex; width: auto; gap: 4px; padding: 0 7px; font: 9px/1 'IBM Plex Mono', monospace; letter-spacing: .04em; }
+.cosmos-panel .cosmos-navigation__speed span { display: none; }
