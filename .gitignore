@@ -50,3 +50,6 @@ Thumbs.db
 
 # Ícaro voice cache / cloned voice id (runtime data)
 artifacts/api-server/.data
+
+# Sync Doctor: alterações exportadas quando não há acesso ao GitHub
+.sync-out/

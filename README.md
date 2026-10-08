@@ -120,6 +120,34 @@ pnpm --filter @workspace/scripts run validate:e2e        # 50 cenários (API rea
 pnpm --filter @workspace/scripts exec tsx ./src/validate-wake.ts         # "Ok, Ícaro"
 ```
 
+## Sincronização Replit ⇄ GitHub (Sync Doctor)
+
+Quando o projeto é editado no Replit e fora dele ao mesmo tempo, use o **Sync Doctor**:
+
+```bash
+pnpm --filter @workspace/scripts run sync:check   # 100 validações, não altera nada
+pnpm --filter @workspace/scripts run sync:fix     # sincroniza com segurança
+pnpm --filter @workspace/scripts run sync:fix -- --abort   # desfaz um merge pendente
+```
+
+**As 100 validações cobrem:**
+- ambiente Git (12);
+- credenciais e conexão com o GitHub (10);
+- divergência entre os lados, incluindo merge simulado (9);
+- integridade (19): marcadores de conflito, JSON, lockfile, chaves expostas e arquivos indevidos;
+- funcionalidades entregues que não podem sumir (30);
+- comportamento real (20): cálculos da folha e respostas do banco.
+
+**O que o `sync:fix` faz:**
+1. Guarda as alterações locais num commit (sem `.log`, `.env` nem `.sync-out/`).
+2. Busca o GitHub. Se a credencial do workspace falhar, usa o secret `GITHUB_TOKEN` só naquele comando, sem gravá-lo.
+3. Junta os dois lados sem descartar nada. Em conflito, para e lista os arquivos.
+4. **Desfaz o merge** se ele apagaria alguma funcionalidade entregue.
+5. Envia sem force-push. Se o `main` recusar, envia para um ramo `sync-AAAA-MM-DD`.
+6. Sem nenhuma credencial, exporta as alterações em `.sync-out/` (patches e bundle) para aplicar do outro lado.
+
+Códigos de saída: `0` tudo certo · `1` erros a revisar · `2` conflito ou merge desfeito · `3` sem acesso ao GitHub.
+
 ## Adicionando conhecimento
 
 Cada área tem um arquivo em `artifacts/api-server/src/lib/conhecimento/`. Uma entrada tem este formato:

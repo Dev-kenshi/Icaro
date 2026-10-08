@@ -53,6 +53,8 @@ function trackedFiles(): string[] {
   const r = git(["ls-files"]);
   return r.code === 0 ? r.out.split(/\r?\n/).filter(Boolean) : [];
 }
+// Commit automático: tudo do projeto, menos logs, .env e a pasta exportada.
+const SAFE_ADD = ["add", "-A", "--", ".", ":!*.log", ":!.env", ":!.env.*", ":!.sync-out"];
 const TEXT_EXT = /\.(?:ts|tsx|js|mjs|cjs|json|ya?ml|md|css|html|toml|txt|sh)$/i;
 
 // ------------------------------------------------------------- validações
@@ -269,7 +271,7 @@ async function fix() {
   if (!n.plain && !n.auth) {
     console.log(`  o GitHub recusou a credencial do workspace${token ? " e o token" : " e não há GITHUB_TOKEN"}.`);
     if (git(["status", "--porcelain"]).out) {
-      gitOk(["add", "-A"]);
+      gitOk(SAFE_ADD);
       gitOk(["commit", "-q", "-m", `sync: alterações locais ${new Date().toISOString().slice(0, 16)}`]);
     }
     exportChanges("sem credencial válida para o GitHub");
@@ -279,7 +281,7 @@ async function fix() {
 
   log("2/6 Alterações locais");
   if (git(["status", "--porcelain"]).out) {
-    gitOk(["add", "-A"]);
+    gitOk(SAFE_ADD);
     const c = git(["commit", "-q", "-m", `sync: alterações locais ${new Date().toISOString().slice(0, 16)}`]);
     if (c.code !== 0) stop(`não consegui commitar: ${c.err}`);
     console.log("  alterações locais guardadas num commit.");
