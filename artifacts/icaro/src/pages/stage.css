@@ -710,3 +710,63 @@
   .materialize { animation: materialize-out .2s ease .2s forwards; }
   .materialize__online { opacity: 1; }
 }
+
+/* Scene navigation status, stage notices and the dock status row (Nielsen 1, 3, 6 and 9). */
+.cosmos-navigation__hint { font-size: 9.5px; }
+.cosmos-navigation__status { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; max-width: min(46vw, 300px); pointer-events: none; }
+.cosmos-navigation__status:empty { display: none; }
+.cosmos-chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 5px 4px 10px; border: 1px solid #6aa2ad70; border-radius: 999px; background: #041521e8; color: #cdeff2; font: 10px/1.2 'IBM Plex Mono', monospace; letter-spacing: .03em; box-shadow: 0 6px 18px #00101a66; backdrop-filter: blur(10px); pointer-events: auto; }
+.cosmos-chip:not(:has(button)) { padding: 6px 10px; }
+.cosmos-chip button { min-height: 28px; padding: 0 11px; border: 1px solid #85dcd3a6; border-radius: 999px; background: #15404b; color: #e6fffb; font: inherit; font-weight: 600; cursor: pointer; }
+.cosmos-chip button:hover, .cosmos-chip button:focus-visible { background: #1f5c69; outline: 2px solid #9ff3e6; outline-offset: 1px; }
+.cosmos-chip--focus { border-color: #ffd89590; color: #ffe8bf; }
+.cosmos-navigation__buttons .cosmos-navigation__recenter { display: inline-flex; width: auto; gap: 6px; padding: 0 10px; font: 10px/1 'IBM Plex Mono', monospace; letter-spacing: .04em; }
+.cosmos-panel .cosmos-navigation__recenter span { display: none; }
+.cosmos-panel .cosmos-navigation__status { max-width: 70%; }
+.cosmos-panel .cosmos-chip { padding: 2px 3px 2px 7px; font-size: 7.5px; gap: 5px; }
+.cosmos-panel .cosmos-chip button { min-height: 22px; padding: 0 7px; }
+.cosmos-panel .cosmos-chip:not(:has(button)) { padding: 4px 7px; }
+
+.stage-notices { position: absolute; z-index: 13; top: max(66px, calc(env(safe-area-inset-top) + 60px)); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; width: min(92vw, 580px); pointer-events: none; }
+.stage-notices:empty { display: none; }
+.stage-notice { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; padding: 7px 12px; border: 1px solid #5fd8ff66; border-radius: 12px; background: #04111bf2; color: #d7f3fa; font-size: 12.5px; line-height: 1.35; text-align: center; box-shadow: 0 12px 36px #000a; backdrop-filter: blur(14px); pointer-events: auto; }
+.stage-notice--warn { border-color: #ffc36a99; color: #ffe9c7; }
+.stage-notice--bad { border-color: #ff8a7a99; color: #ffd9d3; }
+.stage-notice button { min-height: 32px; padding: 0 12px; border: 1px solid currentColor; border-radius: 999px; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
+.stage-notice button:hover { background: #ffffff14; }
+.stage-notice button:focus-visible { outline: 2px solid #9ff3e6; outline-offset: 2px; }
+.stage-notice .stage-notice__close { display: inline-grid; place-items: center; min-width: 32px; padding: 0; border-color: transparent; }
+.stage-notice__pulse { width: 8px; height: 8px; flex: none; border-radius: 50%; background: #5fd8ff; animation: stage-notice-pulse 1.2s ease-in-out infinite; }
+@keyframes stage-notice-pulse { 50% { opacity: .25; transform: scale(.7); } }
+
+/* The dock and caption must not swallow drags meant for the 3D scene. */
+.dock { pointer-events: none; }
+.dock > * { pointer-events: auto; }
+.caption { pointer-events: none; }
+.stage[data-layout-editing] .caption, .stage[data-layout-editing] .dock { pointer-events: auto; }
+.dock-status { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 30px; }
+.state-pill { display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border: 1px solid #6aa2ad55; border-radius: 999px; background: #041521cc; color: #bfe4ea; font: 10px/1.2 'IBM Plex Mono', monospace; letter-spacing: .12em; text-transform: uppercase; }
+.state-pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #6aa2ad; }
+.state-pill[data-state="listening"] { border-color: #ffc36a88; color: #ffe1a3; }
+.state-pill[data-state="listening"]::before { background: #ffc36a; }
+.state-pill[data-state="thinking"] { border-color: #b9a6ff88; color: #ddd4ff; }
+.state-pill[data-state="thinking"]::before { background: #b9a6ff; }
+.state-pill[data-state="talking"] { border-color: #74ffd288; color: #a6ffdc; }
+.state-pill[data-state="talking"]::before { background: #74ffd2; }
+.stage .dock-stop { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 13px; border-color: #ff9d8a99; color: #ffd9d3; font-size: 12px; }
+.dock-suggestions { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.dock-suggestions .chip { min-height: 32px; font-size: 11.5px; cursor: pointer; }
+.panel-back { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; font-size: 12px; }
+@media (max-width: 767px) {
+  .stage-notices { top: calc(env(safe-area-inset-top) + 112px); }
+  .stage-notice { font-size: 12px; padding: 6px 10px; }
+  .cosmos-navigation__status { max-width: 58vw; }
+  .dock-suggestions .chip { min-height: 36px; }
+}
+@media (max-width: 767px) and (orientation: landscape) {
+  .stage-notices { top: calc(env(safe-area-inset-top) + 56px); }
+  .dock-suggestions { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage-notice__pulse { animation: none !important; }
+}

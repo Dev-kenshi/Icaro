@@ -427,8 +427,8 @@ async function main() {
     assert(chatCalls.length === before + 1 && cap.length > 10, 'sem resposta');
     return `"${cap.slice(0, 60)}…"`;
   });
-  await test('Seta para a direita (passador de slide) ativa e a pergunta é respondida', async () => {
-    await fresh(); await page.keyboard.press('ArrowRight'); await until(() => voiceActive(page), 2000, 'escuta');
+  await test('Espaço ativa e a pergunta é respondida', async () => {
+    await fresh(); await page.keyboard.press('Space'); await until(() => voiceActive(page), 2000, 'escuta');
     assert((await state(page)) === 'listening', 'estado não é escuta');
     const before = chatCalls.length; await speakLike(page, 'o que é a DRE');
     await waitState(page, 'talking', 10000); await waitState(page, 'idle', 15000);
@@ -437,10 +437,10 @@ async function main() {
   await test('PageDown (passador de slide) ativa a escuta', async () => {
     await fresh(); await page.keyboard.press('PageDown'); await until(() => voiceActive(page), 2000, 'escuta ativa');
   });
-  await test('Seta funciona com o botão do microfone em foco', async () => {
+  await test('PageDown funciona com o botão do microfone em foco', async () => {
     await fresh(); await page.click('[data-testid="button-mic"]'); await until(() => voiceActive(page), 2000, 'ativação');
     await page.click('[data-testid="button-mic"]'); await until(async () => !(await voiceActive(page)), 2000, 'espera');
-    await page.keyboard.press('ArrowRight'); await until(() => voiceActive(page), 2000, 'ativação pela seta');
+    await page.keyboard.press('PageDown'); await until(() => voiceActive(page), 2000, 'ativação pelo PageDown');
   });
   await test('Enter no campo de texto envia a pergunta, sem ativar o microfone', async () => {
     await fresh(); await page.click('[data-testid="button-toggle-typing"]');
@@ -452,13 +452,13 @@ async function main() {
   });
   await test('Shift+Enter e tecla repetida são ignorados', async () => {
     await fresh(); await page.keyboard.press('Shift+Enter');
-    await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', repeat: true })));
+    await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageDown', repeat: true })));
     await sleep(500); assert(!(await voiceActive(page)), 'atalho com modificador/repetição ativou');
   });
   await test('Atalhos ignorados com o painel aberto', async () => {
     await page.click('[data-testid="button-open-panel"]'); await sleep(300);
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-    await page.keyboard.press('ArrowRight'); await sleep(400);
+    await page.keyboard.press('PageDown'); await sleep(400);
     assert(!(await voiceActive(page)), 'ativou com painel aberto');
     await page.click('[data-testid="button-close-panel"]');
   });

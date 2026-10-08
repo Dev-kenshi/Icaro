@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { StageHelp } from '@/components/stage/stage-help';
 import { shouldActivateStageShortcut } from '@/lib/stage-shortcuts';
-import { Mic, X, BarChart3, ExternalLink, Trash2, Menu, Keyboard, Play, Maximize, Volume2, VolumeX, Eye, EyeOff, Orbit, Globe2, Radio, SkipForward, Layers, Move, RotateCcw, Check } from 'lucide-react';
+import { Mic, X, BarChart3, ExternalLink, Trash2, Menu, Keyboard, Play, Maximize, Volume2, VolumeX, Eye, EyeOff, Orbit, Globe2, Sparkles, SkipForward, Layers, Move, RotateCcw, Check, Square, ArrowLeft } from 'lucide-react';
 import { getGetAiStatusQueryKey, getGetAiVoicesQueryKey, getGetCosmosFeedsQueryKey, getHealthCheckQueryKey, useGetAiStatus, useGetAiVoices, useGetCosmosFeeds, useHealthCheck, useSendAiMessage, type AiChatResponse, type AiVoiceCatalog } from '@workspace/api-client-react';
 import { requestAiChatStream } from '@/lib/ai-chat-stream';
 import { interpret, formatDuration } from '@/lib/commands';
@@ -21,7 +21,7 @@ import { AvatarAdjuster } from '@/components/stage/avatar-adjuster';
 import { AVATAR_LAYOUT_STORAGE_KEY, readAvatarLayout, updateAvatarLayout, type AvatarLayoutAction } from '@/lib/avatar-layout';
 import { HOLO_MEDIA } from '@/lib/holo-state';
 import { getMicMode, micErrorMessage, recordUtterance, setMicMode, SERVER_FALLBACK_ERRORS, transcribeOnServer, type MicMode } from '@/lib/mic-config';
-import { CosmosRenderer, type CosmosScene } from '@/components/stage/cosmos/renderer';
+import { CosmosRenderer, type CosmosMotion, type CosmosScene } from '@/components/stage/cosmos/renderer';
 import { CosmosOverview } from '@/components/stage/cosmos/CosmosOverview';
 import { NeuralWeb } from '@/components/stage/neural-web';
 import './stage.css';
@@ -87,6 +87,30 @@ const readQuality = (): VisualQuality => {
     return value === 'high' || value === 'medium' || value === 'low' ? value : 'auto';
   } catch { return 'auto'; }
 };
+const MOTION_KEY = 'icaro.stage.motion';
+const MOTION_OPTIONS: { value: CosmosMotion; label: string }[] = [
+  { value: 'system', label: 'Seguir o dispositivo' }, { value: 'on', label: 'Sempre ligado' }, { value: 'off', label: 'Desligado' },
+];
+const readMotion = (): CosmosMotion => {
+  try {
+    const value = localStorage.getItem(MOTION_KEY);
+    return value === 'on' || value === 'off' ? value : 'system';
+  } catch { return 'system'; }
+};
+const prefersReducedMotion = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+/** The 90 s scene tour waits this long after anyone touches, drags or picks a scene. */
+const SCENE_TOUR_PAUSE_MS = 180_000;
+const STAGE_SUGGESTIONS: [string, string][] = [
+  ['O que é ÍCARO?', 'O que significa ÍCARO?'],
+  ['IA na auditoria', 'Como a inteligência artificial pode ajudar na auditoria contábil?'],
+  ['Mostre o sistema solar', 'mostre o sistema solar'],
+  ['Que horas são?', 'que horas são'],
+];
+function isQuotaError(error: unknown) {
+  const status = error && typeof error === 'object' && 'status' in error ? Number((error as { status: unknown }).status) : 0;
+  const message = error instanceof Error ? error.message : errMsg(error);
+  return status === 429 || /\b429\b|quota|cota|limite (gratuito|de uso|de requisi)|rate.?limit|too many requests/i.test(message);
+}
 const timeValue = (value: number) => new Date(value < 1e12 ? value * 1000 : value);
 const loadNotes = (): Note[] => { try { const v = JSON.parse(localStorage.getItem(NOTES_KEY) || '[]'); return Array.isArray(v) ? v.filter((n) => n && typeof n.text === 'string') : []; } catch { return []; } };
 
@@ -121,10 +145,21 @@ export default function Stage() {
   const [scene, setScene] = useState<CosmosScene>('earth');
   const [sceneMode, setSceneMode] = useState<'all' | 'single'>('single');
   const [quality, setQuality] = useState<VisualQuality>(readQuality);
+  const [motion, setMotion] = useState<CosmosMotion>(readMotion);
+  const motionRef = useRef(motion); motionRef.current = motion;
+  const lastSceneInteractionRef = useRef(0);
+  const markSceneInteraction = useCallback(() => { lastSceneInteractionRef.current = Date.now(); }, []);
+  const enableMotion = useCallback(() => setMotion('on'), []);
+  const [online, setOnline] = useState(() => typeof navigator === 'undefined' || navigator.onLine !== false);
+  const [healthSlow, setHealthSlow] = useState(false);
+  const [quotaNotice, setQuotaNotice] = useState(false);
+  const [micNoticeDismissed, setMicNoticeDismissed] = useState(false);
   const [avatarLayout, setAvatarLayout] = useState(readAvatarLayout);
   const [avatarId, setAvatarId] = useState(() => readAvatarChoice().id);
   const stageLayout = useStageLayout();
   const [avatarControlsOpen, setAvatarControlsOpen] = useState(false);
+  const avatarControlsOpenRef = useRef(false); avatarControlsOpenRef.current = avatarControlsOpen;
+  const layoutEditingRef = useRef(false); layoutEditingRef.current = stageLayout.editing;
   const [avatarLayoutSaveError, setAvatarLayoutSaveError] = useState('');
   const [sceneVisible, setSceneVisible] = useState(false);
   const [sceneFade, setSceneFade] = useState(false);
@@ -208,7 +243,11 @@ export default function Stage() {
   useEffect(() => {
     if (sceneMode === 'all') return;
     const id = window.setInterval(() => {
-      setScene((current) => current === 'galaxy' ? 'system' : current === 'system' ? 'earth' : 'galaxy');
+      // Never pull a scene away from someone exploring it, mid-answer, or when automatic motion is off.
+      if (Date.now() - lastSceneInteractionRef.current < SCENE_TOUR_PAUSE_MS) return;
+      if (stateRef.current !== 'idle') return;
+      if (motionRef.current === 'off' || (motionRef.current === 'system' && prefersReducedMotion())) return;
+      setScene((current) => current === 'earth' ? 'system' : current === 'system' ? 'galaxy' : 'earth');
       setFeiraTarget(false);
       setSceneFade(true);
       window.setTimeout(() => setSceneFade(false), 1000);
@@ -218,6 +257,21 @@ export default function Stage() {
   useEffect(() => {
     try { localStorage.setItem(QUALITY_KEY, quality); } catch { /* storage can be disabled */ }
   }, [quality]);
+  useEffect(() => {
+    try { localStorage.setItem(MOTION_KEY, motion); } catch { /* storage can be disabled */ }
+  }, [motion]);
+  useEffect(() => {
+    const goOnline = () => setOnline(true);
+    const goOffline = () => setOnline(false);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => { window.removeEventListener('online', goOnline); window.removeEventListener('offline', goOffline); };
+  }, []);
+  useEffect(() => {
+    if (!health.isLoading) { setHealthSlow(false); return; }
+    const id = window.setTimeout(() => setHealthSlow(true), 4000);
+    return () => window.clearTimeout(id);
+  }, [health.isLoading]);
   useEffect(() => {
     try {
       localStorage.setItem(AVATAR_LAYOUT_STORAGE_KEY, JSON.stringify(avatarLayout));
@@ -377,12 +431,14 @@ export default function Stage() {
     const r = interpret(q);
     switch (r.kind) {
       case 'scene':
+        lastSceneInteractionRef.current = Date.now();
         setFeiraTarget(false);
         setScene(r.scene);
         setSceneMode('single');
         setSceneFade(true); window.setTimeout(() => setSceneFade(false), 1000);
         return sayRef.current(r.text);
       case 'flyFeira':
+        lastSceneInteractionRef.current = Date.now();
         setScene('earth'); setSceneMode('single'); setFeiraTarget(true);
         setSceneFade(true); window.setTimeout(() => setSceneFade(false), 1000);
         return sayRef.current(r.text);
@@ -433,6 +489,7 @@ export default function Stage() {
                 ? `BASE ${res.layer}`
                 : `IA · ${PROVIDER_NAMES[providerId as Provider] ?? providerId.toUpperCase()}`;
             setResponseMeta({ source, durationMs: Math.round(performance.now() - requestStartedAt) });
+            setQuotaNotice(false);
             sayRef.current(res.answer, undefined, res.emotionMarks);
           }).catch((error: unknown) => {
             if (controller.signal.aborted || turnRef.current !== turn) return;
@@ -440,6 +497,7 @@ export default function Stage() {
             activeRef.current = false;
             setState('idle'); setCaption(''); setCaptionWords(null);
             const message = error instanceof Error ? error.message : errMsg(error);
+            setQuotaNotice(isQuotaError(error));
             setLog((l) => [...l, { role: 'assistant', content: message }]);
             commandCompleteRef.current(false);
           }).finally(() => {
@@ -457,6 +515,7 @@ export default function Stage() {
                 ? `BASE ${String(res.layer)}`
                 : `IA · ${PROVIDER_NAMES[providerId as Provider] ?? providerId.toUpperCase()}`;
             setResponseMeta({ source, durationMs: Math.round(performance.now() - requestStartedAt) });
+            setQuotaNotice(false);
             sayRef.current(res.answer);
           },
           onError: (e) => {
@@ -464,6 +523,7 @@ export default function Stage() {
             speechPendingRef.current = false;
             activeRef.current = false;
             setState('idle'); setCaption(''); setCaptionWords(null);
+            setQuotaNotice(isQuotaError(e));
             setLog((l) => [...l, { role: 'assistant', content: errMsg(e) }]);
             commandCompleteRef.current(false);
           },
@@ -757,6 +817,34 @@ export default function Stage() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+  /** One visible way out: interrupts listening, thinking or speaking and returns to standby. */
+  const stopRef = useRef<() => void>(() => undefined);
+  stopRef.current = () => {
+    const current = stateRef.current;
+    if (current !== 'listening' && current !== 'thinking' && current !== 'talking') return;
+    recordAbortRef.current?.abort();
+    if (listener.active) { listener.standby(); return; }
+    aiAbortRef.current?.abort();
+    activeRef.current = false; turnRef.current++;
+    speechPendingRef.current = false;
+    window.clearTimeout(captionTimerRef.current);
+    setCaptionWords(null);
+    stopSpeaking();
+    setState('idle');
+    setCaption('');
+    commandCompleteRef.current(current === 'talking');
+  };
+  useEffect(() => {
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      if (panelRef.current || helpRef.current || avatarControlsOpenRef.current || layoutEditingRef.current) return;
+      if (!['listening', 'thinking', 'talking'].includes(stateRef.current)) return;
+      event.preventDefault();
+      stopRef.current();
+    };
+    window.addEventListener('keydown', onEscape);
+    return () => window.removeEventListener('keydown', onEscape);
+  }, []);
 
   useEffect(() => {
     if (!stageLayout.editing) return;
@@ -772,6 +860,7 @@ export default function Stage() {
   const energy = state === 'talking' ? .85 : state === 'listening' ? .6 : state === 'thinking' ? .35 : .1;
   const provName = PROVIDER_NAMES;
   const selectScene = (next: CosmosScene) => {
+    markSceneInteraction();
     setFeiraTarget(false);
     setScene(next);
     setSceneMode('single');
@@ -849,6 +938,10 @@ export default function Stage() {
           targetCity={feiraTarget}
           state={state}
           getAudioLevel={getLevel}
+          motion={motion}
+          onEnableMotion={enableMotion}
+          onInteract={markSceneInteraction}
+          keyboardShortcuts={!panel && !helpOpen && !stageLayout.editing && !avatarControlsOpen}
         />
       ) : (
         <CosmosRenderer
@@ -861,6 +954,10 @@ export default function Stage() {
           getAudioLevel={getLevel}
           onFps={setRenderFps}
           onAssetsStatus={setAssetsStatus}
+          motion={motion}
+          onEnableMotion={enableMotion}
+          onInteract={markSceneInteraction}
+          keyboardShortcuts={!panel && !helpOpen && !stageLayout.editing && !avatarControlsOpen}
         />
       )}
       <div className={`scene-fade ${sceneFade ? 'scene-fade--active' : ''}`} aria-hidden="true" />
@@ -878,25 +975,25 @@ export default function Stage() {
           <div><div className="stage-brand__name">ÍCARO</div><div className="stage-brand__sub">CENTRO DE OPERAÇÕES · UEFS</div></div>
         </div>
         <div className="scene-switcher" role="group" aria-label="Visualização das cenas">
+          {([
+            ['earth', 'Terra ao vivo', <Globe2 size={14} key="e" aria-hidden="true" />],
+            ['system', 'Sistema solar', <Orbit size={14} key="s" aria-hidden="true" />],
+            ['galaxy', 'Galáxia', <Sparkles size={14} key="g" aria-hidden="true" />],
+          ] as const).map(([value, label, icon]) => (
+            <button key={value} type="button" className="scene-button" aria-pressed={sceneMode === 'single' && scene === value} onClick={() => selectScene(value)} data-testid={`button-scene-${value}`}>
+              {icon}<span>{label}</span>
+            </button>
+          ))}
           <button
             type="button"
             className="scene-button"
             aria-label="Mostrar as três cenas"
             aria-pressed={sceneMode === 'all'}
-            onClick={() => setSceneMode('all')}
+            onClick={() => { markSceneInteraction(); setSceneMode('all'); }}
             data-testid="button-scene-all"
           >
             <Layers size={14} aria-hidden="true" /><span>Todas</span>
           </button>
-          {([
-            ['galaxy', 'Galáxia', <Orbit size={14} key="g" />],
-            ['system', 'Sistema solar', <Radio size={14} key="s" />],
-            ['earth', 'Terra ao vivo', <Globe2 size={14} key="e" />],
-          ] as const).map(([value, label, icon]) => (
-            <button key={value} className="scene-button" aria-pressed={sceneMode === 'single' && scene === value} onClick={() => selectScene(value)} data-testid={`button-scene-${value}`}>
-              {icon}<span>{label}</span>
-            </button>
-          ))}
         </div>
         <div className="mobile-feed" data-testid="status-cosmos-mobile">
           {feeds.isLoading && <span>Conectando à telemetria pública…</span>}
@@ -904,6 +1001,26 @@ export default function Stage() {
           {feeds.data && <span>{feeds.data.stale ? 'Em cache · ' : 'AO VIVO · '}ISS {feeds.data.iss.current.latitude.toFixed(1)}° / {feeds.data.iss.current.longitude.toFixed(1)}° · {feeds.data.earthquakes.length} sismos</span>}
         </div>
       </header>
+      <div className="stage-notices" data-testid="stage-notices">
+        {!online && <div className="stage-notice stage-notice--bad" role="alert" data-testid="notice-offline">Sem conexão com a internet. As respostas e a telemetria voltam quando a conexão retornar.</div>}
+        {online && healthSlow && health.isLoading && <div className="stage-notice" role="status" data-testid="notice-server-waking"><span className="stage-notice__pulse" aria-hidden="true" />Acordando o servidor… no plano gratuito isso pode levar até um minuto.</div>}
+        {online && health.isError && <div className="stage-notice stage-notice--bad" role="alert" data-testid="notice-server-error">O servidor do Ícaro não respondeu.<button type="button" onClick={() => void health.refetch()} data-testid="button-retry-health">Tentar novamente</button></div>}
+        {quotaNotice && (
+          <div className="stage-notice stage-notice--warn" role="alert" data-testid="notice-quota">
+            O provedor de IA atingiu o limite gratuito por agora.
+            <button type="button" onClick={() => { setTab('conexao'); setPanel(true); }} data-testid="button-open-connection">Trocar provedor</button>
+            <button type="button" className="stage-notice__close" aria-label="Fechar aviso" onClick={() => setQuotaNotice(false)} data-testid="button-dismiss-quota"><X size={12} aria-hidden="true" /></button>
+          </div>
+        )}
+        {!useServerMic && listener.status === 'blocked' && !micNoticeDismissed && (
+          <div className="stage-notice stage-notice--warn" role="status" data-testid="notice-mic-blocked">
+            Microfone indisponível.
+            <button type="button" onClick={() => setHelpOpen(true)} data-testid="button-mic-help">Como liberar</button>
+            <button type="button" onClick={() => setTyping(true)} data-testid="button-mic-type">Digitar pergunta</button>
+            <button type="button" className="stage-notice__close" aria-label="Fechar aviso" onClick={() => setMicNoticeDismissed(true)} data-testid="button-dismiss-mic"><X size={12} aria-hidden="true" /></button>
+          </div>
+        )}
+      </div>
       <aside className="stage-readout stage-readout--left" aria-label="Ícaro em atividade" {...stageLayout.chrome('readout-left')}>
         <svg className="readout-frame" viewBox="0 0 240 500" preserveAspectRatio="none" aria-hidden="true"><path d="M25 2Q12 2 9 19L3 47Q1 60 5 74L5 424Q4 440 18 446Q32 451 45 483L195 483Q211 481 214 464L235 429Q239 420 237 403L237 39Q237 22 220 19L93 18Q75 18 66 8Q58 1 43 2Z" /></svg>
         <div className="readout-kicker"><span className="readout-dot" /> SISTEMA ATIVO</div>
@@ -980,7 +1097,7 @@ export default function Stage() {
         <div className="layout-banner" role="status" data-testid="banner-layout-editing">
           <Move size={14} aria-hidden="true" />
           <span>Arraste os elementos para reorganizar a tela</span>
-          <button type="button" className="hbtn" onClick={stageLayout.resetLayout} data-testid="button-layout-reset"><RotateCcw size={13} /> Restaurar</button>
+          <button type="button" className="hbtn" onClick={() => { if (window.confirm('Restaurar a posição original de todos os elementos da tela?')) stageLayout.resetLayout(); }} data-testid="button-layout-reset"><RotateCcw size={13} aria-hidden="true" /> Restaurar</button>
           <button type="button" className="hbtn" onClick={() => stageLayout.setEditing(false)} data-testid="button-layout-done"><Check size={13} /> Concluir</button>
         </div>
       )}
@@ -1002,15 +1119,27 @@ export default function Stage() {
             <button className="btn-holo" onClick={submit} disabled={!text.trim()} data-testid="button-send">Enviar</button>
           </div>
         )}
+        {state === 'idle' && !log.length && !typing && !stageLayout.editing && (
+          <div className="dock-suggestions" role="group" aria-label="Sugestões de perguntas" data-testid="dock-suggestions">
+            {STAGE_SUGGESTIONS.map(([label, question]) => (
+              <button key={label} type="button" className="chip" onClick={() => handle(question)} data-testid={`suggestion-${label}`}>{label}</button>
+            ))}
+          </div>
+        )}
+        <div className="dock-status">
+          <span className="state-pill" data-state={state} data-testid="status-stage-state">{state === 'listening' ? 'Ouvindo · fale agora' : state === 'thinking' ? 'Pensando…' : STATE_LABEL[state]}</span>
+          {(state === 'listening' || state === 'thinking' || state === 'talking') && (
+            <button type="button" className="hbtn dock-stop" onClick={() => stopRef.current()} aria-label="Parar o Ícaro" title="Parar (Esc)" data-testid="button-stop">
+              <Square size={12} aria-hidden="true" /> Parar
+            </button>
+          )}
+        </div>
         <div className="dock-actions">
           <button className="hbtn dock-action" onClick={() => void activateVoice()} aria-label={audioActivated ? 'Testar voz do Ícaro' : 'Ativar áudio do Ícaro'} data-testid="button-audio-activate">
             <Volume2 size={16} /> {audioActivated ? 'Testar voz' : 'Ativar áudio'}
           </button>
           <button className="hbtn dock-action" onClick={() => setCaptionsVisible((visible) => !visible)} aria-pressed={captionsVisible} aria-label={captionsVisible ? 'Ocultar legendas' : 'Mostrar legendas'} data-testid="button-captions-toggle">
             {captionsVisible ? <EyeOff size={16} /> : <Eye size={16} />} Legendas {captionsVisible ? 'ligadas' : 'desligadas'}
-          </button>
-          <button className="hbtn dock-action" onClick={() => stageLayout.setEditing(!stageLayout.editing)} aria-pressed={stageLayout.editing} aria-label={stageLayout.editing ? 'Concluir reorganização da tela' : 'Reorganizar os elementos da tela'} data-testid="button-layout-edit">
-            <Move size={16} /> {stageLayout.editing ? 'Concluir' : 'Reorganizar'}
           </button>
         </div>
         <button className="mic" onClick={toggleMic} aria-label={recording ? 'Parar gravação' : useServerMic ? 'Falar com Ícaro pelo microfone' : listener.active ? 'Voltar ao modo de espera' : 'Ativar Ícaro manualmente'} aria-describedby="mic-status-announcement" aria-pressed={listener.active || recording} data-testid="button-mic" data-recording={recording || undefined}><Mic size={34} /></button>
@@ -1024,7 +1153,7 @@ export default function Stage() {
             <img src={media(HOLO_MEDIA.avatar)} alt="" className="h-9 w-9 rounded-full border border-[color:var(--line)] object-cover" />
             <div><div id="icaro-panel-title" className="disp font-semibold tracking-[.2em] text-[color:var(--holo)]">Painel do Ícaro</div><div className="mono text-[10px] text-[color:var(--dim)]">ITCONT 2026 · Contabilidade UEFS</div></div>
           </div>
-          <button ref={panelCloseRef} className="hbtn" onClick={() => setPanel(false)} aria-label="Fechar painel" data-testid="button-close-panel"><X size={16} /></button>
+          <button ref={panelCloseRef} className="hbtn panel-back" onClick={() => setPanel(false)} aria-label="Voltar ao palco" title="Voltar ao palco (Esc)" data-testid="button-close-panel"><ArrowLeft size={16} aria-hidden="true" /> Voltar</button>
         </div>
         <div className="disp flex border-b border-[color:var(--line)]" role="tablist" aria-label="Seções do painel">
           {PANEL_TABS.map(({ key, label }, index) => (
@@ -1103,6 +1232,11 @@ export default function Stage() {
                   {QUALITY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
                 <p className="text-xs text-[color:var(--dim)]">A qualidade automática reduz os detalhes quando a renderização fica lenta. A preferência fica salva neste dispositivo.</p>
+                <label className="setting-label" htmlFor="stage-motion">Movimento automático das cenas</label>
+                <select id="stage-motion" value={motion} onChange={(event) => setMotion(event.target.value as CosmosMotion)} data-testid="select-stage-motion">
+                  {MOTION_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+                <p className="text-xs text-[color:var(--dim)]">Girar, arrastar e aproximar com o dedo, o mouse ou o teclado funcionam sempre. “Seguir o dispositivo” pausa a rotação automática e o passeio entre cenas quando o sistema pede menos movimento.</p>
                 <button className="pbtn w-full" onClick={ambientToggle} aria-pressed={ambientOn} data-testid="button-ambient-toggle">
                   {ambientOn ? <Volume2 size={14} /> : <VolumeX size={14} />} Som ambiente {ambientOn ? 'ligado' : 'desligado'}
                 </button>
@@ -1196,6 +1330,11 @@ export default function Stage() {
           )}
           {tab === 'ferramentas' && (
             <div className="space-y-4">
+              <div className="card space-y-2">
+                <div className="mono text-[10px] uppercase tracking-widest text-[color:var(--dim)]">Layout do palco</div>
+                <p className="text-[color:var(--dim)]">Arraste cabeçalho, painéis laterais, legenda e controles para outra posição. A organização fica salva neste dispositivo.</p>
+                <button className="pbtn" onClick={() => { setPanel(false); stageLayout.setEditing(true); }} data-testid="button-layout-edit"><Move size={14} aria-hidden="true" /> Reorganizar a tela</button>
+              </div>
               <div className="card">
                 <div className="mono text-[10px] uppercase tracking-widest text-[color:var(--dim)]">Temporizador</div>
                 {timerEnd ? <div className="mt-2 flex items-center justify-between"><span className="mono text-3xl text-[color:var(--warn)]" data-testid="text-timer">{mmss}</span><button className="pbtn" onClick={() => { setTimerEnd(null); say('Temporizador cancelado.'); }} data-testid="button-cancel-timer">Cancelar</button></div>
@@ -1250,9 +1389,10 @@ export default function Stage() {
               <p>ÍCARO é um assistente operacional sempre ativo, concebido para acompanhar a turma de Contabilidade da UEFS. Seu rosto original permanece no centro; o ambiente ao redor é uma janela para sistemas em movimento.</p>
               <div className="card space-y-3">
                 <div className="mono text-[10px] uppercase tracking-widest text-[color:var(--dim)]">Cenas do palco</div>
-                <p><strong>Galáxia</strong> — espiral procedural de 90 mil partículas e poeira estelar.</p>
-                <p><strong>Sistema solar</strong> — oito planetas com posições calculadas pelo Astronomy Engine.</p>
-                <p><strong>Terra ao vivo</strong> — terminador solar, luzes noturnas, nuvens e telemetria pública em cache.</p>
+                <p><strong>Terra ao vivo</strong> — globo 3D com terminador solar, luzes noturnas, nuvens e telemetria pública em cache. Gire com o dedo ou o mouse; a rotação automática volta alguns segundos depois.</p>
+                <p><strong>Sistema solar</strong> — oito planetas partindo das posições reais de hoje (Astronomy Engine), em órbitas aceleradas. Toque ou clique num planeta para segui-lo.</p>
+                <p><strong>Galáxia</strong> — disco espiral 3D de 90 mil partículas que gira em torno do próprio eixo; incline-o para vê-lo de lado.</p>
+                <p className="text-xs text-[color:var(--dim)]">Arraste para girar, use pinça ou roda para aproximar e toque duas vezes para recentralizar. No teclado: setas giram, + e − aproximam, R recentraliza.</p>
               </div>
               <div className="card about-credits">
                 <div className="mono text-[10px] uppercase tracking-widest text-[color:var(--dim)]">Créditos</div>

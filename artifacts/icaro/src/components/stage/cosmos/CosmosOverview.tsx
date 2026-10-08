@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Move } from 'lucide-react';
 import type { CosmosFeedsResponse } from '@workspace/api-client-react';
-import { CosmosRenderer, type CosmosScene } from './renderer';
+import { CosmosRenderer, type CosmosMotion, type CosmosScene } from './renderer';
 
 type Point = { x: number; y: number };
 type Panel = { scene: CosmosScene; label: string };
@@ -16,9 +16,9 @@ type DragState = {
 };
 
 const PANELS: Panel[] = [
-  { scene: 'galaxy', label: 'Galáxia' },
-  { scene: 'system', label: 'Sistema Solar' },
   { scene: 'earth', label: 'Terra ao vivo' },
+  { scene: 'system', label: 'Sistema Solar' },
+  { scene: 'galaxy', label: 'Galáxia' },
 ];
 
 const INITIAL_POSITIONS: Record<CosmosScene, Point> = {
@@ -48,9 +48,13 @@ type Props = {
   targetCity: boolean;
   state: string;
   getAudioLevel: () => number;
+  motion?: CosmosMotion;
+  onEnableMotion?: () => void;
+  onInteract?: () => void;
+  keyboardShortcuts?: boolean;
 };
 
-export function CosmosOverview({ quality, visible, feeds, targetCity, state, getAudioLevel }: Props) {
+export function CosmosOverview({ quality, visible, feeds, targetCity, state, getAudioLevel, motion, onEnableMotion, onInteract, keyboardShortcuts }: Props) {
   const [positions, setPositions] = useState(INITIAL_POSITIONS);
   const [draggingScene, setDraggingScene] = useState<CosmosScene | null>(null);
   const positionsRef = useRef(positions);
@@ -161,6 +165,10 @@ export function CosmosOverview({ quality, visible, feeds, targetCity, state, get
                 state={state}
                 getAudioLevel={getAudioLevel}
                 navigationLabel={`Controles de ${label}`}
+                motion={motion}
+                onEnableMotion={onEnableMotion}
+                onInteract={onInteract}
+                keyboardShortcuts={keyboardShortcuts}
               />
             </div>
             <button

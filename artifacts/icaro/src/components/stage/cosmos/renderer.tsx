@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Minus, Plus, RotateCcw } from 'lucide-react';
+import { Minus, Plus, LocateFixed } from 'lucide-react';
 import type { CosmosFeedsResponse } from '@workspace/api-client-react';
 import {
   createCloudMaskTexture,
@@ -23,6 +23,7 @@ type RendererLike = {
   setSize: (width: number, height: number) => void;
   setClearColor: (color: number, alpha: number) => void;
   dispose: () => void;
+  forceContextLoss?: () => void;
   __scene?: unknown;
   __camera?: unknown;
   __render?: () => void;
@@ -51,13 +52,82 @@ type Props = {
   onFps?: (fps: number) => void;
   onAssetsStatus?: (status: string) => void;
   navigationLabel?: string;
+  /** Automatic motion preference. `system` follows prefers-reduced-motion; touch/mouse navigation always works. */
+  motion?: CosmosMotion;
+  onEnableMotion?: () => void;
+  onInteract?: () => void;
+  /** Arrow keys rotate, +/− zoom and R recentres while true. */
+  keyboardShortcuts?: boolean;
 };
+
+export type CosmosMotion = 'system' | 'on' | 'off';
 
 type NavigationApi = {
   zoomIn: () => void;
   zoomOut: () => void;
   reset: () => void;
+  rotate?: (left: number, up: number) => void;
+  releaseFocus?: () => void;
 };
+
+const HINT_SEEN_KEY = 'icaro.cosmos.hint-seen.v1';
+const PLANET_NAMES = ['Mercúrio', 'Vênus', 'Terra', 'Marte', 'Júpiter', 'Saturno', 'Urano', 'Netuno'] as const;
+/** Sidereal periods in years; the visual period compresses them while keeping their order. */
+const PLANET_PERIOD_YEARS = [.2408, .6152, 1, 1.8808, 11.862, 29.457, 84.011, 164.79] as const;
+const visualOrbitSeconds = (years: number) => 14 * Math.pow(years / .2408, .55);
+const GALAXY_SPIN_RAD_PER_SECOND = .035;
+const EARTH_SPIN_RAD_PER_SECOND = .06;
+const EARTH_RESUME_DELAY_MS = 5000;
+const SYSTEM_CAMERA_ELEVATION = .42;
+const GALAXY_CAMERA_ELEVATION = .62;
+let webglProbe: boolean | null = null;
+
+function webglAvailable() {
+  if (webglProbe !== null) return webglProbe;
+  try {
+    const canvas = document.createElement('canvas');
+    const context = (canvas.getContext('webgl2') || canvas.getContext('webgl')) as WebGLRenderingContext | null;
+    webglProbe = !!context;
+    context?.getExtension('WEBGL_lose_context')?.loseContext();
+  } catch {
+    webglProbe = false;
+  }
+  return webglProbe;
+}
+
+type Disposable = { dispose?: () => void };
+type TraversableObject = {
+  geometry?: Disposable;
+  material?: unknown;
+  traverse?: (callback: (object: TraversableObject) => void) => void;
+};
+
+/** Releases every geometry, material and texture under a scene graph. */
+function disposeObjectTree(root: TraversableObject) {
+  const textures = new Set<Disposable>();
+  const isTexture = (value: unknown): value is Disposable => !!value && typeof value === 'object' && (value as { isTexture?: boolean }).isTexture === true;
+  root.traverse?.((object) => {
+    object.geometry?.dispose?.();
+    const materials = Array.isArray(object.material) ? object.material : object.material ? [object.material] : [];
+    for (const material of materials as Array<Record<string, unknown> & Disposable>) {
+      for (const value of Object.values(material)) if (isTexture(value)) textures.add(value);
+      const uniforms = material.uniforms as Record<string, { value?: unknown }> | undefined;
+      if (uniforms) for (const uniform of Object.values(uniforms)) if (isTexture(uniform?.value)) textures.add(uniform.value as Disposable);
+      material.dispose?.();
+    }
+  });
+  textures.forEach((texture) => texture.dispose?.());
+}
+
+function readHintSeen() {
+  try { return localStorage.getItem(HINT_SEEN_KEY) === '1'; } catch { return false; }
+}
+
+function isTypingTarget(target: EventTarget | null) {
+  const element = target as HTMLElement | null;
+  if (!element || typeof element.closest !== 'function') return false;
+  return !!element.closest('input,textarea,select,[contenteditable="true"],[contenteditable=""],[role="tab"],[role="slider"],dialog,#icaro-panel');
+}
 
 const EARTH_RADIUS = 3.2;
 const EARTH_BACKGROUND_DIAMETER_RATIO = 1.6;
@@ -122,9 +192,11 @@ function proceduralGalaxy(THREE: typeof import('three'), count: number) {
       + Math.sin(radius * 1.9 + arm) * .055
       + (random() - .5) * (.16 + radius * .055);
     const thickness = .032 + radius * .021;
+    // Circular disk on the XZ plane (Y is the galactic pole) so it can be orbited in 3D.
+    const vertical = inBulge ? .55 * Math.max(0, 1 - radius / 1.6) + .08 : .05 + .16 * Math.exp(-radius * .45);
     positions[i * 3] = Math.cos(angle) * radius + (random() - .5) * thickness;
-    positions[i * 3 + 1] = Math.sin(angle) * radius * .62 + (random() - .5) * thickness;
-    positions[i * 3 + 2] = (random() - .5) * (.18 + radius * .1);
+    positions[i * 3 + 2] = Math.sin(angle) * radius + (random() - .5) * thickness;
+    positions[i * 3 + 1] = (random() - .5) * vertical;
     const color = radius < 1.1
       ? colorCore.clone().lerp(colorArm, radius / 1.1)
       : colorArm.clone().lerp(colorOuter, smoothstep(1.1, 5.6, radius));
@@ -315,10 +387,33 @@ export function CosmosRenderer({
   onFps,
   onAssetsStatus,
   navigationLabel,
+  motion = 'system',
+  onEnableMotion,
+  onInteract,
+  keyboardShortcuts = false,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const navigationRef = useRef<NavigationApi | null>(null);
   const [mobileViewport, setMobileViewport] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
+  const [reducedMotion, setReducedMotion] = useState(() => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const [renderMode, setRenderMode] = useState<'pending' | 'webgl' | 'static'>('pending');
+  const [hintSeen, setHintSeen] = useState(readHintSeen);
+  const [focusLabel, setFocusLabel] = useState<string | null>(null);
+  const [texturesLoading, setTexturesLoading] = useState(false);
+  const autoMotion = motion === 'on' || (motion === 'system' && !reducedMotion);
+  const autoMotionRef = useRef(autoMotion);
+  autoMotionRef.current = autoMotion;
+  const interactRef = useRef(onInteract);
+  interactRef.current = onInteract;
+  const keyboardRef = useRef(keyboardShortcuts);
+  keyboardRef.current = keyboardShortcuts;
+  const restartStaticMotionRef = useRef<(() => void) | null>(null);
+  const markHintSeen = useRef(() => {
+    setHintSeen((seen) => {
+      if (!seen) { try { localStorage.setItem(HINT_SEEN_KEY, '1'); } catch { /* storage can be disabled */ } }
+      return true;
+    });
+  }).current;
   const sceneRef = useRef(scene);
   const qualityRef = useRef(quality);
   const transparentBackgroundRef = useRef(transparentBackground);
@@ -344,11 +439,57 @@ export function CosmosRenderer({
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 767px)');
+    const motionMedia = window.matchMedia('(prefers-reduced-motion: reduce)');
     const update = () => setMobileViewport(media.matches);
+    const updateMotion = () => setReducedMotion(motionMedia.matches);
     update();
+    updateMotion();
     media.addEventListener('change', update);
-    return () => media.removeEventListener('change', update);
+    motionMedia.addEventListener('change', updateMotion);
+    return () => {
+      media.removeEventListener('change', update);
+      motionMedia.removeEventListener('change', updateMotion);
+    };
   }, []);
+
+  useEffect(() => {
+    if (!autoMotion) return;
+    restartStaticMotionRef.current?.();
+  }, [autoMotion]);
+
+  useEffect(() => {
+    if (!visible) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (!keyboardRef.current || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
+      if (isTypingTarget(event.target) || document.querySelector('dialog[open]')) return;
+      const host = hostRef.current;
+      if (!host) return;
+      if (isOverview) {
+        const panel = host.closest('.cosmos-panel');
+        if (!panel || !(panel.contains(document.activeElement) || panel.matches(':hover'))) return;
+      }
+      const navigation = navigationRef.current;
+      if (!navigation) return;
+      const step = event.shiftKey ? .3 : .14;
+      const actions: Record<string, () => void> = {
+        ArrowLeft: () => navigation.rotate?.(step, 0),
+        ArrowRight: () => navigation.rotate?.(-step, 0),
+        ArrowUp: () => navigation.rotate?.(0, step * .7),
+        ArrowDown: () => navigation.rotate?.(0, -step * .7),
+        '+': navigation.zoomIn, '=': navigation.zoomIn,
+        '-': navigation.zoomOut, '_': navigation.zoomOut,
+        r: navigation.reset, R: navigation.reset,
+      };
+      const action = actions[event.key];
+      if (!action) return;
+      event.preventDefault();
+      action();
+      markHintSeen();
+      interactRef.current?.();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [visible, isOverview, markHintSeen]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -372,14 +513,34 @@ export function CosmosRenderer({
     let fpsWindowStart = 0;
     let fpsFrames = 0;
     let autoQuality: 'high' | 'medium' | 'low' = mobileViewport ? 'medium' : 'high';
+    let qualityChangedAt = 0;
+    let slowSince = 0;
+    let fastSince = 0;
+    let interacting = false;
+    let interactUntil = 0;
+    let lastTargetFps = 0;
+    let pendingTextureLoads = 0;
+    let disposeScene: (() => void) | null = null;
     let solarTexturesStarted = false;
     let earthTexturesStarted = false;
     const assetStatus: Record<AssetKind, string> = {
       earth: 'NASA GIBS aguardando',
       solar: 'Solar System Scope aguardando',
     };
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const staticMode = qualityRef.current === 'low' || reduced;
+    // Reduced motion pauses automatic movement only; direct manipulation stays in full 3D.
+    const motionPaused = () => !autoMotionRef.current;
+    // The 2D canvas is only a fallback for devices without WebGL.
+    const staticMode = !webglAvailable();
+    setRenderMode(staticMode ? 'static' : 'pending');
+    const trackTextureLoad = (delta: number) => {
+      pendingTextureLoads = Math.max(0, pendingTextureLoads + delta);
+      if (!disposed) setTexturesLoading(pendingTextureLoads > 0);
+    };
+    const markInteraction = () => {
+      interactUntil = performance.now() + 1500;
+      markHintSeen();
+      interactRef.current?.();
+    };
     const staticNavigation = { zoom: 1, x: 0, y: 0 };
     const staticDrag = { pointerId: -1, lastX: 0, lastY: 0 };
     const staticPointers = new Map<number, { x: number; y: number }>();
@@ -393,7 +554,7 @@ export function CosmosRenderer({
       });
     };
     const updatePointerParallax = (event: PointerEvent) => {
-      if (reduced || event.pointerType !== 'mouse' || event.buttons !== 0) return;
+      if (motionPaused() || event.pointerType !== 'mouse' || event.buttons !== 0) return;
       const rect = host.getBoundingClientRect();
       pointerParallax.targetX = Math.max(-1, Math.min(1, ((event.clientX - rect.left) / rect.width - .5) * 2));
       pointerParallax.targetY = Math.max(-1, Math.min(1, ((event.clientY - rect.top) / rect.height - .5) * 2));
@@ -425,6 +586,11 @@ export function CosmosRenderer({
       zoomIn: () => zoomStatic(1.25),
       zoomOut: () => zoomStatic(.8),
       reset: resetStatic,
+      rotate: (left, up) => {
+        staticNavigation.x += left * 160;
+        staticNavigation.y += up * 160;
+        applyStaticTransform();
+      },
     };
     const pointerDistance = (points: { x: number; y: number }[]) => points.length < 2
       ? 0
@@ -443,6 +609,7 @@ export function CosmosRenderer({
         staticPinch.startZoom = staticNavigation.zoom;
       }
       host.setPointerCapture(event.pointerId);
+      markInteraction();
     };
     const onStaticPointerMove = (event: PointerEvent) => {
       if (!staticPointers.has(event.pointerId)) return;
@@ -544,7 +711,7 @@ export function CosmosRenderer({
       const width = rect.width, height = rect.height;
       const currentScene = sceneRef.current;
       const level = Math.max(0, Math.min(1, audioLevelRef.current() || 0));
-      const motionTime = reduced ? 0 : now;
+      const motionTime = motionPaused() ? 0 : now;
       const starsRandom = deterministicRandom(411);
       context.clearRect(0, 0, width, height);
       context.save();
@@ -566,7 +733,7 @@ export function CosmosRenderer({
       context.fillRect(0, 0, width, height);
       for (let i = 0; i < 260; i++) {
         const x = starsRandom() * width, y = starsRandom() * height;
-        const alpha = (.10 + starsRandom() * .5) * (reduced ? 1 : .68 + .32 * (Math.sin(motionTime * .0016 + i * 1.7) + 1) / 2);
+        const alpha = (.10 + starsRandom() * .5) * (motionPaused() ? 1 : .68 + .32 * (Math.sin(motionTime * .0016 + i * 1.7) + 1) / 2);
         context.fillStyle = `rgba(177,234,255,${alpha})`;
         context.beginPath();
         context.arc(x, y, starsRandom() > .97 ? 1.25 : .55, 0, Math.PI * 2);
@@ -575,7 +742,7 @@ export function CosmosRenderer({
 
       if (currentScene === 'galaxy') {
         const centerX = width * .5, centerY = height * .43;
-        const particleCount = reduced ? 9000 : mobileViewport ? 2400 : 4200;
+        const particleCount = motionPaused() ? 9000 : mobileViewport ? 2400 : 4200;
         for (let i = 0; i < particleCount; i++) {
           const arm = i % 5;
           const radius = Math.sqrt(starsRandom()) * Math.min(width, height) * .33;
@@ -647,7 +814,7 @@ export function CosmosRenderer({
           images.day?.naturalWidth ?? 0,
           images.night?.naturalWidth ?? 0,
           images.clouds?.naturalWidth ?? 0,
-          reduced ? 0 : Math.floor(motionTime / 60_000),
+          motionPaused() ? 0 : Math.floor(motionTime / 60_000),
         ].join(':');
         if (globeKey !== staticGlobeCacheKey) {
           staticGlobeCacheKey = globeKey;
@@ -760,7 +927,7 @@ export function CosmosRenderer({
 
     const tickStatic = (now: number) => {
       staticFrame = 0;
-      if (disposed || document.hidden || reduced) return;
+      if (disposed || document.hidden || motionPaused()) return;
       const targetFps = mobileViewport ? 18 : 24;
       if (!lastStaticFrameAt || now - lastStaticFrameAt >= 1000 / targetFps) {
         lastStaticFrameAt = now;
@@ -769,18 +936,57 @@ export function CosmosRenderer({
       staticFrame = requestAnimationFrame(tickStatic);
     };
     const startStaticMotion = () => {
-      if (!reduced && !document.hidden && !staticFrame) staticFrame = requestAnimationFrame(tickStatic);
+      if (!motionPaused() && !document.hidden && !staticFrame) staticFrame = requestAnimationFrame(tickStatic);
+    };
+    restartStaticMotionRef.current = () => {
+      if (!staticDrawRef.current) return;
+      startStaticMotion();
+    };
+
+    const QUALITY_STEPS = ['low', 'medium', 'high'] as const;
+    /** Adapts quality against the current frame budget, with hysteresis and a cooldown. */
+    const adaptQuality = (now: number, targetFps: number) => {
+      if (qualityRef.current !== 'auto' || !frameDuration) return;
+      if (targetFps !== lastTargetFps) {
+        lastTargetFps = targetFps;
+        slowSince = fastSince = 0;
+        return;
+      }
+      const budget = 1000 / targetFps;
+      if (now - qualityChangedAt < 4000) return;
+      const index = QUALITY_STEPS.indexOf(autoQuality);
+      if (frameDuration > budget * 1.45) {
+        fastSince = 0;
+        slowSince ||= now;
+        if (now - slowSince > 2000 && index > 0) {
+          autoQuality = QUALITY_STEPS[index - 1];
+          qualityChangedAt = now;
+          slowSince = 0;
+        }
+      } else if (frameDuration < budget * 1.12) {
+        slowSince = 0;
+        fastSince ||= now;
+        const ceiling = mobileViewport ? 1 : 2;
+        if (now - fastSince > 6000 && index < ceiling) {
+          autoQuality = QUALITY_STEPS[index + 1];
+          qualityChangedAt = now;
+          fastSince = 0;
+        }
+      } else {
+        slowSince = fastSince = 0;
+      }
     };
 
     const tick = (now: number) => {
       frame = 0;
       if (disposed || document.hidden || !renderer) return;
-      const targetFps = window.innerWidth <= 767 ? 30 : 60;
+      // Phones idle at 30 fps to save battery, but direct manipulation runs at full rate.
+      const targetFps = window.innerWidth <= 767 && !interacting && now > interactUntil ? 30 : 60;
       if (lastFrameAt && now - lastFrameAt < 1000 / targetFps - 1) {
         frame = requestAnimationFrame(tick);
         return;
       }
-      if (lastFrameAt) frameDuration = frameDuration * .88 + (now - lastFrameAt) * .12;
+      if (lastFrameAt) frameDuration = frameDuration ? frameDuration * .88 + (now - lastFrameAt) * .12 : now - lastFrameAt;
       lastFrameAt = now;
       fpsFrames++;
       if (!fpsWindowStart) fpsWindowStart = now;
@@ -802,8 +1008,7 @@ export function CosmosRenderer({
         now,
       );
       renderer.__animate?.(now, audioLevel, stateRef.current);
-      if (qualityRef.current === 'auto' && frameDuration > 22) autoQuality = autoQuality === 'high' ? 'medium' : 'low';
-      if (qualityRef.current === 'auto' && frameDuration < 16 && autoQuality !== 'high') autoQuality = autoQuality === 'low' ? 'medium' : 'high';
+      adaptQuality(now, targetFps);
       renderer.__render?.();
       frame = requestAnimationFrame(tick);
     };
@@ -845,6 +1050,7 @@ export function CosmosRenderer({
           powerPreference: 'high-performance',
         });
         renderer = activeRenderer as unknown as RendererLike;
+        setRenderMode('webgl');
         const pixelRatio = Math.min(
           window.devicePixelRatio || 1,
           qualityRef.current === 'high' ? 2.25 : qualityRef.current === 'medium' ? 1.6 : 1.15,
@@ -856,8 +1062,10 @@ export function CosmosRenderer({
         host.appendChild(activeRenderer.domElement);
 
         const world = new THREE.Scene();
+        disposeScene = () => disposeObjectTree(world as unknown as TraversableObject);
         const camera = new THREE.PerspectiveCamera(COSMOS_CAMERA_FOV_DEGREES, width / height, .1, 1000);
-        const controls = new controlsModule.OrbitControls(camera, activeRenderer.domElement);
+        const canvas = activeRenderer.domElement;
+        const controls = new controlsModule.OrbitControls(camera, canvas);
         controls.enableDamping = true;
         controls.dampingFactor = .075;
         controls.enablePan = true;
@@ -865,7 +1073,21 @@ export function CosmosRenderer({
         controls.rotateSpeed = .72;
         controls.zoomSpeed = .85;
         controls.target.set(0, 0, 0);
-        controlsCleanup = () => controls.dispose();
+        // The globe stops spinning while it is being handled and resumes a few seconds later.
+        let earthPausedUntil = 0;
+        const pauseEarth = (forMs: number) => { earthPausedUntil = Math.max(earthPausedUntil, performance.now() + forMs); };
+        const onControlsStart = () => {
+          interacting = true;
+          earthPausedUntil = Number.POSITIVE_INFINITY;
+          markInteraction();
+        };
+        const onControlsEnd = () => {
+          interacting = false;
+          interactUntil = performance.now() + 1500;
+          earthPausedUntil = performance.now() + EARTH_RESUME_DELAY_MS;
+        };
+        controls.addEventListener('start', onControlsStart);
+        controls.addEventListener('end', onControlsEnd);
         const earthHalfFovTangent = Math.tan(COSMOS_CAMERA_FOV_DEGREES * Math.PI / 360)
           * Math.min(1, width / height);
         const earthApparentHalfAngle = Math.atan(
@@ -886,12 +1108,28 @@ export function CosmosRenderer({
         let activeScene = sceneRef.current;
         let cityViewActive = false;
         let cityPoseBackup: { position: typeof camera.position; target: typeof controls.target } | null = null;
-        camera.position.set(0, 0, defaultDistances[activeScene]);
+        const halfFovTangent = Math.tan(COSMOS_CAMERA_FOV_DEGREES * Math.PI / 360);
+        /** Default framing: the Earth stays front-on; the disk scenes are inclined and widened on portrait screens. */
+        const defaultCameraPosition = (which: CosmosScene) => {
+          if (which === 'earth') return new THREE.Vector3(0, 0, defaultDistances.earth);
+          const fitRadius = which === 'system' ? 5.7 : 5.9;
+          const distance = isOverview
+            ? defaultDistances[which]
+            : Math.min(
+              distanceLimits[which][1] * .8,
+              Math.max(defaultDistances[which], fitRadius / (halfFovTangent * Math.max(.3, camera.aspect))),
+            );
+          const elevation = which === 'system' ? SYSTEM_CAMERA_ELEVATION : GALAXY_CAMERA_ELEVATION;
+          return new THREE.Vector3(0, Math.sin(elevation) * distance, Math.cos(elevation) * distance);
+        };
+        camera.position.copy(defaultCameraPosition(activeScene));
         controls.minDistance = distanceLimits[activeScene][0];
         controls.maxDistance = distanceLimits[activeScene][1];
         controls.update();
         viewStates.set(activeScene, { position: camera.position.clone(), target: controls.target.clone() });
         const groupGalaxy = new THREE.Group();
+        const galaxyDisk = new THREE.Group();
+        groupGalaxy.add(galaxyDisk);
         const groupSystem = new THREE.Group();
         const groupEarth = new THREE.Group();
         world.add(groupGalaxy, groupSystem, groupEarth);
@@ -901,7 +1139,7 @@ export function CosmosRenderer({
         world.add(neural.group);
 
         const galaxy = proceduralGalaxy(THREE, 90_000);
-        groupGalaxy.add(galaxy);
+        galaxyDisk.add(galaxy);
         const dustPositions = new Float32Array(9000 * 3);
         const dustColors = new Float32Array(9000 * 3);
         const galaxyRandom = deterministicRandom(121);
@@ -909,8 +1147,8 @@ export function CosmosRenderer({
           const radius = Math.sqrt(galaxyRandom()) * 5.4;
           const angle = galaxyRandom() * Math.PI * 2;
           dustPositions[i * 3] = Math.cos(angle) * radius;
-          dustPositions[i * 3 + 1] = Math.sin(angle) * radius * .62;
-          dustPositions[i * 3 + 2] = (galaxyRandom() - .5) * .16;
+          dustPositions[i * 3 + 2] = Math.sin(angle) * radius;
+          dustPositions[i * 3 + 1] = (galaxyRandom() - .5) * .16;
           dustColors[i * 3] = .015;
           dustColors[i * 3 + 1] = .055;
           dustColors[i * 3 + 2] = .09;
@@ -918,24 +1156,28 @@ export function CosmosRenderer({
         const dustGeometry = new THREE.BufferGeometry();
         dustGeometry.setAttribute('position', new THREE.BufferAttribute(dustPositions, 3));
         dustGeometry.setAttribute('color', new THREE.BufferAttribute(dustColors, 3));
-        groupGalaxy.add(new THREE.Points(dustGeometry, new THREE.PointsMaterial({
+        galaxyDisk.add(new THREE.Points(dustGeometry, new THREE.PointsMaterial({
           size: .10,
           vertexColors: true,
           transparent: true,
           opacity: .6,
           depthWrite: false,
         })));
-        const galaxyGlow = new THREE.Sprite(new THREE.SpriteMaterial({
-          map: drawRadialTexture(THREE),
-          color: 0x8395ff,
-          transparent: true,
-          opacity: .21,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-        }));
-        galaxyGlow.scale.set(4.3, 2.6, 1);
-        galaxyGlow.position.set(0, 0, -.2);
-        groupGalaxy.add(galaxyGlow);
+        // Flat glow lying in the galactic plane, so it foreshortens correctly when orbited.
+        const galaxyGlow = new THREE.Mesh(
+          new THREE.PlaneGeometry(6.4, 6.4),
+          new THREE.MeshBasicMaterial({
+            map: drawRadialTexture(THREE),
+            color: 0x8395ff,
+            transparent: true,
+            opacity: .21,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            side: THREE.DoubleSide,
+          }),
+        );
+        galaxyGlow.rotation.x = -Math.PI / 2;
+        galaxyDisk.add(galaxyGlow);
         const galaxyCore = new THREE.Sprite(new THREE.SpriteMaterial({
           map: drawRadialTexture(THREE),
           color: 0xffc17e,
@@ -944,8 +1186,7 @@ export function CosmosRenderer({
           blending: THREE.AdditiveBlending,
           depthWrite: false,
         }));
-        galaxyCore.scale.set(1.7, 1.2, 1);
-        galaxyCore.position.set(0, 0, .08);
+        galaxyCore.scale.set(1.55, 1.55, 1);
         groupGalaxy.add(galaxyCore);
 
         const sunMaterial = createSunMaterial(THREE);
@@ -1024,8 +1265,64 @@ export function CosmosRenderer({
             ring.rotation.x = Math.PI * .5 + .18;
             groupSystem.add(ring);
           }
-          return { body, mesh, material, fallback, ring, orbitRadius };
+          let startPhase = index * 1.48 + .6;
+          try {
+            startPhase = Astronomy.EclipticLongitude(body, new Date()) * Math.PI / 180;
+          } catch {
+            const vector = Astronomy.HelioVector(body, new Date());
+            startPhase = Math.atan2(vector.y, vector.x);
+          }
+          const periodSeconds = visualOrbitSeconds(PLANET_PERIOD_YEARS[index]);
+          return { body, mesh, material, fallback, ring, orbitRadius, startPhase, periodSeconds };
         });
+        /** Orbits advance on a compressed clock that only runs while automatic motion is on. */
+        let orbitClock = 0;
+        const placePlanets = () => {
+          planets.forEach(({ mesh, ring, orbitRadius, startPhase, periodSeconds }) => {
+            const phase = startPhase + Math.PI * 2 * orbitClock / periodSeconds;
+            mesh.position.set(Math.cos(phase) * orbitRadius, 0, -Math.sin(phase) * orbitRadius);
+            if (ring) ring.position.copy(mesh.position);
+          });
+        };
+        placePlanets();
+        const focusBodies = [
+          { name: 'Sol', mesh: sun as InstanceType<typeof THREE.Mesh>, radius: .52 },
+          ...planets.map(({ mesh }, index) => ({ name: PLANET_NAMES[index] as string, mesh, radius: planetRadii[index] })),
+        ];
+        type FocusBody = (typeof focusBodies)[number];
+        let focus: { body: FocusBody; distance: number; flying: boolean } | null = null;
+        const focusScratch = new THREE.Vector3();
+        const releaseFocus = () => {
+          if (!focus) return;
+          focus = null;
+          controls.enablePan = true;
+          if (!disposed) setFocusLabel(null);
+        };
+        const focusOn = (body: FocusBody) => {
+          focus = { body, distance: Math.max(1.6, body.radius * 10), flying: true };
+          controls.enablePan = false;
+          setFocusLabel(body.name);
+        };
+        const pickBody = (clientX: number, clientY: number) => {
+          const rect = canvas.getBoundingClientRect();
+          let best: FocusBody | null = null;
+          let bestDistance = Number.POSITIVE_INFINITY;
+          for (const body of focusBodies) {
+            const center = body.mesh.getWorldPosition(focusScratch);
+            const range = camera.position.distanceTo(center);
+            const projected = center.project(camera);
+            if (projected.z > 1 || projected.z < -1) continue;
+            const x = rect.left + (projected.x + 1) / 2 * rect.width;
+            const y = rect.top + (1 - projected.y) / 2 * rect.height;
+            const pixelRadius = body.radius / Math.max(.001, range * halfFovTangent) * rect.height / 2;
+            const distance = Math.hypot(clientX - x, clientY - y);
+            if (distance <= Math.max(22, pixelRadius + 12) && distance < bestDistance) {
+              best = body;
+              bestDistance = distance;
+            }
+          }
+          return best;
+        };
 
         const earthFallback = createEarthFallbackMaps(THREE);
         const earthGeometry = new THREE.SphereGeometry(EARTH_RADIUS, 96, 64);
@@ -1129,7 +1426,9 @@ export function CosmosRenderer({
           let completed = 0, loaded = 0;
           reportAsset('solar', 'texturas públicas carregando');
           planets.forEach((planet, index) => {
+            trackTextureLoad(1);
             textureLoader.load(SOLAR_SYSTEM_SCOPE_TEXTURES[index], (texture: any) => {
+              trackTextureLoad(-1);
               if (disposed) { texture.dispose(); return; }
               texture.colorSpace = THREE.SRGBColorSpace;
               texture.anisotropy = 2;
@@ -1140,6 +1439,7 @@ export function CosmosRenderer({
               completed++;
               reportSolarTextures(completed, loaded);
             }, undefined, () => {
+              trackTextureLoad(-1);
               completed++;
               reportSolarTextures(completed, loaded);
             });
@@ -1156,7 +1456,9 @@ export function CosmosRenderer({
           let completed = 0, loaded = 0;
           reportAsset('earth', 'NASA GIBS carregando');
           maps.forEach(([key, url]) => {
+            trackTextureLoad(1);
             textureLoader.load(url, (texture: any) => {
+              trackTextureLoad(-1);
               if (disposed) { texture.dispose(); return; }
               if (key === 'clouds') {
                 const mask = createCloudMaskTexture(THREE, texture.image as HTMLImageElement);
@@ -1175,6 +1477,7 @@ export function CosmosRenderer({
               completed++;
               if (completed === maps.length) reportAsset('earth', loaded === maps.length ? 'NASA GIBS ativo' : 'NASA GIBS parcial · fallback procedural');
             }, undefined, () => {
+              trackTextureLoad(-1);
               if (key === 'clouds') earthMaterial.uniforms.uCloudsLoaded.value = 0;
               completed++;
               if (completed === maps.length) reportAsset('earth', loaded === maps.length ? 'NASA GIBS ativo' : 'NASA GIBS parcial · fallback procedural');
@@ -1203,10 +1506,11 @@ export function CosmosRenderer({
             activeScene = which;
             cityViewActive = false;
             cityPoseBackup = null;
+            releaseFocus();
             const savedPose = viewStates.get(which);
             if (savedPose) restorePose(savedPose);
             else {
-              camera.position.set(0, 0, defaultDistances[which]);
+              camera.position.copy(defaultCameraPosition(which));
               controls.target.set(0, 0, 0);
             }
           }
@@ -1217,7 +1521,7 @@ export function CosmosRenderer({
 
           if (which === 'earth' && city && !cityViewActive) {
             cityPoseBackup = snapshot();
-            camera.position.copy(cityVector.clone().normalize().multiplyScalar(9.6));
+            camera.position.copy(cityCameraPosition());
             controls.target.set(0, 0, 0);
           } else if (which === 'earth' && !city && cityViewActive && cityPoseBackup) {
             restorePose(cityPoseBackup);
@@ -1232,25 +1536,74 @@ export function CosmosRenderer({
             loadEarthTextures();
           }
         };
+        /** The city marker lives inside the spinning globe, so its camera pose uses world coordinates. */
+        const cityCameraPosition = () => {
+          groupEarth.updateMatrixWorld(true);
+          return groupEarth.localToWorld(cityVector.clone()).normalize().multiplyScalar(9.6);
+        };
         navigationRef.current = {
           zoomIn: () => {
             camera.position.sub(controls.target).multiplyScalar(.8).add(controls.target);
             controls.update();
+            pauseEarth(EARTH_RESUME_DELAY_MS);
           },
           zoomOut: () => {
             camera.position.sub(controls.target).multiplyScalar(1.25).add(controls.target);
             controls.update();
+            pauseEarth(EARTH_RESUME_DELAY_MS);
+          },
+          rotate: (left, up) => {
+            controls.rotateLeft(left);
+            controls.rotateUp(up);
+            interactUntil = performance.now() + 1500;
+            pauseEarth(EARTH_RESUME_DELAY_MS);
           },
           reset: () => {
             const which = sceneRef.current;
             const city = which === 'earth' && cityRef.current;
-            if (city) camera.position.copy(cityVector.clone().normalize().multiplyScalar(9.6));
-            else camera.position.set(0, 0, defaultDistances[which]);
+            releaseFocus();
             controls.target.set(0, 0, 0);
+            camera.position.copy(city ? cityCameraPosition() : defaultCameraPosition(which));
             cityViewActive = city;
             controls.update();
             viewStates.set(which, { position: camera.position.clone(), target: controls.target.clone() });
           },
+          releaseFocus,
+        };
+        // Tap a planet (or the Sun) to follow it; tap empty space to let go; double tap recentres.
+        const tap = { pointerId: -1, x: 0, y: 0, at: 0 };
+        let lastTapAt = 0;
+        const onCanvasPointerDown = (event: PointerEvent) => {
+          if (!event.isPrimary) { tap.pointerId = -1; return; }
+          tap.pointerId = event.pointerId;
+          tap.x = event.clientX;
+          tap.y = event.clientY;
+          tap.at = performance.now();
+        };
+        const onCanvasPointerUp = (event: PointerEvent) => {
+          if (event.pointerId !== tap.pointerId) return;
+          tap.pointerId = -1;
+          const now = performance.now();
+          if (Math.hypot(event.clientX - tap.x, event.clientY - tap.y) > 6 || now - tap.at > 350) return;
+          if (now - lastTapAt < 320) {
+            lastTapAt = 0;
+            navigationRef.current?.reset();
+            return;
+          }
+          lastTapAt = now;
+          if (activeScene !== 'system') return;
+          const body = pickBody(event.clientX, event.clientY);
+          if (body) focusOn(body);
+          else releaseFocus();
+        };
+        canvas.addEventListener('pointerdown', onCanvasPointerDown);
+        canvas.addEventListener('pointerup', onCanvasPointerUp);
+        controlsCleanup = () => {
+          controls.removeEventListener('start', onControlsStart);
+          controls.removeEventListener('end', onControlsEnd);
+          canvas.removeEventListener('pointerdown', onCanvasPointerDown);
+          canvas.removeEventListener('pointerup', onCanvasPointerUp);
+          controls.dispose();
         };
         const update = (
           which: CosmosScene,
@@ -1274,16 +1627,6 @@ export function CosmosRenderer({
             neural.geometry.setDrawRange(0, qualityName === 'high' ? 560 : qualityName === 'medium' ? 300 : 120);
             neural.edgeMaterial.opacity = qualityName === 'high' ? .22 : qualityName === 'medium' ? .16 : .11;
             if (bloomPass) bloomPass.enabled = qualityName === 'high';
-          }
-          if (which === 'system' && Date.now() - lastAstroUpdate > 60_000) {
-            lastAstroUpdate = Date.now();
-            const date = new Date();
-            planets.forEach(({ body, mesh, ring, orbitRadius }) => {
-              const vector = Astronomy.HelioVector(body, date);
-              const phase = Math.atan2(vector.y, vector.x);
-              mesh.position.set(Math.cos(phase) * orbitRadius, Math.sin(phase) * orbitRadius * .42, (vector.z || 0) * .08);
-              if (ring) ring.position.copy(mesh.position);
-            });
           }
           if (which === 'earth' && key !== lastEarthKey) {
             lastEarthKey = key;
@@ -1329,29 +1672,58 @@ export function CosmosRenderer({
         renderer.__camera = camera;
         renderer.__setScene = update;
         let animationLastTime = 0;
+        let motionTime = 0;
         renderer.__animate = (time, audioLevel, currentState) => {
           const delta = animationLastTime ? Math.min(2.5, (time - animationLastTime) / 16.667) : 1;
+          const seconds = delta * 16.667 / 1000;
           animationLastTime = time;
+          const moving = !motionPaused();
+          if (moving) motionTime += delta * 16.667;
           pointerParallax.x += (pointerParallax.targetX - pointerParallax.x) * .055;
           pointerParallax.y += (pointerParallax.targetY - pointerParallax.y) * .055;
-          groupGalaxy.rotation.z += .00012 * delta;
+          // Galaxy: the inner disk spins about its pole (positive Y keeps the arms trailing);
+          // the outer group only carries the subtle mouse parallax.
+          if (moving && activeScene === 'galaxy') galaxyDisk.rotation.y += GALAXY_SPIN_RAD_PER_SECOND * seconds;
           groupGalaxy.rotation.x += (pointerParallax.y * .035 - groupGalaxy.rotation.x) * .025;
-          groupGalaxy.rotation.y += (pointerParallax.x * .045 - groupGalaxy.rotation.y) * .025;
-          groupSystem.rotation.y += .00022 * delta;
+          groupGalaxy.rotation.z += (pointerParallax.x * .045 - groupGalaxy.rotation.z) * .025;
           groupSystem.rotation.x += (pointerParallax.y * .028 - groupSystem.rotation.x) * .025;
           groupSystem.rotation.z += (pointerParallax.x * .035 - groupSystem.rotation.z) * .025;
-          groupEarth.rotation.y += .00032 * delta;
+          if (moving && activeScene === 'earth' && !cityViewActive && time > earthPausedUntil) {
+            groupEarth.rotation.y += EARTH_SPIN_RAD_PER_SECOND * seconds;
+          }
           groupEarth.rotation.x += (pointerParallax.y * .028 - groupEarth.rotation.x) * .025;
           groupEarth.rotation.z += (pointerParallax.x * .035 - groupEarth.rotation.z) * .025;
-          backgroundStars.rotation.y += .000006 * delta;
-          planets.forEach(({ mesh }, index) => {
-            mesh.rotation.y += (.0012 + .00035 / (index + 1)) * delta;
-          });
-          earthMaterial.uniforms.uCloudOffset.value = (time * .00001) % 1;
-          sunMaterial.uniforms.uTime.value = time / 1000;
-          cityMarker.scale.setScalar(1 + .18 * Math.sin(time * .004));
-          cityHalo.scale.setScalar(1 + .12 * Math.sin(time * .003));
+          if (moving) {
+            backgroundStars.rotation.y += .000006 * delta;
+            if (activeScene === 'system') {
+              orbitClock += seconds;
+              placePlanets();
+            }
+            planets.forEach(({ mesh }, index) => {
+              mesh.rotation.y += (.0012 + .00035 / (index + 1)) * delta;
+            });
+          }
+          if (focus) {
+            // Follow the chosen body: move the orbit target with it and ease the camera in.
+            const goal = focus.body.mesh.getWorldPosition(focusScratch);
+            const offset = goal.sub(controls.target).multiplyScalar(focus.flying ? .14 : 1);
+            controls.target.add(offset);
+            camera.position.add(offset);
+            if (focus.flying) {
+              const arm = camera.position.clone().sub(controls.target);
+              const length = arm.length();
+              const next = length + (focus.distance - length) * .1;
+              camera.position.copy(controls.target).add(arm.setLength(next));
+              if (Math.abs(next - focus.distance) < .03 && offset.length() < .005) focus.flying = false;
+            }
+          }
+          earthMaterial.uniforms.uCloudOffset.value = (motionTime * .00001) % 1;
+          sunMaterial.uniforms.uTime.value = motionTime / 1000;
+          cityMarker.scale.setScalar(1 + .18 * Math.sin(motionTime * .004));
+          cityHalo.scale.setScalar(1 + .12 * Math.sin(motionTime * .003));
           controls.update();
+          // The neural shell has a clear window at the screen centre, so it stays camera-aligned.
+          neural.group.quaternion.copy(camera.quaternion);
           const count = currentState === 'idle' ? 1 + Math.floor((Math.sin(time * .00031) + 1) * 1.45) : 0;
           const bucket = Math.floor(time / 1000 * Math.max(1, count));
           const idleNode = Math.floor(Math.abs(Math.sin(bucket * 12.9898) * 43758.5453)) % neural.count;
@@ -1416,12 +1788,16 @@ export function CosmosRenderer({
       }).catch(() => {
         if (!disposed) {
           reportAsset('earth', 'WebGL indisponível · modo 2D');
+          setRenderMode('static');
           resizeObserver?.disconnect();
           composer?.dispose?.();
           composer = null;
           controlsCleanup?.();
           controlsCleanup = null;
+          disposeScene?.();
+          disposeScene = null;
           renderer?.dispose();
+          renderer?.forceContextLoss?.();
           renderer?.domElement.remove();
           renderer = null;
           host.replaceChildren();
@@ -1451,42 +1827,64 @@ export function CosmosRenderer({
       resizeObserver?.disconnect();
       cleanup?.();
       staticDrawRef.current = null;
+      restartStaticMotionRef.current = null;
       composer?.dispose?.();
       controlsCleanup?.();
       navigationRef.current = null;
+      disposeScene?.();
       renderer?.dispose();
+      renderer?.forceContextLoss?.();
       renderer?.domElement.remove();
       host.replaceChildren();
     };
   }, [visible, quality, mobileViewport]);
 
   useEffect(() => {
-    const isStatic = quality === 'low' || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (visible && isStatic) staticDrawRef.current?.();
-  }, [scene, quality, feeds, targetCity, state, visible]);
+    // Only the 2D fallback needs an explicit redraw; WebGL redraws every frame.
+    if (visible) staticDrawRef.current?.();
+  }, [scene, quality, feeds, targetCity, state, visible, autoMotion]);
 
-  const simpleNavigation = quality === 'low' ||
-    (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  useEffect(() => {
+    if (scene !== 'system') setFocusLabel(null);
+  }, [scene]);
+
+  const hint = renderMode === 'static'
+    ? 'Arraste para mover · +/− para zoom'
+    : mobileViewport
+      ? `Arraste para girar · pinça para zoom${scene === 'system' ? ' · toque num planeta' : ''} · toque duplo recentraliza`
+      : `Arraste para girar · roda ou +/− para zoom${scene === 'system' ? ' · clique num planeta' : ''} · R recentraliza`;
+  const touch = () => { markHintSeen(); interactRef.current?.(); };
 
   return (
     <>
-      <div ref={hostRef} className="cosmos-viewport" data-scene={scene} aria-hidden="true" />
+      <div ref={hostRef} className="cosmos-viewport" data-scene={scene} data-render-mode={renderMode} aria-hidden="true" />
       {visible && (
-        <div className="cosmos-navigation" role="group" aria-label={navigationLabel ?? 'Navegação das cenas'}>
-          <span className="cosmos-navigation__hint">
-            {simpleNavigation
-              ? 'Arraste para mover · use +/− para zoom'
-              : `Arraste para girar · ${mobileViewport ? 'pinça para zoom' : 'roda para zoom'}`}
-          </span>
+        <div className="cosmos-navigation" role="group" aria-label={navigationLabel ?? 'Navegação das cenas'} data-testid={`cosmos-navigation-${scene}`}>
+          <div className="cosmos-navigation__status">
+            {!hintSeen && <span className="cosmos-navigation__hint" data-testid={`text-cosmos-hint-${scene}`}>{hint}</span>}
+            {texturesLoading && <span className="cosmos-chip" role="status" data-testid={`status-cosmos-textures-${scene}`}>Carregando texturas…</span>}
+            {focusLabel && (
+              <span className="cosmos-chip cosmos-chip--focus" role="status" data-testid={`status-cosmos-focus-${scene}`}>
+                Seguindo {focusLabel}
+                <button type="button" onClick={() => { navigationRef.current?.releaseFocus?.(); touch(); }} data-testid={`button-cosmos-release-${scene}`}>Soltar</button>
+              </span>
+            )}
+            {!autoMotion && onEnableMotion && (
+              <span className="cosmos-chip" data-testid={`status-cosmos-motion-${scene}`}>
+                Movimento automático pausado
+                <button type="button" onClick={onEnableMotion} data-testid={`button-cosmos-enable-motion-${scene}`}>Ativar</button>
+              </span>
+            )}
+          </div>
           <div className="cosmos-navigation__buttons">
-            <button type="button" aria-label="Afastar" title="Afastar" onClick={() => navigationRef.current?.zoomOut()} data-testid={`button-cosmos-zoom-out-${scene}`}>
+            <button type="button" aria-label="Afastar" title="Afastar (−)" onClick={() => { navigationRef.current?.zoomOut(); touch(); }} data-testid={`button-cosmos-zoom-out-${scene}`}>
               <Minus size={15} aria-hidden="true" />
             </button>
-            <button type="button" aria-label="Aproximar" title="Aproximar" onClick={() => navigationRef.current?.zoomIn()} data-testid={`button-cosmos-zoom-in-${scene}`}>
+            <button type="button" aria-label="Aproximar" title="Aproximar (+)" onClick={() => { navigationRef.current?.zoomIn(); touch(); }} data-testid={`button-cosmos-zoom-in-${scene}`}>
               <Plus size={15} aria-hidden="true" />
             </button>
-            <button type="button" aria-label="Restaurar vista" title="Restaurar vista" onClick={() => navigationRef.current?.reset()} data-testid={`button-cosmos-reset-${scene}`}>
-              <RotateCcw size={13} aria-hidden="true" />
+            <button type="button" className="cosmos-navigation__recenter" aria-label="Recentralizar a vista" title="Recentralizar (R)" onClick={() => { navigationRef.current?.reset(); touch(); }} data-testid={`button-cosmos-reset-${scene}`}>
+              <LocateFixed size={14} aria-hidden="true" /><span>Recentralizar</span>
             </button>
           </div>
         </div>

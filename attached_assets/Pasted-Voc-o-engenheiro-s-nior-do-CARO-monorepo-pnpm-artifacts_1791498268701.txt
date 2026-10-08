@@ -1,0 +1,54 @@
+Você é o engenheiro sênior do ÍCARO (monorepo pnpm: artifacts/api-server Express + artifacts/icaro React/Vite/three.js). Missão: entregar o Ícaro 100% funcional, sem bugs, com cenas 3D interativas de verdade e UX aprovada nas 10 heurísticas de Nielsen. Trabalhe direto, sem perguntas, em ciclos curtos de editar → testar → corrigir.
+
+0. Antes de tudo (obrigatório, 2 min)
+Sincronize: pnpm --filter @workspace/scripts run sync:fix. Se parar por credencial, rode GITHUB_TOKEN="$GITUV_TOKEN_ICARO" pnpm --filter @workspace/scripts run sync:fix. Nunca use force-push e nunca descarte alterações de nenhum lado.
+Linha de base: pnpm run typecheck, pnpm --filter @workspace/scripts run sync:check, validate:hologram, validate:cerebro-200. Anote o que falha; essa é a lista de bugs nº 1.
+1. Regras que não podem quebrar
+Não remova nem reescreva: painel financeiro (painel-financeiro.tsx), boca medida dos avatares (mouth: em src/lib/avatars.ts + .holo-avatar__mouth-cavity), bancos em api-server/src/lib/conhecimento/, calculo-folha.ts, render.yaml, README (créditos: Emanuel Macêdo Luz, desenvolvedor do projeto).
+Rosto, voz, microfone, "Ok, Ícaro", legendas e sincronia labial continuam funcionando.
+Chaves de API só no servidor. Edição cirúrgica: altere trechos, não arquivos inteiros.
+Modo Gratuito: não ative nenhum recurso pago.
+2. Bug principal: cenas 3D aparecem estáticas
+Causa já encontrada em src/components/stage/cosmos/renderer.tsx: staticMode = quality === 'low' || prefers-reduced-motion. Nesses casos, o modo WebGL com OrbitControls é trocado por um canvas 2D parado. O Windows com "efeitos de animação" desligados ativa prefers-reduced-motion, então a maioria dos PCs cai no modo parado.
+
+Corrija assim:
+
+WebGL sempre que disponível. O modo 2D só entra se o WebGL falhar ao iniciar (try/catch no WebGLRenderer ou ausência de webgl2/webgl).
+prefers-reduced-motion não desliga a interação. Ele só desliga rotações e animações automáticas. O usuário continua girando, arrastando e dando zoom.
+Qualidade "low" reduz pixelRatio, sombras e partículas, mas mantém o 3D interativo.
+A cena recebe o toque. Garanta que nenhuma camada por cima (.face, .vig, .scan, legendas, HUD) tenha pointer-events capturando a área da cena. Use pointer-events:none nas decorações e touch-action:none no canvas WebGL.
+Critérios de aceite para cada cena (Terra, Sistema Solar, Galáxia):
+
+arrastar com 1 dedo ou com o mouse gira em 3D, com inércia (enableDamping);
+pinça ou roda do mouse dá zoom, com limites minDistance/maxDistance;
+2 dedos ou botão direito movem a cena (pan);
+duplo toque ou botão "Recentralizar" volta à vista inicial;
+a Terra gira sozinha devagar até o usuário tocar e volta a girar 5 s depois de ele soltar;
+no Sistema Solar, os planetas orbitam continuamente e tocar num planeta foca nele e mostra o nome;
+na Galáxia, as partículas giram em espiral e dá para orbitar em volta;
+60 fps no desktop e pelo menos 30 fps no celular; abaixo disso, reduzir a qualidade automaticamente sem cair para 2D.
+3. Heurísticas de Nielsen (10 etapas, aplique e verifique cada uma)
+Visibilidade do status: indicador claro de "ouvindo / pensando / falando", progresso no carregamento das texturas e aviso quando o servidor estiver acordando (Render free leva cerca de 50 s).
+Correspondência com o mundo real: textos em português simples, termos contábeis corretos e rótulos "Terra", "Sistema Solar", "Galáxia".
+Controle e liberdade: botões Parar fala, Recentralizar, Voltar e fechar o painel, e Esc fecha diálogos.
+Consistência e padrões: mesmos ícones, cores e posições em todas as cenas, e os mesmos gestos nas três cenas.
+Prevenção de erros: confirmar antes de ações destrutivas, desabilitar Enviar com campo vazio e validar o microfone antes de armar a escuta.
+Reconhecer em vez de lembrar: dicas visíveis de gestos ("arraste para girar · pinça para zoom") que somem após o primeiro uso, e sugestões de perguntas no palco.
+Flexibilidade e eficiência: atalhos de teclado (setas giram a cena, +/− zoom, R recentraliza, espaço ativa o microfone) e gestos para quem já conhece.
+Estética minimalista: HUD limpo, esconder controles avançados num menu e nada sobreposto ao rosto.
+Ajudar a reconhecer e corrigir erros: mensagens em português que dizem o que houve e como resolver (sem internet, microfone bloqueado, cota da IA esgotada), sempre com um botão de ação.
+Ajuda e documentação: painel "?" atualizado com gestos, atalhos e comandos de voz.
+4. Correção de bugs gerais
+Zerar erros do pnpm run typecheck (inclusive os do pacote scripts, que já existiam antes).
+Console do navegador sem erros e sem warnings de React ao abrir o palco e trocar de cena.
+Sem vazamento de memória: descarte renderer, geometries, textures e controls ao trocar de cena ou desmontar.
+Responsivo em 375 px, 768 px e 1440 px; nada cortado nem sobreposto.
+API: rotas com validação Zod, erros com status e mensagem corretos, /api/healthz ok, rate limit mantido.
+5. Definição de pronto (só diga "pronto" com tudo verde)
+pnpm run typecheck sem erros.
+sync:check: 0 erros.
+validate:hologram, validate:cerebro-200 e pnpm --filter @workspace/scripts exec tsx ./src/validate-stage.ts passando.
+Teste manual no Preview, com print de cada cena após arrastar: a Terra girada, o Sistema Solar em outro ângulo e a Galáxia com zoom.
+Fazer commit com mensagem clara e rodar sync:fix para enviar ao GitHub (o Render publica sozinho).
+6. Formato da resposta final
+STATUS ✅/⚠️ · Bugs corrigidos (arquivo:linha) · Heurísticas 1–10 (o que mudou em cada) · Testes (comando → resultado) · Pendências reais. Nada de texto genérico.

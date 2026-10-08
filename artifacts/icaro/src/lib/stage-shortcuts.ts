@@ -5,7 +5,8 @@ export type ShortcutEvent = {
 };
 export type ShortcutContext = { panelOpen: boolean; helpOpen: boolean };
 
-export const SHORTCUT_KEYS = ['Enter', 'ArrowRight', 'PageDown'];
+// Arrow keys are reserved for rotating the 3D scenes; presenter remotes send PageDown.
+export const SHORTCUT_KEYS = ['Enter', ' ', 'PageDown'];
 const EDITABLE = 'input,textarea,select,[contenteditable="true"],[contenteditable=""],[role="tab"],dialog';
 
 export function shouldActivateStageShortcut(e: ShortcutEvent, ctx: ShortcutContext): boolean {
@@ -17,9 +18,9 @@ export function shouldActivateStageShortcut(e: ShortcutEvent, ctx: ShortcutConte
     const tag = (t.tagName ?? '').toLowerCase();
     if (['input', 'textarea', 'select'].includes(tag) || t.isContentEditable) return false;
     if (t.closest?.(EDITABLE)) return false;
-    // Enter keeps a focused button's native action. Presenter arrows still work
-    // after clicking the microphone, when that button retains keyboard focus.
-    if (e.key === 'Enter' && (['button', 'a'].includes(tag) || t.closest?.('button,a,[role="button"]'))) return false;
+    // Enter and Space keep a focused button's native action. The presenter's PageDown
+    // still works after clicking the microphone, when that button retains keyboard focus.
+    if ((e.key === 'Enter' || e.key === ' ') && (['button', 'a'].includes(tag) || t.closest?.('button,a,[role="button"]'))) return false;
   }
   return true;
 }
