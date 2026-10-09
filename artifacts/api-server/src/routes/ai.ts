@@ -9,6 +9,7 @@ import {
   SendAiMessageResponse,
   SpeakAiTextBody,
 } from "@workspace/api-zod";
+import { hasDatabase, pool } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { createSpeechEngine, DEFAULT_GEMINI_TTS_MODELS, SpeechUnavailableError } from "../lib/tts";
 import { applyTtsPronunciation } from "../lib/tts-timestamps";
@@ -21,6 +22,7 @@ import { normalizeAnswerText } from "../lib/answer-text";
 import { createEmotionTagStream } from "../lib/emotion-tags";
 import { createProviderRouter, isAutoProviderId } from "../lib/provider-router";
 import { createCerebroLayers, presenterize, redactPersonalData } from "../lib/cerebro-camadas";
+import { createCalculationLookup } from "../lib/calculos-db";
 import { requireAuth } from "../middlewares/require-auth";
 import {
   createGroqTextService,
@@ -74,6 +76,7 @@ const CLAUDE_MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5";
 const API_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dataDir = process.env.ICARO_DATA_DIR || path.join(API_ROOT, ".data");
 const cerebro = createCerebroLayers({ dataDir });
+const calculationLookup = hasDatabase ? createCalculationLookup(pool) : null;
 const groq = createGroqTextService({
   getApiKey: getGroqApiKey,
   getModel: getGroqModel,
@@ -108,6 +111,30 @@ const speech = createSpeechEngine({
   dataDir,
   log: logger,
 });
+
+async function resolveCalculation(question: string) {
+  if (!calculationLookup) return null;
+  try {
+    return await calculationLookup(question);
+  } catch (error) {
+    logger.warn(
+      { message: error instanceof Error ? error.message : "database lookup failed" },
+      "Exact calculation database lookup failed",
+    );
+    return null;
+  }
+}
+
+async function recordCalculationAnswer(question: string, answer: string, sourceId: string) {
+  try {
+    await cerebro.recordLocalAnswer({ question, answer, sourceId });
+  } catch (error) {
+    logger.warn(
+      { message: error instanceof Error ? error.message : "local answer tracking failed" },
+      "Exact calculation answer tracking failed",
+    );
+  }
+}
 
 function getGeminiKey() {
   // Prefer the existing `gemine` Secret so a stale uppercase alias cannot mask its update.
@@ -397,6 +424,20 @@ router.post("/ai/chat", async (req, res) => {
   }
 
   if (input.persona === "icaro" && !input.dataset) {
+    const calculation = await resolveCalculation(userMessage);
+    if (calculation) {
+      const answer = normalizeAnswerText(presenterize(calculation.resposta));
+      const model = `l4-${calculation.id}`;
+      await recordCalculationAnswer(userMessage, answer, calculation.id);
+      res.json(SendAiMessageResponse.parse({
+        answer,
+        provider: "local",
+        model,
+        layer: "L4",
+      }));
+      return;
+    }
+
     const layered = await cerebro.resolve(userMessage, input.knowledgeMode);
     if (layered.kind === "answer") {
       const answer = normalizeAnswerText(presenterize(layered.answer));
@@ -940,6 +981,21 @@ router.post("/ai/chat/stream", async (req, res) => {
   );
 
   if (input.persona === "icaro" && !input.dataset) {
+    const calculation = await resolveCalculation(effectiveUserMessage);
+    if (calculation) {
+      const answer = normalizeAnswerText(presenterize(calculation.resposta));
+      const model = `l4-${calculation.id}`;
+      await recordCalculationAnswer(userMessage, answer, calculation.id);
+      sendEvent("provider", { provider: "local", model });
+      for (let offset = 0; offset < answer.length; offset += 48) {
+        emotionOutput.feed(answer.slice(offset, offset + 48));
+      }
+      emotionOutput.flush();
+      sendEvent("done", { provider: "local", model, partial: false, layer: "L4" });
+      res.end();
+      return;
+    }
+
     const layered = await cerebro.resolve(effectiveUserMessage, input.knowledgeMode);
     if (layered.kind === "answer") {
       const answer = normalizeAnswerText(presenterize(layered.answer));

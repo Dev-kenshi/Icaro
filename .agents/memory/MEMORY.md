@@ -21,3 +21,4 @@
 - [Ícaro responsive navigation](icaro-responsive-navigation.md) — keep phone drawer/bottom nav, tablet icon rail, and full desktop sidebar; avoid overlays on signed-in content.
 - [ITCONT data scope](itcont-data-scope.md) — keep public event/guest details and image links only; never copy images or import registrants, payroll, accounts, or ops data.
 - [Health check contract boundaries](health-check-contract-boundaries.md) — test each endpoint against its actual source of truth; OpenAPI omissions can be intentional.
+- [Calculation database capacity](calculation-database-capacity.md) — a development load is not production approval; verify production quota, existing use, and full table/index size first.

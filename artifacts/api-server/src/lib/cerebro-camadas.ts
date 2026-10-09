@@ -467,6 +467,18 @@ export function createCerebroLayers(options: { dataDir: string; now?: () => numb
       .sort((left, right) => right.count - left.count || right.lastSeenAt - left.lastSeenAt);
   }
 
+  async function recordLocalAnswer(input: {
+    question: string;
+    answer: string;
+    sourceId: string;
+  }): Promise<void> {
+    await ensureLoaded();
+    if (!input.question.trim() || containsPersonalData(input.question)) return;
+    const estimatedTokens = Math.max(1, Math.ceil(input.question.length / 4));
+    track("L4", input.question, input.answer, 0, estimatedTokens);
+    await saveCache(input.question, input.answer, "L4", input.sourceId);
+  }
+
   async function approveCandidate(id: string, destination: CandidateDestination): Promise<boolean> {
     await ensureLoaded();
     const candidate = state.candidates.find((item) => item.id === id && item.status === "pending");
@@ -518,5 +530,14 @@ export function createCerebroLayers(options: { dataDir: string; now?: () => numb
     };
   }
 
-  return { resolve, recordAnswer, listCandidates, approveCandidate, discardCandidate, getStats, flush: persist };
+  return {
+    resolve,
+    recordAnswer,
+    recordLocalAnswer,
+    listCandidates,
+    approveCandidate,
+    discardCandidate,
+    getStats,
+    flush: persist,
+  };
 }
