@@ -344,6 +344,17 @@ export function createCerebroLayers(options: { dataDir: string; now?: () => numb
       return { kind: "answer", answer: approvedBank.answer, layer: "L2", sourceId: approvedBank.id };
     }
 
+    // Respostas revisadas do banco local não devem esperar o embedder opcional:
+    // isso evita até 3,5 s de espera antes de uma resposta que já está pronta.
+    if (knowledgeMode === "auto") {
+      const bankMatch = resolveKnowledgeAnswer(question);
+      if (bankMatch) {
+        track("L4", question, bankMatch.answer, 0, estimatedTokens);
+        await saveCache(question, bankMatch.answer, "L4", bankMatch.id);
+        return { kind: "answer", answer: bankMatch.answer, layer: "L4", sourceId: bankMatch.id };
+      }
+    }
+
     if (knowledgeMode === "base") {
       const bankMatch = resolveKnowledgeAnswer(question);
       if (bankMatch) {
@@ -396,13 +407,6 @@ export function createCerebroLayers(options: { dataDir: string; now?: () => numb
         return { kind: "answer", answer: bestVector.answer, layer: "L4", sourceId: bestVector.id };
       }
       return { kind: "miss", layer: "L6" };
-    }
-
-    const bankMatch = resolveKnowledgeAnswer(question);
-    if (bankMatch) {
-      track("L4", question, bankMatch.answer, 0, estimatedTokens);
-      await saveCache(question, bankMatch.answer, "L4", bankMatch.id);
-      return { kind: "answer", answer: bankMatch.answer, layer: "L4", sourceId: bankMatch.id };
     }
 
     if (bestVector && bestSimilarity >= 0.82) {

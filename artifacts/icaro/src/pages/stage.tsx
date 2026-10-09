@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { StageHelp } from '@/components/stage/stage-help';
 import { shouldActivateStageShortcut } from '@/lib/stage-shortcuts';
-import { Mic, X, BarChart3, ExternalLink, Trash2, Menu, Keyboard, Play, Maximize, Volume2, VolumeX, Eye, EyeOff, Orbit, Globe2, Sparkles, SkipForward, Layers, Move, RotateCcw, Check, Square, ArrowLeft } from 'lucide-react';
+import { Mic, X, BarChart3, ExternalLink, Trash2, Menu, Keyboard, Play, Maximize, Volume2, VolumeX, Eye, EyeOff, Orbit, Globe2, Sparkles, SkipForward, Layers, Move, RotateCcw, Check, Square, ArrowLeft, Timer } from 'lucide-react';
 import { getGetAiStatusQueryKey, getGetAiVoicesQueryKey, getGetCosmosFeedsQueryKey, getHealthCheckQueryKey, useGetAiStatus, useGetAiVoices, useGetCosmosFeeds, useHealthCheck, useSendAiMessage, type AiChatResponse, type AiVoiceCatalog } from '@workspace/api-client-react';
 import { requestAiChatStream } from '@/lib/ai-chat-stream';
 import { interpret, formatDuration } from '@/lib/commands';
@@ -93,6 +93,7 @@ const readQuality = (): VisualQuality => {
   } catch { return 'auto'; }
 };
 const MOTION_KEY = 'icaro.stage.motion';
+const SPEECH_DELAY_KEY = 'icaro.stage.speech-delay.v1';
 const MOTION_OPTIONS: { value: CosmosMotion; label: string }[] = [
   { value: 'system', label: 'Seguir o dispositivo' }, { value: 'on', label: 'Sempre ligado' }, { value: 'off', label: 'Desligado' },
 ];
@@ -103,6 +104,12 @@ const readMotion = (): CosmosMotion => {
   } catch { return 'system'; }
 };
 const prefersReducedMotion = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const readSpeechDelay = () => {
+  try {
+    const value = Number(localStorage.getItem(SPEECH_DELAY_KEY) ?? 0);
+    return Number.isFinite(value) ? Math.max(0, Math.min(3000, Math.round(value / 100) * 100)) : 0;
+  } catch { return 0; }
+};
 /** The 90 s scene tour waits this long after anyone touches, drags or picks a scene. */
 const SCENE_TOUR_PAUSE_MS = 180_000;
 const STAGE_SUGGESTIONS: [string, string][] = [
@@ -185,6 +192,9 @@ export default function Stage() {
   const pitch = .95, rate = .92, voiceURI = null;
   const [voiceOn, setVoiceOn] = useState(true);
   const voiceOnRef = useRef(voiceOn); voiceOnRef.current = voiceOn;
+  const [speechDelayMs, setSpeechDelayMs] = useState(readSpeechDelay);
+  const speechDelayRef = useRef(speechDelayMs); speechDelayRef.current = speechDelayMs;
+  const [delaySettingsOpen, setDelaySettingsOpen] = useState(false);
   const speechPendingRef = useRef(false);
   const [notes, setNotes] = useState<Note[]>(loadNotes);
   const [timerEnd, setTimerEnd] = useState<number | null>(null);
@@ -222,6 +232,7 @@ export default function Stage() {
   const commandCompleteRef = useRef<(playedAudio?: boolean) => void>(() => undefined);
   const lastAnswerRef = useRef('');
   const captionTimerRef = useRef(0);
+  const speechDelayTimerRef = useRef(0);
   const recordAbortRef = useRef<AbortController | null>(null);
   const logRef = useRef(log); logRef.current = log;
   const stateRef = useRef(state); stateRef.current = state;
@@ -358,6 +369,7 @@ export default function Stage() {
     turnRef.current++;
     aiAbortRef.current?.abort();
     window.clearTimeout(captionTimerRef.current);
+    window.clearTimeout(speechDelayTimerRef.current);
     stopSpeaking();
     releaseSpeechCache();
   }, []);
@@ -379,22 +391,29 @@ export default function Stage() {
     if (!voiceOnRef.current) { activeRef.current = false; setState('idle'); commandCompleteRef.current(); return; }
     speechPendingRef.current = true;
     setState('thinking');
+    window.clearTimeout(speechDelayTimerRef.current);
     let playedAudio = false;
-    speak(t, {
-      pitch, rate, voiceURI, voiceId: selectedVoice?.voiceId, neural: true, emotionMarks, onEmotion: setEmotion,
-      onProvider: setEngine,
-      onChunk: (c) => { if (turnRef.current === turn) setCaption(c); },
-      onWords: (words, activeIndex) => { if (turnRef.current === turn) setCaptionWords({ words, activeIndex }); },
-      onStart: () => { if (turnRef.current === turn) { playedAudio = true; setState('talking'); } },
-      onError: (message) => { if (turnRef.current === turn) setSpeechError(message); },
-      onEnd: () => {
-        if (turnRef.current !== turn) return;
-        speechPendingRef.current = false;
-        activeRef.current = false; setState('idle'); commandCompleteRef.current(playedAudio);
-        captionTimerRef.current = window.setTimeout(() => { if (turnRef.current === turn) { setCaption(''); setCaptionWords(null); } }, 2000);
-      },
-    });
-  }, [voiceOn, selectedVoice]);
+    const startSpeech = () => {
+      speechDelayTimerRef.current = 0;
+      if (turnRef.current !== turn || !voiceOnRef.current) return;
+      speak(t, {
+        pitch, rate, voiceURI, voiceId: selectedVoice?.voiceId, neural: true, emotionMarks, onEmotion: setEmotion,
+        onProvider: setEngine,
+        onChunk: (c) => { if (turnRef.current === turn) setCaption(c); },
+        onWords: (words, activeIndex) => { if (turnRef.current === turn) setCaptionWords({ words, activeIndex }); },
+        onStart: () => { if (turnRef.current === turn) { playedAudio = true; setState('talking'); } },
+        onError: (message) => { if (turnRef.current === turn) setSpeechError(message); },
+        onEnd: () => {
+          if (turnRef.current !== turn) return;
+          speechPendingRef.current = false;
+          activeRef.current = false; setState('idle'); commandCompleteRef.current(playedAudio);
+          captionTimerRef.current = window.setTimeout(() => { if (turnRef.current === turn) { setCaption(''); setCaptionWords(null); } }, 2000);
+        },
+      });
+    };
+    if (speechDelayRef.current > 0) speechDelayTimerRef.current = window.setTimeout(startSpeech, speechDelayRef.current);
+    else startSpeech();
+  }, [selectedVoice]);
   const sayRef = useRef(say); sayRef.current = say;
 
   // timer
@@ -780,7 +799,7 @@ export default function Stage() {
     if (!enabled && speechPendingRef.current) {
       const playedAudio = stateRef.current === 'talking';
       turnRef.current++; speechPendingRef.current = false; activeRef.current = false;
-      stopSpeaking(); window.clearTimeout(captionTimerRef.current);
+      stopSpeaking(); window.clearTimeout(captionTimerRef.current); window.clearTimeout(speechDelayTimerRef.current);
       setCaptionWords(null); setCaption(lastAnswerRef.current);
       setState('idle'); commandCompleteRef.current(playedAudio);
     }
@@ -833,6 +852,7 @@ export default function Stage() {
     activeRef.current = false; turnRef.current++;
     speechPendingRef.current = false;
     window.clearTimeout(captionTimerRef.current);
+    window.clearTimeout(speechDelayTimerRef.current);
     setCaptionWords(null);
     stopSpeaking();
     setState('idle');
@@ -1229,6 +1249,23 @@ export default function Stage() {
           )}
           {tab === 'voz' && (
             <div className="space-y-5">
+              <div className="card space-y-3">
+                <button type="button" className="pbtn w-full justify-between" onClick={() => setDelaySettingsOpen((open) => !open)} aria-expanded={delaySettingsOpen} aria-controls="speech-delay-settings" data-testid="button-manage-delay">
+                  <span className="flex items-center gap-2"><Timer size={14} /> Gerenciar atraso da fala</span>
+                  <strong className="mono text-xs">{speechDelayMs} ms</strong>
+                </button>
+                {delaySettingsOpen && <div id="speech-delay-settings" className="space-y-2 px-1 pt-2">
+                  <label className="setting-label flex items-center justify-between gap-3" htmlFor="speech-delay">
+                    <span>Espera antes de o Ícaro falar</span><span className="mono">{speechDelayMs} ms</span>
+                  </label>
+                  <input id="speech-delay" type="range" min="0" max="3000" step="100" value={speechDelayMs} onChange={(event) => {
+                    const value = Number(event.currentTarget.value);
+                    setSpeechDelayMs(value);
+                    try { localStorage.setItem(SPEECH_DELAY_KEY, String(value)); } catch { /* preferência continua nesta sessão */ }
+                  }} className="w-full accent-[color:var(--holo)]" aria-valuetext={`${speechDelayMs} milissegundos`} data-testid="input-speech-delay" />
+                  <p className="text-xs text-[color:var(--dim)]">{speechDelayMs === 0 ? 'Zero espera artificial: o áudio começa assim que fica pronto. Rede, IA e geração de voz ainda podem levar alguns instantes.' : 'Este ajuste acrescenta uma pausa antes do áudio; não acelera a rede nem o provedor de IA.'}</p>
+                </div>}
+              </div>
               <MicSettings mode={micMode} onMode={chooseMicMode} usingServer={useServerMic} busy={micTestActive} onTestStart={beginMicTest} onTestEnd={endMicTest} />
               <div className="card space-y-3">
                 <div className="mono text-[10px] uppercase tracking-widest text-[color:var(--ok)]">Palco visual</div>

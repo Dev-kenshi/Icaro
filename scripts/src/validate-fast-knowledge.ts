@@ -5,13 +5,16 @@
  * Uso: pnpm --filter @workspace/scripts exec tsx ./src/validate-fast-knowledge.ts
  */
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import {
   KNOWLEDGE_BANK,
   normalizeKnowledgeText,
+  REVISED_KNOWLEDGE_BANK,
   resolveKnowledgeAnswer,
 } from "../../artifacts/api-server/src/lib/knowledge-bank";
+import { createCerebroLayers } from "../../artifacts/api-server/src/lib/cerebro-camadas";
 import { WakeTurnGate } from "../../artifacts/icaro/src/lib/wake-turn-gate";
 
 const root = path.resolve(import.meta.dirname, "..", "..");
@@ -25,6 +28,28 @@ check("Banco local tem cobertura suficiente, categorias e IDs únicos", () => {
   assert.ok(KNOWLEDGE_BANK.filter((entry) => entry.category === "evento").length >= 14);
   assert.ok(KNOWLEDGE_BANK.filter((entry) => entry.category === "contabilidade").length >= 8);
   assert.ok(KNOWLEDGE_BANK.filter((entry) => entry.category === "tecnologia").length >= 4);
+});
+
+check("Base revisada importada responde sobre valuation sem consultar o embedder", async () => {
+  assert.ok(REVISED_KNOWLEDGE_BANK.length >= 1_000, `respostas=${REVISED_KNOWLEDGE_BANK.length}`);
+  assert.equal(new Set(REVISED_KNOWLEDGE_BANK.map((entry) => entry.id)).size, REVISED_KNOWLEDGE_BANK.length);
+  const answer = resolveKnowledgeAnswer("Explique valuation por fluxo de caixa descontado");
+  assert.equal(answer?.id, "cont2-valuation-fcd");
+
+  const dataDir = mkdtempSync(path.join(tmpdir(), "icaro-fast-knowledge-"));
+  let embedderCalled = false;
+  const cerebro = createCerebroLayers({
+    dataDir,
+    embed: async () => { embedderCalled = true; return []; },
+  });
+  try {
+    const result = await cerebro.resolve("Explique valuation por fluxo de caixa descontado");
+    assert.equal(result.kind, "answer");
+    assert.equal(embedderCalled, false);
+    await cerebro.flush();
+  } finally {
+    rmSync(dataDir, { recursive: true, force: true });
+  }
 });
 
 check("Fatos extraídos do PDF permanecem fiéis no banco", () => {
@@ -86,23 +111,22 @@ check("Legislação, cotação e temas atuais continuam com o provedor remoto", 
 
 check("Rota consulta o banco antes de qualquer provedor e identifica provider local", () => {
   const route = read("artifacts/api-server/src/routes/ai.ts");
-  const localCall = route.indexOf("resolveKnowledgeAnswer(userMessage)");
+  const localCall = route.indexOf("const layered = await cerebro.resolve(userMessage");
   const gemini = route.indexOf('if (input.provider === "gemini")');
   const openai = route.indexOf('if (input.provider === "openai")');
   const groq = route.indexOf('if (input.provider === "groq")');
   assert.ok(localCall >= 0 && gemini > localCall && openai > localCall && groq > localCall);
   assert.match(route, /input\.persona === "icaro" && !input\.dataset/);
   assert.match(route, /provider: "local"/);
-  assert.match(route, /model: "knowledge-bank-v1"/);
 });
 
 check("Contrato permite local apenas como resposta, nunca como provedor escolhido", () => {
   const spec = read("lib/api-spec/openapi.yaml");
   const input = spec.slice(spec.indexOf("AiChatInput:"), spec.indexOf("AiChatResponse:"));
   const response = spec.slice(spec.indexOf("AiChatResponse:"));
-  assert.match(input, /enum: \[gemini, openai, groq, claude\]/);
+  assert.match(input, /enum: \[auto, gemini, openai, groq, claude, cerebras, openrouter, mistral, github, nvidia, cloudflare, huggingface, cohere\]/);
   assert.doesNotMatch(input, /enum: \[[^\]]*local/);
-  assert.match(response, /enum: \[gemini, openai, groq, claude, local\]/);
+  assert.match(response, /enum: \[auto, gemini, openai, groq, claude, cerebras, openrouter, mistral, github, nvidia, cloudflare, huggingface, cohere, local\]/);
 });
 
 check("Limite de tokens fala em voz alta sem deixar respostas longas demais", () => {
@@ -123,6 +147,15 @@ check("Legenda central não exibe Pensando, Preparando, transcrição ou erro de
   assert.doesNotMatch(speech, /onChunk\(`Não foi possível iniciar o áudio/);
   assert.match(stage, /onError: \(e\) => \{[\s\S]{0,500}setLog\(/);
   assert.doesNotMatch(stage, /onError: \(e\)[\s\S]{0,300}sayRef\.current/);
+});
+
+check("A espera artificial da voz começa em zero e pode ser gerenciada na aba Voz", () => {
+  const stage = read("artifacts/icaro/src/pages/stage.tsx");
+  assert.match(stage, /const SPEECH_DELAY_KEY = 'icaro\.stage\.speech-delay\.v1'/);
+  assert.match(stage, /data-testid="button-manage-delay"/);
+  assert.match(stage, /data-testid="input-speech-delay"/);
+  assert.match(stage, /min="0" max="3000" step="100"/);
+  assert.match(stage, /if \(speechDelayRef\.current > 0\)/);
 });
 
 check("Interim estável dispara a pergunta uma única vez antes do resultado final", () => {
@@ -160,7 +193,7 @@ check("Guarda de eco e retomada da captura ficam curtos sem abrir conversa ambie
   assert.equal(echoStop.active, false);
 });
 
-assert.equal(checks.length, 15, `Esperadas exatamente 15 validações; encontradas ${checks.length}.`);
+assert.equal(checks.length, 17, `Esperadas exatamente 17 validações; encontradas ${checks.length}.`);
 let failed = 0;
 for (const [index, [name, fn]] of checks.entries()) {
   try {

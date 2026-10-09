@@ -1,4 +1,8 @@
-export type KnowledgeCategory = "evento" | "contabilidade" | "tecnologia";
+import revisedResponses from "./conhecimento/respostas-revisadas.json";
+
+export type KnowledgeCategory =
+  | "evento" | "contabilidade" | "tecnologia" | "geral" | "historia"
+  | "ia" | "matematica" | "pesquisa" | "universidades";
 
 export type KnowledgeEntry = {
   id: string;
@@ -367,6 +371,31 @@ const FILLER_WORDS = new Set([
   "informe", "me", "pode", "poderia",
 ]);
 
+type RevisedKnowledgeRow = {
+  id: string;
+  category: string;
+  title: string;
+  triggers: string[][];
+  answer: string;
+};
+
+export const REVISED_KNOWLEDGE_BANK: KnowledgeEntry[] = (revisedResponses as RevisedKnowledgeRow[]).map((entry) => ({
+  ...entry,
+  category: entry.category as KnowledgeCategory,
+}));
+
+const SEARCHABLE_KNOWLEDGE_BANK = [...KNOWLEDGE_BANK, ...REVISED_KNOWLEDGE_BANK].map((entry) => ({
+  entry,
+  triggers: entry.triggers.map((trigger) => {
+    const terms = trigger.map(normalizeKnowledgeText).filter(Boolean);
+    return {
+      terms,
+      contentWords: meaningfulTerms(terms.join(" ")).length,
+      score: meaningfulTerms(terms.join(" ")).length * 10 + terms.length,
+    };
+  }),
+}));
+
 export function normalizeKnowledgeText(text: string): string {
   return text
     .normalize("NFD")
@@ -378,11 +407,10 @@ export function normalizeKnowledgeText(text: string): string {
     .trim();
 }
 
-function hasTerm(question: string, term: string): boolean {
-  const normalizedTerm = normalizeKnowledgeText(term);
-  if (!normalizedTerm) return false;
-  if (normalizedTerm.includes(" ")) return question.includes(normalizedTerm);
-  return question.split(" ").includes(normalizedTerm);
+function hasTerm(question: string, term: string, words: ReadonlySet<string>): boolean {
+  if (!term) return false;
+  if (term.includes(" ")) return question.includes(term);
+  return words.has(term);
 }
 
 function meaningfulTerms(question: string): string[] {
@@ -395,17 +423,15 @@ export function resolveKnowledgeAnswer(question: string): KnowledgeMatch | null 
   const normalized = normalizeKnowledgeText(question);
   if (normalized.length < 3 || meaningfulTerms(normalized).length === 0) return null;
   if (REMOTE_ONLY_RE.test(normalized)) return null;
+  const questionWords = new Set(normalized.split(" "));
 
   let best: { entry: KnowledgeEntry; score: number } | null = null;
-  for (const entry of KNOWLEDGE_BANK) {
-    for (const trigger of entry.triggers) {
-      if (!trigger.every((term) => hasTerm(normalized, term))) continue;
+  for (const { entry, triggers } of SEARCHABLE_KNOWLEDGE_BANK) {
+    for (const trigger of triggers) {
+      if (!trigger.contentWords || !trigger.terms.every((term) => hasTerm(normalized, term, questionWords))) continue;
       // Content words decide specificity; interrogative/filler words only make
       // a generic trigger eligible and must not outrank a more specific topic.
-      const contentWords = meaningfulTerms(normalizeKnowledgeText(trigger.join(" "))).length;
-      if (contentWords === 0) continue;
-      const score = contentWords * 10 + trigger.length;
-      if (!best || score > best.score) best = { entry, score };
+      if (!best || trigger.score > best.score) best = { entry, score: trigger.score };
     }
   }
   if (!best) return null;
