@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Activity, BarChart3, BrainCircuit, CalendarDays, CircleDollarSign, Database, FileUp, Gauge, HeartPulse, Menu, X } from 'lucide-react';
+import { Activity, BarChart3, BrainCircuit, CalendarDays, CircleDollarSign, Database, FileUp, Gauge, HeartPulse, Menu, Music2, X } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { getGetAiStatusQueryKey, getHealthCheckQueryKey, useGetAiStatus, useHealthCheck } from '@workspace/api-client-react';
 import { useDataset } from '@/lib/dataset-context';
@@ -12,6 +12,7 @@ const navigation = [
   { href: '/assistant', label: 'Copiloto', icon: BrainCircuit },
   { href: '/finance-weather', label: 'Finanças', icon: CircleDollarSign },
   { href: '/agenda', label: 'Agenda', icon: CalendarDays },
+  { href: '/music', label: 'Música', icon: Music2 },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -84,7 +85,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
       {mobileOpen && <button type="button" className="fixed inset-0 z-30 bg-sidebar/40 md:hidden" onClick={() => { setMobileOpen(false); menuTrigger.current?.focus(); }} aria-label="Fechar menu" data-testid="button-overlay-menu" />}
       <nav className="fixed inset-x-0 bottom-0 z-30 flex items-stretch justify-around border-t border-border bg-card/95 px-2 pt-1 shadow-[0_-8px_28px_rgba(31,60,51,.10)] backdrop-blur-xl md:hidden" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 6px)' }} aria-label="Navegação móvel">
-        {[...navigation, ...(user?.role === 'admin' ? [{ href: '/admin/cerebro', label: 'Admin', icon: Activity }] : [])].map(({ href, label, icon: Icon }) => (
+        {[...navigation, ...(user?.role === 'admin' ? [{ href: '/admin/cerebro', label: 'Admin', icon: Activity }] : [])].slice(0, 4).map(({ href, label, icon: Icon }) => (
           <Link key={href} href={href} aria-current={location === href ? 'page' : undefined} className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[10px] font-semibold ${location === href ? 'text-secondary' : 'text-muted-foreground'}`} data-testid={`mobile-nav-${label.toLowerCase().replaceAll(' ', '-')}`}>
             <Icon size={19} strokeWidth={location === href ? 2.5 : 1.8} /><span className="max-w-full truncate">{label}</span>
           </Link>

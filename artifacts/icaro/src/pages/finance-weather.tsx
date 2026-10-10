@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { CloudSun, RefreshCw, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-type RatePayload = { date?: string; rates?: Record<string, number> };
+type RatePayload = { result?: string; time_last_update_utc?: string; rates?: Record<string, number> };
 type BcbRow = { data?: string; valor?: string };
 type GeoResult = { latitude?: number; longitude?: number; name?: string; admin1?: string; country?: string };
 type WeatherPayload = { current?: { temperature_2m?: number; relative_humidity_2m?: number; apparent_temperature?: number; weather_code?: number; wind_speed_10m?: number } };
@@ -32,18 +32,22 @@ export default function FinanceWeather() {
     setErrors([]);
     const problems: string[] = [];
     const nextMetrics: Metric[] = [];
-    const currencyJob = fetch('https://api.frankfurter.dev/v1/latest?base=USD&symbols=BRL,EUR,UYU')
+    const currencyJob = fetch('https://open.er-api.com/v6/latest/USD')
       .then(async (r) => { if (!r.ok) throw new Error('Cotações indisponíveis'); return await r.json() as RatePayload; })
       .then((data) => {
-        for (const [code, label] of [['BRL', 'Dólar para real'], ['EUR', 'Dólar para euro'], ['UYU', 'Dólar para peso uruguaio']] as const) {
-          const value = data.rates?.[code];
-          if (typeof value === 'number' && Number.isFinite(value)) nextMetrics.push({ label, value: `${code} ${fmt(value)}`, source: 'Frankfurter · referência ECB', date: data.date ?? '' });
+        const brlPerUsd = data.rates?.BRL;
+        if (data.result !== 'success' || typeof brlPerUsd !== 'number') throw new Error('Resposta de câmbio inválida');
+        for (const [code, label] of [['BRL', 'Real'], ['EUR', 'Euro'], ['UYU', 'Peso uruguaio'], ['ARS', 'Peso argentino']] as const) {
+          const unitsPerUsd = data.rates?.[code];
+          if (typeof unitsPerUsd === 'number' && unitsPerUsd > 0) {
+            nextMetrics.push({ label: `${code} → BRL · ${label}`, value: `R$ ${fmt(brlPerUsd / unitsPerUsd, 4)}`, source: 'ExchangeRate-API · taxa de referência', date: data.time_last_update_utc ?? '' });
+          } else problems.push(`${label}: cotação não fornecida pela fonte.`);
         }
       }).catch(() => problems.push('Cotações cambiais: fonte temporariamente indisponível.'));
     const bcbJob = Promise.all([
-      ['1178', 'Selic efetiva', '% a.a.'],
-      ['12', 'CDI', '% a.a.'],
-      ['433', 'IPCA · último mês', '%'],
+      ['432', 'Selic meta', '% a.a.'],
+      ['4389', 'CDI anualizado', '% a.a.'],
+      ['13522', 'IPCA acumulado em 12 meses', '%'],
     ].map(async ([series, label, unit]) => {
       try {
         const response = await fetch(`https://api.bcb.gov.br/dados/serie/bcdata.sgs.${series}/dados/ultimos/1?formato=json`);

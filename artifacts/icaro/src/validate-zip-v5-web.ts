@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { escapeIcsText, parseAgendaEntries, serializeCalendar, toIcsLocalDate, type AgendaEntry } from "./lib/agenda-format";
+import { parseSpotifyLink, spotifyEmbedUrl } from "./lib/spotify-links";
 
 let checks = 0;
 function check(value: unknown, message: string) {
@@ -43,5 +44,19 @@ check(serializeCalendar([{ ...single, recurrence: "weekly" }]).includes("RRULE:F
 check(serializeCalendar([{ ...single, title: "A,B;C" }]).includes("SUMMARY:A\\,B\\;C"), "escapa pontuação no título exportado");
 check((serializeCalendar([single, { ...single, id: "def" }]).match(/BEGIN:VEVENT/g) ?? []).length === 2, "exporta múltiplos compromissos");
 
-assert.equal(checks, 32);
-process.stdout.write(`ÍCARO v5 web: ${checks}/${checks} validações de agenda passaram.\n`);
+const track = "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC";
+const playlist = "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M";
+check(parseSpotifyLink(track)?.id === "4uLU6hMCjMI75M1A2tKUQC", "aceita URL canônica de faixa");
+check(parseSpotifyLink(`${track}?si=demo`)?.id === "4uLU6hMCjMI75M1A2tKUQC", "ignora parâmetros de compartilhamento");
+check(parseSpotifyLink("https://open.spotify.com/intl-pt/album/4aawyAB9vmqN3uQ7FjRGTy")?.id === "4aawyAB9vmqN3uQ7FjRGTy", "aceita URL localizada de álbum");
+check(parseSpotifyLink(playlist)?.id === "37i9dQZF1DXcBWIGoYBM5M", "aceita URL de playlist");
+check(parseSpotifyLink("http://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC") === null, "rejeita HTTP sem TLS");
+check(parseSpotifyLink("https://evil.example/track/4uLU6hMCjMI75M1A2tKUQC") === null, "rejeita host não confiável");
+check(parseSpotifyLink("https://open.spotify.com/artist/4uLU6hMCjMI75M1A2tKUQC") === null, "rejeita tipo não incorporável");
+check(parseSpotifyLink("https://open.spotify.com/track/short") === null, "rejeita identificador malformado");
+check(parseSpotifyLink("texto livre") === null, "rejeita link inválido");
+check(spotifyEmbedUrl({ id: "4uLU6hMCjMI75M1A2tKUQC", title: "Demo", url: track }) === "https://open.spotify.com/embed/track/4uLU6hMCjMI75M1A2tKUQC", "constrói player seguro para faixa");
+check(spotifyEmbedUrl({ id: "x", title: "Demo", url: "https://evil.example/track/x" }) === "", "não incorpora host externo");
+
+assert.equal(checks, 43);
+process.stdout.write(`ÍCARO v5 web: ${checks}/${checks} validações de agenda e Spotify passaram.\n`);

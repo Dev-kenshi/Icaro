@@ -6,7 +6,7 @@ import { parseAgendaEntries, serializeCalendar, type AgendaEntry } from '@/lib/a
 
 const STORAGE_PREFIX = 'icaro-v5-agenda:';
 
-function readEntries(key: string): Entry[] {
+function readEntries(key: string): AgendaEntry[] {
   try {
     const value: unknown = JSON.parse(localStorage.getItem(key) ?? '[]');
     return parseAgendaEntries(value);
@@ -16,7 +16,7 @@ function readEntries(key: string): Entry[] {
 export default function Agenda() {
   const user = useAuthUser();
   const storageKey = `${STORAGE_PREFIX}${user?.username ?? 'guest'}`;
-  const [entries, setEntries] = useState<Entry[]>(() => readEntries(storageKey));
+  const [entries, setEntries] = useState<AgendaEntry[]>(() => readEntries(storageKey));
   const previousStorageKey = useRef(storageKey);
   const [title, setTitle] = useState('');
   const [startsAt, setStartsAt] = useState('');
