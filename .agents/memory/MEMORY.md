@@ -22,3 +22,4 @@
 - [ITCONT data scope](itcont-data-scope.md) — keep public event/guest details and image links only; never copy images or import registrants, payroll, accounts, or ops data.
 - [Health check contract boundaries](health-check-contract-boundaries.md) — test each endpoint against its actual source of truth; OpenAPI omissions can be intentional.
 - [Calculation database capacity](calculation-database-capacity.md) — a development load is not production approval; verify production quota, existing use, and full table/index size first.
+- [Ícaro v5 web port](icaro-v5-web-port.md) — adapt the supplied Windows desktop project into the existing React/API app; do not run host-OS commands from the web server.
