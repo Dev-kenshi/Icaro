@@ -2,11 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { StageHelp } from '@/components/stage/stage-help';
 import { shouldActivateStageShortcut } from '@/lib/stage-shortcuts';
-import { Mic, X, BarChart3, ExternalLink, Trash2, Menu, Keyboard, Play, Maximize, Volume2, VolumeX, Eye, EyeOff, Orbit, Globe2, Sparkles, SkipForward, Layers, Move, RotateCcw, Check, Square, ArrowLeft, Timer } from 'lucide-react';
+import { Mic, X, BarChart3, ExternalLink, Trash2, Menu, Keyboard, Play, Maximize, Volume2, VolumeX, Eye, EyeOff, Orbit, Globe2, Sparkles, SkipForward, Layers, Move, RotateCcw, Check, Square, ArrowLeft, Timer, Map } from 'lucide-react';
 import { getGetAiStatusQueryKey, getGetAiVoicesQueryKey, getGetCosmosFeedsQueryKey, getHealthCheckQueryKey, useGetAiStatus, useGetAiVoices, useGetCosmosFeeds, useHealthCheck, useSendAiMessage, type AiChatResponse, type AiVoiceCatalog } from '@workspace/api-client-react';
 import { requestAiChatStream } from '@/lib/ai-chat-stream';
 import { interpret, formatDuration } from '@/lib/commands';
 import { geocodeUrl, parseGeocode, type GeoTarget } from '@/lib/geo-fly';
+import { GeoMapPanel } from '@/components/stage/geo-map-panel';
 import { speak, stopSpeaking, ensureAudio, activateAudio, connectMic, getAnalyser, getLevel, getMicRms, getOutputRms, setListeningActivity, releaseSpeechCache } from '@/lib/speech';
 import type { SpeechEmotion, SpeechEmotionMark } from '@/lib/speech-plan';
 import { useWakeListener } from '@/hooks/use-wake-listener';
@@ -184,6 +185,7 @@ export default function Stage() {
   const [responseMeta, setResponseMeta] = useState<{ source: string; durationMs: number | null }>({ source: '—', durationMs: null });
   const [feiraTarget, setFeiraTarget] = useState(false);
   const [geoTarget, setGeoTarget] = useState<GeoTarget | null>(null);
+  const [mapOpen, setMapOpen] = useState(false);
   const ambientRef = useRef<AudioContext | null>(null);
   const [typing, setTyping] = useState(false);
   const [text, setText] = useState('');
@@ -442,6 +444,21 @@ export default function Stage() {
   };
 
   const [, navigate] = useLocation();
+  const locatePlace = useCallback(async (query: string) => {
+    const response = await fetch(geocodeUrl(query), { signal: AbortSignal.timeout(12_000) });
+    if (!response.ok) throw new Error('Geocoder unavailable');
+    const place = parseGeocode(await response.json());
+    if (!place) return null;
+    lastSceneInteractionRef.current = Date.now();
+    setFeiraTarget(false);
+    setScene('earth');
+    setSceneMode('single');
+    setGeoTarget(place);
+    setMapOpen(true);
+    setSceneFade(true);
+    window.setTimeout(() => setSceneFade(false), 1000);
+    return place;
+  }, []);
   const handle = useCallback((raw: string) => {
     const q = raw.trim().slice(0, 4000); if (!q) return;
     aiAbortRef.current?.abort();
@@ -482,18 +499,9 @@ export default function Stage() {
         return sayRef.current(r.text);
       case 'flyTo': {
         const flyQuery = r.query;
-        sayRef.current(r.text);
-        void fetch(geocodeUrl(flyQuery))
-          .then(async (res) => { if (!res.ok) throw new Error(); return parseGeocode(await res.json()); })
-          .then((place) => {
-            if (!place) { sayRef.current(`Não encontrei ${flyQuery} no mapa.`); return; }
-            lastSceneInteractionRef.current = Date.now();
-            setFeiraTarget(false);
-            setScene('earth'); setSceneMode('single');
-            setGeoTarget(place);
-            setSceneFade(true); window.setTimeout(() => setSceneFade(false), 1000);
-            sayRef.current(`Mostrando ${place.label} no mapa.`);
-          })
+        sayRef.current(`Buscando ${flyQuery} no mapa.`);
+        void locatePlace(flyQuery)
+          .then((place) => { sayRef.current(place ? `Mostrando ${place.label} no Google Maps e no globo.` : `Não encontrei ${flyQuery}. Tente informar rua, cidade e país.`); })
           .catch(() => sayRef.current('O serviço de localização está indisponível no momento.'));
         return;
       }
@@ -585,7 +593,7 @@ export default function Stage() {
         });
       }
     }
-  }, [prime, playIntro, provider]);
+  }, [locatePlace, prime, playIntro, provider]);
   const handleRef = useRef(handle); handleRef.current = handle;
 
   const listener = useWakeListener({
@@ -1016,6 +1024,7 @@ export default function Stage() {
           keyboardShortcuts={!panel && !helpOpen && !stageLayout.editing && !avatarControlsOpen}
         />
       )}
+      {mapOpen && geoTarget && <GeoMapPanel target={geoTarget} onSearch={locatePlace} onClose={() => setMapOpen(false)} />}
       <div className={`scene-fade ${sceneFade ? 'scene-fade--active' : ''}`} aria-hidden="true" />
       <NeuralWeb state={state} scene={scene} emotion={emotion} longListening={longListening} thoughtTitle={state === 'thinking' ? 'SÍNTESE EM CURSO' : ''} />
       <FutureScene />
@@ -1040,6 +1049,18 @@ export default function Stage() {
               {icon}<span>{label}</span>
             </button>
           ))}
+          <button
+            type="button"
+            className="scene-button"
+            aria-label="Abrir Google Maps"
+            data-testid="button-open-google-maps"
+            onClick={() => {
+              if (geoTarget) setMapOpen(true);
+              else void locatePlace('Feira de Santana, Bahia, Brasil').then((place) => {
+                if (!place) sayRef.current('Não encontrei Feira de Santana no mapa.');
+              }).catch(() => sayRef.current('O serviço de localização está indisponível.'));
+            }}
+          ><Map size={14} aria-hidden="true" /><span>Maps</span></button>
           <button
             type="button"
             className="scene-button"

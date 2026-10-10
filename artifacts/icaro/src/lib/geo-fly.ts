@@ -13,6 +13,8 @@ export function parseFlyQuery(t: string): string | null {
   const m =
     /(?:onde fica|onde e|aonde fica)\s+(?:a |o |as |os )?(.+)$/i.exec(t) ??
     /(?:mostre|mostrar|mostra|exiba|ver)\s+(?:a |o )?(.+?)\s+no mapa$/i.exec(t) ??
+    /(?:localize|localizar|encontre no mapa|pesquise no mapa)\s+(?:a |o |um |uma )?(.+)$/i.exec(t) ??
+    /(?:abra|abrir)\s+(?:o )?(?:google maps|maps|street view)\s+(?:de|para)\s+(.+)$/i.exec(t) ??
     /(?:va|voe|voar|viajar|leve|navegue|ir)\s+(?:para|ate)?\s*(?:a |o |ao )?(.+)$/i.exec(t);
   const q = m?.[1]?.replace(/[.?!]+$/, '').trim();
   return q && q.length >= 2 && q.length <= 80 ? q : null;
@@ -20,7 +22,7 @@ export function parseFlyQuery(t: string): string | null {
 
 /** Photon geocoding supports cities, street names, and street numbers. */
 export function geocodeUrl(name: string) {
-  return `https://photon.komoot.io/api/?q=${encodeURIComponent(name)}&limit=1&lang=pt`;
+  return `https://photon.komoot.io/api/?q=${encodeURIComponent(name)}&limit=1`;
 }
 
 export function parseGeocode(payload: unknown): GeoTarget | null {
@@ -48,7 +50,9 @@ export type MapView = 'map' | 'satellite' | 'street';
 export function googleMapEmbedUrl(target: GeoTarget, view: MapView, zoom = 15) {
   if (!isValidGeoTarget(target)) return '';
   const point = `${target.latitude},${target.longitude}`;
-  if (view === 'street') return `https://maps.google.com/maps?layer=c&cbll=${point}&cbp=12,90,0,0,0&output=svembed`;
+  // Google Street View's embeddable panorama requires an API key. Open its
+  // official coordinate deep-link instead of embedding an unsupported URL.
+  if (view === 'street') return '';
   const safeZoom = Math.max(2, Math.min(20, Math.round(zoom)));
   const type = view === 'satellite' ? 'k' : 'm';
   return `https://www.google.com/maps?q=${point}&z=${safeZoom}&t=${type}&output=embed`;

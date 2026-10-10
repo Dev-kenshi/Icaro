@@ -63,7 +63,18 @@ export function GeoMapPanel({ target: initialTarget, onSearch, onClose }: Props)
       </nav>
       {error && <p role="alert" className="border-b border-amber-400/30 bg-amber-400/10 px-4 py-2 text-sm">{error}</p>}
       <div className="min-h-0 flex-1 bg-slate-900">
-        <iframe key={`${target.latitude},${target.longitude}:${view}`} title={`${view} — ${target.label}`} src={googleMapEmbedUrl(target, view)} className="h-full w-full border-0" allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+        {view === 'street' ? (
+          <div className="grid h-full place-items-center p-6 text-center">
+            <div className="max-w-lg">
+              <Map className="mx-auto text-cyan-200" size={44} />
+              <h3 className="mt-4 text-xl font-semibold">Street View de {target.label}</h3>
+              <p className="mt-2 text-sm text-slate-300">Abra o panorama oficial do Google Maps nas coordenadas exatas. A disponibilidade de imagens depende da cobertura desta rua.</p>
+              <a href={external} target="_blank" rel="noreferrer" className="mt-5 inline-flex rounded-lg bg-cyan-300 px-4 py-3 font-semibold text-slate-950">Abrir Street View no Google Maps <ExternalLink className="ml-2" size={16} /></a>
+            </div>
+          </div>
+        ) : (
+          <iframe key={`${target.latitude},${target.longitude}:${view}`} title={`${view} — ${target.label}`} src={googleMapEmbedUrl(target, view)} className="h-full w-full border-0" allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+        )}
       </div>
       <footer className="flex flex-wrap justify-between gap-2 border-t border-white/10 px-3 py-2 text-xs text-slate-300">
         <span>{view === 'street' ? 'Street View depende da cobertura do Google nesta rua.' : 'Mapa do Google · arraste, aproxime e explore.'}</span>
