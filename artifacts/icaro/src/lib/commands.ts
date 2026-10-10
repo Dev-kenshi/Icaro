@@ -12,9 +12,11 @@ export type CommandResult =
   | { kind: 'openTour'; tour: 'discipulus' | 'labeducontabil'; text: string }
   | { kind: 'tour'; action: TourCommand; text: string }
   | { kind: 'openMusic'; play: boolean; text: string }
+  | { kind: 'flyTo'; query: string; text: string }
   | { kind: 'ai' };
 
 import { parseOpenTour, parseTourCommand, tourById, type TourCommand } from './demo-tours';
+import { parseFlyQuery } from './geo-fly';
 
 export const normalize = (s: string) =>
   s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[!?¿¡]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -139,6 +141,8 @@ export function interpret(input: string): CommandResult {
   }
   if (/\b(musica|musicas|spotify)\b/.test(t) && /\b(toque|tocar|toquei|abra|abrir|mostre|mostrar|reproduza|reproduzir|coloque)\b/.test(t))
     return { kind: 'openMusic', play: /\b(toque|tocar|reproduza|reproduzir|coloque)\b/.test(t), text: 'Abrindo a página de música.' };
+  const flyQuery = parseFlyQuery(t);
+  if (flyQuery) return { kind: 'flyTo', query: flyQuery, text: `Localizando ${flyQuery} no mapa.` };
 
   if (/\b(o que|que) significa (o )?(icaro|i caro)|\bo que e (o )?(icaro|i caro)|significado d[eo] (icaro|i caro)/.test(t))
     return { kind: 'say', text: 'Eu sou o ÍCARO. ÍCARO significa Inteligência, Ciência de Dados, Análise de Dados, Resultados e Operações. Sou o assistente de aula da Contabilidade da UEFS.' };

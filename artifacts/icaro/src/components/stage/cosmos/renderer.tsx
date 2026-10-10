@@ -47,6 +47,7 @@ type Props = {
   transparentBackground?: boolean;
   feeds?: CosmosFeedsResponse;
   targetCity?: boolean;
+  targetGeo?: { latitude: number; longitude: number; label: string } | null;
   state: string;
   getAudioLevel: () => number;
   onFps?: (fps: number) => void;
@@ -390,6 +391,7 @@ export function CosmosRenderer({
   transparentBackground = false,
   feeds,
   targetCity = false,
+  targetGeo = null,
   state,
   getAudioLevel,
   onFps,
@@ -435,6 +437,7 @@ export function CosmosRenderer({
   const transparentBackgroundRef = useRef(transparentBackground);
   const feedRef = useRef(feeds);
   const cityRef = useRef(targetCity);
+  const geoRef = useRef(targetGeo);
   const stateRef = useRef(state);
   const audioLevelRef = useRef(getAudioLevel);
   const fpsCallbackRef = useRef(onFps);
@@ -448,6 +451,7 @@ export function CosmosRenderer({
   transparentBackgroundRef.current = transparentBackground;
   feedRef.current = feeds;
   cityRef.current = targetCity;
+  geoRef.current = targetGeo;
   stateRef.current = state;
   audioLevelRef.current = getAudioLevel;
   fpsCallbackRef.current = onFps;
@@ -1123,6 +1127,7 @@ export function CosmosRenderer({
         const viewStates = new Map<CosmosScene, { position: typeof camera.position; target: typeof controls.target }>();
         let activeScene = sceneRef.current;
         let cityViewActive = false;
+        let lastGeoLabel = '';
         let cityPoseBackup: { position: typeof camera.position; target: typeof controls.target } | null = null;
         const halfFovTangent = Math.tan(COSMOS_CAMERA_FOV_DEGREES * Math.PI / 360);
         /** Default framing: the Earth stays front-on; the disk scenes are inclined and widened on portrait screens. */
@@ -1422,15 +1427,15 @@ export function CosmosRenderer({
         const quakeGroup = new THREE.Group();
         const trajectoryGroup = new THREE.Group();
         groupEarth.add(issDot, quakeGroup, trajectoryGroup);
-        const cityVector = earthVector(THREE, CITY.latitude, CITY.longitude, EARTH_RADIUS * 1.035);
+        const currentCityVector = () => { const geo = geoRef.current ?? CITY; return earthVector(THREE, geo.latitude, geo.longitude, EARTH_RADIUS * 1.035); };
         const cityMarker = new THREE.Mesh(new THREE.SphereGeometry(.055, 12, 8), new THREE.MeshBasicMaterial({ color: 0xc9fff0 }));
-        cityMarker.position.copy(cityVector);
+        cityMarker.position.copy(currentCityVector());
         const cityHalo = new THREE.Mesh(
           new THREE.RingGeometry(.08, .095, 36),
           new THREE.MeshBasicMaterial({ color: 0xb5ffec, transparent: true, opacity: .9, side: THREE.DoubleSide, depthWrite: false }),
         );
-        cityHalo.position.copy(cityVector);
-        cityHalo.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), cityVector.clone().normalize());
+        cityHalo.position.copy(currentCityVector());
+        cityHalo.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), currentCityVector().clone().normalize());
         groupEarth.add(cityMarker, cityHalo);
         const textureLoader = new THREE.TextureLoader();
         const reportSolarTextures = (completed: number, loaded: number) => {
@@ -1535,13 +1540,22 @@ export function CosmosRenderer({
           controls.minDistance = minDistance;
           controls.maxDistance = maxDistance;
 
-          if (which === 'earth' && city && !cityViewActive) {
-            cityPoseBackup = snapshot();
-            camera.position.copy(cityCameraPosition());
-            controls.target.set(0, 0, 0);
+          if (which === 'earth' && city) {
+            const geoLabel = geoRef.current?.label ?? '';
+            const vector = currentCityVector();
+            cityMarker.position.copy(vector);
+            cityHalo.position.copy(vector);
+            cityHalo.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), vector.clone().normalize());
+            if (!cityViewActive) cityPoseBackup = snapshot();
+            if (!cityViewActive || geoLabel !== lastGeoLabel) {
+              camera.position.copy(cityCameraPosition());
+              controls.target.set(0, 0, 0);
+            }
+            lastGeoLabel = geoLabel;
           } else if (which === 'earth' && !city && cityViewActive && cityPoseBackup) {
             restorePose(cityPoseBackup);
             cityPoseBackup = null;
+            lastGeoLabel = '';
           }
           cityViewActive = which === 'earth' && city;
           controls.update();
@@ -1555,7 +1569,7 @@ export function CosmosRenderer({
         /** The city marker lives inside the spinning globe, so its camera pose uses world coordinates. */
         const cityCameraPosition = () => {
           groupEarth.updateMatrixWorld(true);
-          return groupEarth.localToWorld(cityVector.clone()).normalize().multiplyScalar(9.6);
+          return groupEarth.localToWorld(currentCityVector().clone()).normalize().multiplyScalar(9.6);
         };
         navigationRef.current = {
           zoomIn: () => {
@@ -1630,7 +1644,7 @@ export function CosmosRenderer({
           _audio = 0,
           now = performance.now(),
         ) => {
-          const key = `${which}|${qualityName}|${feed?.updatedAt ?? 0}|${city}`;
+          const key = `${which}|${qualityName}|${feed?.updatedAt ?? 0}|${city}|${geoRef.current?.label ?? ''}`;
           if (key !== lastSceneKey) {
             lastSceneKey = key;
             show(which, city);

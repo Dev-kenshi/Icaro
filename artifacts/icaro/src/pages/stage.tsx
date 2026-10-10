@@ -6,6 +6,7 @@ import { Mic, X, BarChart3, ExternalLink, Trash2, Menu, Keyboard, Play, Maximize
 import { getGetAiStatusQueryKey, getGetAiVoicesQueryKey, getGetCosmosFeedsQueryKey, getHealthCheckQueryKey, useGetAiStatus, useGetAiVoices, useGetCosmosFeeds, useHealthCheck, useSendAiMessage, type AiChatResponse, type AiVoiceCatalog } from '@workspace/api-client-react';
 import { requestAiChatStream } from '@/lib/ai-chat-stream';
 import { interpret, formatDuration } from '@/lib/commands';
+import { geocodeUrl, parseGeocode, type GeoTarget } from '@/lib/geo-fly';
 import { speak, stopSpeaking, ensureAudio, activateAudio, connectMic, getAnalyser, getLevel, getMicRms, getOutputRms, setListeningActivity, releaseSpeechCache } from '@/lib/speech';
 import type { SpeechEmotion, SpeechEmotionMark } from '@/lib/speech-plan';
 import { useWakeListener } from '@/hooks/use-wake-listener';
@@ -182,6 +183,7 @@ export default function Stage() {
   const [assetsStatus, setAssetsStatus] = useState('NASA GIBS · carregamento sob demanda');
   const [responseMeta, setResponseMeta] = useState<{ source: string; durationMs: number | null }>({ source: '—', durationMs: null });
   const [feiraTarget, setFeiraTarget] = useState(false);
+  const [geoTarget, setGeoTarget] = useState<GeoTarget | null>(null);
   const ambientRef = useRef<AudioContext | null>(null);
   const [typing, setTyping] = useState(false);
   const [text, setText] = useState('');
@@ -264,7 +266,7 @@ export default function Stage() {
       if (stateRef.current !== 'idle') return;
       if (motionRef.current === 'off' || (motionRef.current === 'system' && prefersReducedMotion())) return;
       setScene((current) => current === 'earth' ? 'system' : current === 'system' ? 'galaxy' : 'earth');
-      setFeiraTarget(false);
+      setFeiraTarget(false); setGeoTarget(null);
       setSceneFade(true);
       window.setTimeout(() => setSceneFade(false), 1000);
     }, 90000);
@@ -457,14 +459,14 @@ export default function Stage() {
     switch (r.kind) {
       case 'scene':
         lastSceneInteractionRef.current = Date.now();
-        setFeiraTarget(false);
+        setFeiraTarget(false); setGeoTarget(null);
         setScene(r.scene);
         setSceneMode('single');
         setSceneFade(true); window.setTimeout(() => setSceneFade(false), 1000);
         return sayRef.current(r.text);
       case 'flyFeira':
         lastSceneInteractionRef.current = Date.now();
-        setScene('earth'); setSceneMode('single'); setFeiraTarget(true);
+        setScene('earth'); setSceneMode('single'); setFeiraTarget(true); setGeoTarget(null);
         setSceneFade(true); window.setTimeout(() => setSceneFade(false), 1000);
         return sayRef.current(r.text);
       case 'openTour':
@@ -478,6 +480,23 @@ export default function Stage() {
         navigate('/music');
         if (r.play) window.setTimeout(() => window.dispatchEvent(new CustomEvent('icaro:music-play')), 400);
         return sayRef.current(r.text);
+      case 'flyTo': {
+        const flyQuery = r.query;
+        sayRef.current(r.text);
+        void fetch(geocodeUrl(flyQuery))
+          .then(async (res) => { if (!res.ok) throw new Error(); return parseGeocode(await res.json()); })
+          .then((place) => {
+            if (!place) { sayRef.current(`Não encontrei ${flyQuery} no mapa.`); return; }
+            lastSceneInteractionRef.current = Date.now();
+            setFeiraTarget(false);
+            setScene('earth'); setSceneMode('single');
+            setGeoTarget(place);
+            setSceneFade(true); window.setTimeout(() => setSceneFade(false), 1000);
+            sayRef.current(`Mostrando ${place.label} no mapa.`);
+          })
+          .catch(() => sayRef.current('O serviço de localização está indisponível no momento.'));
+        return;
+      }
       case 'say': return sayRef.current(r.text);
       case 'intro': setLog((l) => [...l, { role: 'assistant', content: 'Reproduzindo a apresentação original.' }]); return playIntro();
       case 'fullscreen': fullscreen(); return sayRef.current(r.text);
@@ -898,7 +917,7 @@ export default function Stage() {
   const provName = PROVIDER_NAMES;
   const selectScene = (next: CosmosScene) => {
     markSceneInteraction();
-    setFeiraTarget(false);
+    setFeiraTarget(false); setGeoTarget(null);
     setScene(next);
     setSceneMode('single');
     setSceneFade(true);
@@ -972,7 +991,7 @@ export default function Stage() {
           quality={quality}
           visible={sceneVisible}
           feeds={feeds.data}
-          targetCity={feiraTarget}
+          targetCity={feiraTarget || geoTarget !== null} targetGeo={geoTarget}
           state={state}
           getAudioLevel={getLevel}
           motion={motion}
@@ -986,7 +1005,7 @@ export default function Stage() {
           quality={quality}
           visible={sceneVisible}
           feeds={feeds.data}
-          targetCity={feiraTarget}
+          targetCity={feiraTarget || geoTarget !== null} targetGeo={geoTarget}
           state={state}
           getAudioLevel={getLevel}
           onFps={setRenderFps}
@@ -1061,7 +1080,7 @@ export default function Stage() {
       <aside className="stage-readout stage-readout--left" aria-label="Ícaro em atividade" {...stageLayout.chrome('readout-left')}>
         <svg className="readout-frame" viewBox="0 0 240 500" preserveAspectRatio="none" aria-hidden="true"><path d="M25 2Q12 2 9 19L3 47Q1 60 5 74L5 424Q4 440 18 446Q32 451 45 483L195 483Q211 481 214 464L235 429Q239 420 237 403L237 39Q237 22 220 19L93 18Q75 18 66 8Q58 1 43 2Z" /></svg>
         <div className="readout-kicker"><span className="readout-dot" /> SISTEMA ATIVO</div>
-        <div className="readout-title">{scene === 'galaxy' ? 'Espaço profundo' : scene === 'system' ? 'Sistema solar' : feiraTarget ? 'Feira de Santana' : 'Órbita terrestre'}</div>
+        <div className="readout-title">{scene === 'galaxy' ? 'Espaço profundo' : scene === 'system' ? 'Sistema solar' : feiraTarget ? 'Feira de Santana' : geoTarget ? geoTarget.label : 'Órbita terrestre'}</div>
         <div className="readout-line" role="status" aria-live="polite"><span>ESTADO</span><strong>{STATE_LABEL[state]}</strong></div>
         <div className="readout-line" role="status" aria-live="polite"><span>API</span><strong>{health.isLoading ? 'Verificando…' : health.isError ? 'Indisponível' : 'Operacional'}</strong></div>
         <div className="readout-line"><span>CENA</span><strong>{scene === 'galaxy' ? 'GALÁXIA' : scene === 'system' ? 'SOLAR' : 'TERRA'}</strong></div>

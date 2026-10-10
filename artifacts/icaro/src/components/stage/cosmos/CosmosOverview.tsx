@@ -46,6 +46,7 @@ type Props = {
   visible: boolean;
   feeds?: CosmosFeedsResponse;
   targetCity: boolean;
+  targetGeo?: { latitude: number; longitude: number; label: string } | null;
   state: string;
   getAudioLevel: () => number;
   motion?: CosmosMotion;
@@ -54,7 +55,7 @@ type Props = {
   keyboardShortcuts?: boolean;
 };
 
-export function CosmosOverview({ quality, visible, feeds, targetCity, state, getAudioLevel, motion, onEnableMotion, onInteract, keyboardShortcuts }: Props) {
+export function CosmosOverview({ quality, visible, feeds, targetCity, targetGeo, state, getAudioLevel, motion, onEnableMotion, onInteract, keyboardShortcuts }: Props) {
   const [positions, setPositions] = useState(INITIAL_POSITIONS);
   const [draggingScene, setDraggingScene] = useState<CosmosScene | null>(null);
   const positionsRef = useRef(positions);
@@ -162,6 +163,7 @@ export function CosmosOverview({ quality, visible, feeds, targetCity, state, get
                 transparentBackground
                 feeds={feeds}
                 targetCity={scene === 'earth' && targetCity}
+                targetGeo={scene === 'earth' ? targetGeo ?? null : null}
                 state={state}
                 getAudioLevel={getAudioLevel}
                 navigationLabel={`Controles de ${label}`}

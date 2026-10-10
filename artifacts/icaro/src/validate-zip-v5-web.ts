@@ -3,6 +3,7 @@ import { escapeIcsText, parseAgendaEntries, serializeCalendar, toIcsLocalDate, t
 import { parseSpotifyLink, spotifyEmbedUrl } from "./lib/spotify-links";
 import { DEMO_TOURS, parseOpenTour, parseTourCommand, tourById, tourStep } from "./lib/demo-tours";
 import { interpret, normalize } from "./lib/commands";
+import { geocodeUrl, parseFlyQuery, parseGeocode } from "./lib/geo-fly";
 
 let checks = 0;
 function check(value: unknown, message: string) {
@@ -86,5 +87,19 @@ check(openCmd.kind === "openMusic" && !openCmd.play, "interpret só abre o Spoti
 check(interpret("mostre a galáxia").kind === "scene", "cena da galáxia preservada");
 check(interpret("que horas são").kind === "say", "pergunta de hora preservada");
 
-assert.equal(checks, 65);
-process.stdout.write(`ÍCARO v5 web: ${checks}/${checks} validações de agenda, Spotify, tours e voz passaram.\n`);
+check(parseFlyQuery(normalize("onde fica Tóquio")) === "toquio", "extrai destino de 'onde fica'");
+check(parseFlyQuery(normalize("me mostre Salvador no mapa")) === "salvador", "extrai destino de 'mostre no mapa'");
+check(parseFlyQuery(normalize("voe para Lisboa")) === "lisboa", "extrai destino de 'voe para'");
+check(parseFlyQuery(normalize("que horas são")) === null, "pergunta de hora não vira voo");
+check(parseFlyQuery(normalize("toque música")) === null, "comando de música não vira voo");
+check(geocodeUrl("São Paulo").includes("name=S%C3%A3o%20Paulo"), "URL de geocodificação codifica acentos");
+check(parseGeocode({ results: [{ latitude: 35.68, longitude: 139.69, name: "Tóquio", country: "Japão" }] })?.label === "Tóquio, Japão", "interpreta resposta de geocodificação");
+check(parseGeocode({ results: [] }) === null, "rejeita busca sem resultados");
+check(parseGeocode(null) === null, "rejeita resposta nula");
+check(interpret("onde fica Tóquio").kind === "flyTo", "interpret voa para cidade perguntada");
+check(interpret("vá para Lisboa").kind === "flyTo", "interpret navega para destino");
+check(interpret("voe para Feira de Santana").kind === "flyFeira", "rota fixa de Feira preservada");
+check(interpret("Ícaro, onde fica o Vaticano").kind === "flyTo", "voo funciona após palavra de ativação");
+
+assert.equal(checks, 78);
+process.stdout.write(`ÍCARO v5 web: ${checks}/${checks} validações de agenda, Spotify, tours, voz e navegação passaram.\n`);
