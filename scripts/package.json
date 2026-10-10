@@ -12,7 +12,7 @@
     "validate:itcont": "tsx ../artifacts/api-server/src/validate-itcont.ts",
     "validate:groq": "tsx ./src/validate-groq.ts",
     "validate:knowledge": "tsx ./src/validate-fast-knowledge.ts",
-    "validate:zip-v5": "tsx ../artifacts/api-server/src/validate-zip-v5.ts",
+    "validate:zip-v5": "tsx ../artifacts/api-server/src/validate-zip-v5.ts && tsx ../artifacts/icaro/src/validate-zip-v5-web.ts",
     "validate:stt": "tsx ./src/validate-stt.ts",
     "validate:api-1000": "tsx ./src/validate-api-1000.ts && pnpm run validate:cerebro-200",
     "validate:calculos": "tsx ../artifacts/api-server/src/validate-calculos-db.ts",

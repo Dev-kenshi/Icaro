@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Activity, BarChart3, BrainCircuit, Database, FileUp, Gauge, HeartPulse, Menu, X } from 'lucide-react';
+import { Activity, BarChart3, BrainCircuit, CalendarDays, CircleDollarSign, Database, FileUp, Gauge, HeartPulse, Menu, X } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { getGetAiStatusQueryKey, getHealthCheckQueryKey, useGetAiStatus, useHealthCheck } from '@workspace/api-client-react';
 import { useDataset } from '@/lib/dataset-context';
@@ -10,6 +10,8 @@ const navigation = [
   { href: '/overview', label: 'Visão geral', icon: Gauge },
   { href: '/analysis', label: 'Explorar dados', icon: BarChart3 },
   { href: '/assistant', label: 'Copiloto', icon: BrainCircuit },
+  { href: '/finance-weather', label: 'Finanças', icon: CircleDollarSign },
+  { href: '/agenda', label: 'Agenda', icon: CalendarDays },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {

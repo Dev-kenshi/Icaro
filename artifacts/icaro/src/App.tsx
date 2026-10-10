@@ -11,6 +11,8 @@ import Overview from '@/pages/overview';
 import Analysis from '@/pages/analysis';
 import Assistant from '@/pages/assistant';
 import AdminCerebro from '@/pages/admin-cerebro';
+import FinanceWeather from '@/pages/finance-weather';
+import Agenda from '@/pages/agenda';
 import { LoginGate } from '@/components/login/login-gate';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 
@@ -37,6 +39,8 @@ function Shelled() {
         <Route path="/overview" component={Overview} />
         <Route path="/analysis" component={Analysis} />
         <Route path="/assistant" component={Assistant} />
+        <Route path="/finance-weather" component={FinanceWeather} />
+        <Route path="/agenda" component={Agenda} />
         <Route path="/admin/cerebro" component={AdminCerebro} />
         <Route component={NotFound} />
       </Switch>
