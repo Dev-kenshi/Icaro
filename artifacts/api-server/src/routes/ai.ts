@@ -23,6 +23,7 @@ import { createEmotionTagStream } from "../lib/emotion-tags";
 import { createProviderRouter, isAutoProviderId } from "../lib/provider-router";
 import { createCerebroLayers, presenterize, redactPersonalData } from "../lib/cerebro-camadas";
 import { createCalculationLookup } from "../lib/calculos-db";
+import { searchImportedKnowledge } from "../lib/knowledge-corpus";
 import { requireAuth } from "../middlewares/require-auth";
 import {
   createGroqTextService,
@@ -406,7 +407,16 @@ router.post("/ai/chat", async (req, res) => {
   }
 
   const input = parsed.data;
-  const datasetContext = buildDatasetContext(input.dataset);
+  const importedKnowledge = input.persona === "icaro" && !input.dataset
+    ? searchImportedKnowledge(input.question, 3).filter((item) => item.score >= 1)
+    : [];
+  const importedContext = importedKnowledge.length
+    ? [
+      "Trechos da base local importada do ÍCARO v5. Use apenas os trechos pertinentes, indique o título da fonte e não extrapole o que eles dizem.",
+      ...importedKnowledge.map((item) => `Fonte: ${item.title} (${item.source})\n${item.text.slice(0, 3_000)}`),
+    ].join("\n\n")
+    : "";
+  const datasetContext = [buildDatasetContext(input.dataset), importedContext].filter(Boolean).join("\n\n");
   const systemPrompt = input.persona === "icaro"
     ? icaroInstructions(datasetContext)
     : analystInstructions(datasetContext);
@@ -956,7 +966,16 @@ router.post("/ai/chat/stream", async (req, res) => {
     return;
   }
 
-  const datasetContext = buildDatasetContext(input.dataset);
+  const importedKnowledge = input.persona === "icaro" && !input.dataset
+    ? searchImportedKnowledge(input.question, 3).filter((item) => item.score >= 1)
+    : [];
+  const importedContext = importedKnowledge.length
+    ? [
+      "Trechos da base local importada do ÍCARO v5. Use apenas os trechos pertinentes, indique o título da fonte e não extrapole o que eles dizem.",
+      ...importedKnowledge.map((item) => `Fonte: ${item.title} (${item.source})\n${item.text.slice(0, 3_000)}`),
+    ].join("\n\n")
+    : "";
+  const datasetContext = [buildDatasetContext(input.dataset), importedContext].filter(Boolean).join("\n\n");
   const systemPrompt = input.persona === "icaro"
     ? icaroInstructions(datasetContext)
     : analystInstructions(datasetContext);

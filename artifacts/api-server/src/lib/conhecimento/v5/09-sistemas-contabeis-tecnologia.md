@@ -1,0 +1,22 @@
+# Sistemas contábeis e tecnologia
+
+## Arquitetura de um sistema contábil
+Núcleo: plano de contas hierárquico (máscara como 1.1.01.001, contas sintéticas e analíticas, natureza devedora ou credora, tipo patrimonial ou de resultado). Lançamento com cabeçalho (data, histórico, documento, lote) e itens (conta, débito ou crédito, valor, centro de custo), com validação de que débitos igualam créditos antes de gravar. Razão por conta, balancete de verificação, encerramento do exercício (zeramento das contas de resultado contra a apuração e transferência para lucros ou prejuízos acumulados) e geração de BP, DRE, DMPL e DFC por mapeamento de contas para linhas das demonstrações. Multiempresa, períodos com bloqueio após fechamento, trilha de auditoria imutável (quem, quando, o quê), estorno em vez de exclusão.
+
+## Modelo de dados mínimo (SQL)
+Tabelas: empresa (id, cnpj, razao_social); conta (id, empresa_id, codigo, nome, nivel, tipo sintetica ou analitica, natureza D ou C, grupo, conta_pai_id); periodo (id, empresa_id, inicio, fim, fechado); lancamento (id, empresa_id, data, historico, documento, criado_por, criado_em, estornado_por_id); partida (id, lancamento_id, conta_id, centro_custo_id, debito, credito) com restrição de que apenas um entre débito e crédito seja maior que zero; centro_custo; auditoria (id, tabela, registro_id, acao, antes, depois, usuario, momento). Índices por (empresa_id, data) e (conta_id). Saldos calculados por soma ou mantidos em tabela de saldos mensais atualizada por gatilho.
+
+## Boas práticas de implementação
+Dinheiro nunca em ponto flutuante: use Decimal em Python e NUMERIC no banco. Transação atômica por lançamento. Validação de período aberto. Testes automatizados para partidas dobradas, encerramento e demonstrações. Importação de extratos bancários (OFX, CNAB) para conciliação automática por valor, data e documento. Leitura de XML de NF-e para lançamentos de compras e vendas. Exportação da ECD no layout do SPED (registros I050 plano de contas, I150 e I155 saldos periódicos, I200 e I250 lançamentos, J100 balanço e J150 DRE). Controle de acesso por perfil e registro de logs.
+
+## Pilha recomendada para protótipos
+Python com FastAPI ou Flask, SQLite para começar e PostgreSQL em produção, SQLAlchemy, pandas para relatórios, openpyxl para Excel, e interface web simples (HTML com HTMX ou um front em React quando crescer). Para análises e IA: pandas, scikit-learn, e APIs de modelos de linguagem com busca em documentos (RAG) para consultar normas e políticas contábeis internas. Para automação no Windows: scripts Python agendados e PowerShell.
+
+## Discipulus: gestão contábil eclesiástica
+Sistema próprio do Rômulo para arquidioceses, dioceses e paróquias. Pontos de atenção: entidade sem finalidade de lucros (ITG 2002 R1), com resultado chamado superávit ou déficit; receitas de dízimos, ofertas, coletas, doações e campanhas, separando recursos com restrição (doações para finalidade específica) dos livres; trabalho voluntário reconhecido pelo valor justo quando mensurável; imunidade tributária dos templos de qualquer culto (CF, art. 150, VI, b) sobre patrimônio, renda e serviços relacionados às finalidades essenciais, o que não dispensa obrigações acessórias; prestação de contas paroquial à cúria, consolidação diocesana, fundos (seminário, obras, caridade), centros de custo por paróquia e capela, e relatórios simples para conselhos econômicos.
+
+## Ideias de módulos com IA para escritórios contábeis
+Classificação automática de lançamentos a partir do histórico bancário, conferência de notas fiscais contra o razão, alerta de variações atípicas no balancete, assistente de normas com citação de fonte (RAG), geração de notas explicativas a partir de dados, monitor de prazos de obrigações acessórias, e painel de indicadores para clientes. Sempre com revisão humana do contador e trilha de auditoria.
+
+## RAG e LLM aplicados à contabilidade
+RAG (geração aumentada por recuperação) busca trechos relevantes de uma base (leis, manuais, políticas) e os coloca no contexto do modelo, reduzindo invenções e permitindo citar a fonte. Etapas: ingestão e divisão em trechos por seção, indexação (busca lexical como BM25, vetorial com embeddings, ou híbrida), recuperação dos trechos mais relevantes, montagem do prompt com limite de tokens e resposta com citação. O ÍCARO usa busca lexical BM25 local, sem custo e sem atraso, o que economiza tokens porque envia apenas os trechos relevantes em vez da base inteira.

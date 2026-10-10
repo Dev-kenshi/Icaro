@@ -1,0 +1,22 @@
+# Contabilidade gerencial, custos e análise das demonstrações
+
+## Métodos de custeio
+Custeio por absorção: todos os custos de produção (diretos e indiretos, fixos e variáveis) vão para os produtos; é o aceito pela legislação societária e fiscal no Brasil. Custeio variável (direto): só custos variáveis vão para os produtos e os custos fixos vão direto para o resultado do período; não é aceito para fins fiscais e societários, mas é o mais útil para decisão. Custeio ABC (baseado em atividades): rastreia custos indiretos por atividades e direcionadores de custo, reduzindo arbitrariedade de rateios. Custeio padrão: custo predeterminado para comparação com o real e análise de variações (preço e quantidade).
+
+## Margem de contribuição e ponto de equilíbrio
+Margem de contribuição unitária = preço de venda menos custos e despesas variáveis unitários. Ponto de equilíbrio contábil (quantidade) = custos e despesas fixos divididos pela margem de contribuição unitária. Ponto de equilíbrio econômico = (fixos + lucro desejado ou custo de oportunidade) dividido pela margem unitária. Ponto de equilíbrio financeiro = (fixos menos depreciação e outros gastos não desembolsáveis + compromissos financeiros) dividido pela margem unitária. Margem de segurança = (vendas atuais menos vendas no equilíbrio) divididas pelas vendas atuais. Grau de alavancagem operacional = margem de contribuição total dividida pelo lucro operacional, ou variação percentual do lucro dividida pela variação percentual das vendas. Com fator limitante, priorize o produto com maior margem de contribuição por unidade do fator escasso.
+
+## Orçamento empresarial
+Peças: orçamento de vendas, de produção, de materiais, de mão de obra, de custos indiretos, de despesas, de investimentos, de caixa, e demonstrações projetadas. Modalidades: base zero (justifica cada gasto do zero), incremental, flexível (ajusta ao nível de atividade), contínuo (rolling forecast) e por atividades. Controle: orçado versus realizado, com análise de variações e responsabilização por centro de resultado.
+
+## Indicadores de liquidez
+Liquidez corrente = ativo circulante dividido pelo passivo circulante. Liquidez seca = (ativo circulante menos estoques) dividido pelo passivo circulante. Liquidez imediata = disponibilidades divididas pelo passivo circulante. Liquidez geral = (ativo circulante + realizável a longo prazo) dividido por (passivo circulante + passivo não circulante).
+
+## Endividamento e rentabilidade
+Participação de capitais de terceiros = passivo exigível dividido pelo patrimônio líquido. Composição do endividamento = passivo circulante dividido pelo passivo exigível total. Imobilização do patrimônio líquido = ativo imobilizado mais investimentos e intangível divididos pelo PL. Margem bruta, margem operacional e margem líquida = respectivos lucros divididos pela receita líquida. ROA = lucro (operacional ou líquido) dividido pelo ativo total. ROE = lucro líquido dividido pelo patrimônio líquido médio. Análise DuPont: ROE = margem líquida vezes giro do ativo vezes multiplicador de alavancagem (ativo dividido pelo PL). EBITDA (LAJIDA) = lucro antes de juros, impostos sobre o lucro, depreciação e amortização; no Brasil a Resolução CVM 156 tratava da divulgação voluntária do LAJIDA e foi revogada pela Resolução CVM 237/2025, no contexto da adoção do CPC 51 a partir de 2027, quando medidas de desempenho definidas pela administração passam a ter regras próprias de divulgação e reconciliação em nota.
+
+## Ciclos e prazos médios
+Prazo médio de estocagem = estoque médio dividido pelo CMV vezes 360. Prazo médio de recebimento = clientes médios divididos pela receita bruta vezes 360. Prazo médio de pagamento = fornecedores médios divididos pelas compras vezes 360. Ciclo operacional = estocagem + recebimento. Ciclo financeiro (ciclo de caixa) = ciclo operacional menos prazo de pagamento. Necessidade de capital de giro = ativo circulante operacional menos passivo circulante operacional.
+
+## Análise vertical, horizontal e valor
+Análise vertical: cada conta como percentual de uma base (ativo total no BP, receita líquida na DRE). Análise horizontal: evolução de cada conta em relação a um ano base. EVA (valor econômico agregado) = lucro operacional após impostos menos (capital investido vezes custo médio ponderado de capital). Fluxo de caixa livre da empresa = lucro operacional após impostos + depreciação menos investimentos em ativo imobilizado menos variação da necessidade de capital de giro.
