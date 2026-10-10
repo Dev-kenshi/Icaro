@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { CalendarPlus, Download, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthUser } from '@/components/login/login-gate';
+import { useLang } from '@/lib/i18n';
 import { parseAgendaEntries, serializeCalendar, type AgendaEntry } from '@/lib/agenda-format';
 
 const STORAGE_PREFIX = 'icaro-v5-agenda:';
@@ -15,6 +16,7 @@ function readEntries(key: string): AgendaEntry[] {
 
 export default function Agenda() {
   const user = useAuthUser();
+  const { t } = useLang();
   const storageKey = `${STORAGE_PREFIX}${user?.username ?? 'guest'}`;
   const [entries, setEntries] = useState<AgendaEntry[]>(() => readEntries(storageKey));
   const previousStorageKey = useRef(storageKey);
@@ -64,7 +66,7 @@ export default function Agenda() {
   return (
     <section className="mx-auto max-w-4xl space-y-6" aria-labelledby="agenda-title">
       <header className="flex flex-wrap items-end justify-between gap-4">
-        <div><p className="text-xs font-mono-data uppercase tracking-[.16em] text-secondary">Organização pessoal</p><h1 id="agenda-title" className="mt-2 font-display text-3xl font-semibold">Agenda e rotinas</h1><p className="mt-2 text-sm text-muted-foreground">Os itens ficam neste navegador e perfil. Exporte para levar ao seu calendário.</p></div>
+        <div><p className="text-xs font-mono-data uppercase tracking-[.16em] text-secondary">Organização pessoal</p><h1 id="agenda-title" className="mt-2 font-display text-3xl font-semibold">{t('agendaTitle')}</h1><p className="mt-2 text-sm text-muted-foreground">Os itens ficam neste navegador e perfil. Exporte para levar ao seu calendário.</p></div>
         <Button type="button" variant="outline" onClick={exportIcs} disabled={!entries.length}><Download size={16} className="mr-2" />Exportar .ics</Button>
       </header>
       <form onSubmit={addEntry} className="grid gap-3 rounded-2xl border bg-card p-5 sm:grid-cols-2" aria-label="Criar compromisso ou rotina">

@@ -14,7 +14,9 @@ import AdminCerebro from '@/pages/admin-cerebro';
 import FinanceWeather from '@/pages/finance-weather';
 import Agenda from '@/pages/agenda';
 import Music from '@/pages/music';
-import { LoginGate } from '@/components/login/login-gate';
+import Demos from '@/pages/demos';
+import { LangProvider } from '@/lib/i18n';
+import { LoginGate, useAuthUser } from '@/components/login/login-gate';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 
 const queryClient = new QueryClient();
@@ -43,10 +45,22 @@ function Shelled() {
         <Route path="/finance-weather" component={FinanceWeather} />
         <Route path="/agenda" component={Agenda} />
         <Route path="/music" component={Music} />
+        <Route path="/demos" component={Demos} />
         <Route path="/admin/cerebro" component={AdminCerebro} />
         <Route component={NotFound} />
       </Switch>
     </AppShell>
+  );
+}
+
+function WithLang() {
+  const user = useAuthUser();
+  return (
+    <LangProvider username={user?.username}>
+      <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+        <Router />
+      </WouterRouter>
+    </LangProvider>
   );
 }
 
@@ -56,9 +70,7 @@ function App(): ReactNode {
       <DatasetProvider>
         <TooltipProvider>
           <LoginGate>
-            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-              <Router />
-            </WouterRouter>
+            <WithLang />
           </LoginGate>
           <Toaster />
         </TooltipProvider>

@@ -1,24 +1,27 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Activity, BarChart3, BrainCircuit, CalendarDays, CircleDollarSign, Database, FileUp, Gauge, HeartPulse, Menu, Music2, X } from 'lucide-react';
+import { Activity, BarChart3, BrainCircuit, CalendarDays, CircleDollarSign, Database, FileUp, Gauge, HeartPulse, Languages, Menu, Music2, Presentation, X } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { getGetAiStatusQueryKey, getHealthCheckQueryKey, useGetAiStatus, useHealthCheck } from '@workspace/api-client-react';
 import { useDataset } from '@/lib/dataset-context';
 import { Button } from '@/components/ui/button';
 import { useAuthUser, useAuthSignOut } from '@/components/login/login-gate';
+import { useLang, type StringKey } from '@/lib/i18n';
 
-const navigation = [
-  { href: '/overview', label: 'Visão geral', icon: Gauge },
-  { href: '/analysis', label: 'Explorar dados', icon: BarChart3 },
-  { href: '/assistant', label: 'Copiloto', icon: BrainCircuit },
-  { href: '/finance-weather', label: 'Finanças', icon: CircleDollarSign },
-  { href: '/agenda', label: 'Agenda', icon: CalendarDays },
-  { href: '/music', label: 'Música', icon: Music2 },
+const navigation: { href: string; labelKey: StringKey; icon: typeof Gauge }[] = [
+  { href: '/overview', labelKey: 'navOverview', icon: Gauge },
+  { href: '/analysis', labelKey: 'navAnalysis', icon: BarChart3 },
+  { href: '/assistant', labelKey: 'navAssistant', icon: BrainCircuit },
+  { href: '/finance-weather', labelKey: 'navFinance', icon: CircleDollarSign },
+  { href: '/agenda', labelKey: 'navAgenda', icon: CalendarDays },
+  { href: '/music', labelKey: 'navMusic', icon: Music2 },
+  { href: '/demos', labelKey: 'navDemos', icon: Presentation },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const user = useAuthUser();
   const signOut = useAuthSignOut();
+  const { t, toggle } = useLang();
   const [mobileOpen, setMobileOpen] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const menuTrigger = useRef<HTMLButtonElement>(null);
@@ -61,12 +64,15 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <nav id="app-navigation" className="space-y-1 md:w-full md:space-y-2 xl:space-y-1" aria-label="Navegação principal">
             <div className="mb-2 px-3 text-[10px] font-mono-data uppercase tracking-[.16em] text-sidebar-foreground/40 md:hidden xl:block">Navegação</div>
-            {[...navigation, ...(user?.role === 'admin' ? [{ href: '/admin/cerebro', label: 'Administração', icon: Activity }] : [])].map(({ href, label, icon: Icon }) => (
-              <Link key={href} href={href} onClick={() => setMobileOpen(false)} aria-label={label} aria-current={location === href ? 'page' : undefined} title={label} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm transition-colors md:justify-center md:px-0 xl:justify-start xl:px-3 ${location === href ? 'bg-sidebar-primary text-sidebar-primary-foreground font-semibold' : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'}`} data-testid={`link-nav-${label.toLowerCase().replaceAll(' ', '-')}`}>
+            {[...navigation, ...(user?.role === 'admin' ? [{ href: '/admin/cerebro', labelKey: 'navAdmin' as StringKey, icon: Activity }] : [])].map(({ href, labelKey, icon: Icon }) => {
+              const label = t(labelKey);
+              return (
+              <Link key={href} href={href} onClick={() => setMobileOpen(false)} aria-label={label} aria-current={location === href ? 'page' : undefined} title={label} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm transition-colors md:justify-center md:px-0 xl:justify-start xl:px-3 ${location === href ? 'bg-sidebar-primary text-sidebar-primary-foreground font-semibold' : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'}`} data-testid={`link-nav-${href.slice(1).replaceAll('/', '-')}`}>
                 <Icon size={17} strokeWidth={location === href ? 2.4 : 1.8} /><span className="md:hidden xl:inline">{label}</span>
                 {href === '/assistant' && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-accent md:hidden xl:block" />}
               </Link>
-            ))}
+              );
+            })}
           </nav>
         </div>
         <div className="mt-auto w-full space-y-3 px-4 pb-5 md:space-y-2 md:px-2 xl:space-y-3 xl:px-4">
@@ -85,11 +91,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
       {mobileOpen && <button type="button" className="fixed inset-0 z-30 bg-sidebar/40 md:hidden" onClick={() => { setMobileOpen(false); menuTrigger.current?.focus(); }} aria-label="Fechar menu" data-testid="button-overlay-menu" />}
       <nav className="fixed inset-x-0 bottom-0 z-30 flex items-stretch justify-around border-t border-border bg-card/95 px-2 pt-1 shadow-[0_-8px_28px_rgba(31,60,51,.10)] backdrop-blur-xl md:hidden" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 6px)' }} aria-label="Navegação móvel">
-        {[...navigation, ...(user?.role === 'admin' ? [{ href: '/admin/cerebro', label: 'Admin', icon: Activity }] : [])].slice(0, 4).map(({ href, label, icon: Icon }) => (
-          <Link key={href} href={href} aria-current={location === href ? 'page' : undefined} className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[10px] font-semibold ${location === href ? 'text-secondary' : 'text-muted-foreground'}`} data-testid={`mobile-nav-${label.toLowerCase().replaceAll(' ', '-')}`}>
+        {[...navigation, ...(user?.role === 'admin' ? [{ href: '/admin/cerebro', labelKey: 'navAdmin' as StringKey, icon: Activity }] : [])].slice(0, 4).map(({ href, labelKey, icon: Icon }) => {
+          const label = t(labelKey);
+          return (
+          <Link key={href} href={href} aria-current={location === href ? 'page' : undefined} className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[10px] font-semibold ${location === href ? 'text-secondary' : 'text-muted-foreground'}`} data-testid={`mobile-nav-${href.slice(1).replaceAll('/', '-')}`}>
             <Icon size={19} strokeWidth={location === href ? 2.5 : 1.8} /><span className="max-w-full truncate">{label}</span>
           </Link>
-        ))}
+          );
+        })}
         <button type="button" onClick={() => fileInput.current?.click()} disabled={isImporting} className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[10px] font-semibold text-accent-foreground disabled:opacity-50" aria-label={dataset ? 'Trocar CSV' : 'Importar CSV'} data-testid="mobile-button-import-csv">
           <FileUp size={19} /><span className="max-w-full truncate">{isImporting ? 'Lendo…' : 'Importar'}</span>
         </button>
@@ -99,6 +108,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <button ref={menuTrigger} type="button" className="rounded-lg p-2 hover:bg-muted md:hidden" onClick={() => setMobileOpen(true)} aria-label="Abrir menu" aria-expanded={mobileOpen} aria-controls="app-navigation" data-testid="button-open-menu"><Menu size={21} /></button>
           <div className="hidden items-center gap-2 text-xs text-muted-foreground xl:flex"><Activity size={14} className="text-secondary" /> Espaço local · dados sob seu controle</div>
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
+            <button type="button" onClick={toggle} aria-label={t('langLabel')} title={t('langLabel')} className="flex min-h-10 items-center gap-1.5 rounded-lg border border-border/80 px-3 py-2 text-xs font-semibold text-muted-foreground transition hover:border-secondary hover:bg-muted hover:text-foreground md:min-h-11" data-testid="button-toggle-lang"><Languages size={15} />{t('langButton')}</button>
             <span className="hidden text-xs text-muted-foreground sm:inline">{user?.username}{user?.role === 'admin' ? ' · Administrador' : ''}</span>
             <span aria-hidden="true" className="grid h-8 w-8 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{user?.username.slice(0, 2).toUpperCase() ?? 'IC'}</span>
             <button type="button" onClick={() => signOut?.()} aria-label={`Sair da conta ${user?.username ?? ''}`} title="Sair da conta" className="min-h-10 rounded-lg border border-border/80 px-3 py-2 text-xs font-semibold text-muted-foreground transition hover:border-secondary hover:bg-muted hover:text-foreground md:min-h-11" data-testid="button-logout-shell">Sair</button>

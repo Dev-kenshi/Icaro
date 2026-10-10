@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ExternalLink, Music2, Play, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthUser } from '@/components/login/login-gate';
+import { useLang } from '@/lib/i18n';
 import { parseSpotifyLink, spotifyEmbedUrl, type SpotifyTrack } from '@/lib/spotify-links';
 
 const PREFIX = 'icaro-v5-spotify:';
@@ -20,6 +21,7 @@ function loadTracks(key: string): SpotifyTrack[] {
 
 export default function Music() {
   const user = useAuthUser();
+  const { t } = useLang();
   const key = `${PREFIX}${user?.username ?? 'guest'}`;
   const [tracks, setTracks] = useState<SpotifyTrack[]>(() => loadTracks(key));
   const previousKey = useRef(key);
@@ -36,6 +38,12 @@ export default function Music() {
     localStorage.setItem(key, JSON.stringify(tracks));
   }, [key, tracks]);
 
+  useEffect(() => {
+    const play = () => setActive((current) => current ?? tracks[0] ?? null);
+    window.addEventListener('icaro:music-play', play);
+    return () => window.removeEventListener('icaro:music-play', play);
+  }, [tracks]);
+
   const add = (event: FormEvent) => {
     event.preventDefault();
     const parsed = parseSpotifyLink(url);
@@ -47,7 +55,7 @@ export default function Music() {
 
   return (
     <section className="mx-auto max-w-5xl space-y-6" aria-labelledby="music-title">
-      <header><p className="text-xs font-mono-data uppercase tracking-[.16em] text-secondary">Música para a apresentação</p><h1 id="music-title" className="mt-2 font-display text-3xl font-semibold">Spotify</h1><p className="mt-2 text-sm text-muted-foreground">Adicione links compartilháveis e salve faixas do evento neste perfil. O Spotify controla login, catálogo e disponibilidade.</p></header>
+      <header><p className="text-xs font-mono-data uppercase tracking-[.16em] text-secondary">Música para a apresentação</p><h1 id="music-title" className="mt-2 font-display text-3xl font-semibold">{t('musicTitle')}</h1><p className="mt-2 text-sm text-muted-foreground">Adicione links compartilháveis e salve faixas do evento neste perfil. O Spotify controla login, catálogo e disponibilidade. Diga “Ícaro, toque música” para abrir e tocar.</p></header>
       <form onSubmit={add} className="grid gap-3 rounded-2xl border bg-card p-5 md:grid-cols-[1fr_2fr_auto]" aria-label="Salvar música">
         <label className="text-sm font-medium">Nome<input className="mt-1 w-full rounded-lg border bg-background px-3 py-2" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={100} placeholder="Abertura" /></label>
         <label className="text-sm font-medium">Link do Spotify<input className="mt-1 w-full rounded-lg border bg-background px-3 py-2" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://open.spotify.com/track/…" /></label>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { StageHelp } from '@/components/stage/stage-help';
 import { shouldActivateStageShortcut } from '@/lib/stage-shortcuts';
 import { Mic, X, BarChart3, ExternalLink, Trash2, Menu, Keyboard, Play, Maximize, Volume2, VolumeX, Eye, EyeOff, Orbit, Globe2, Sparkles, SkipForward, Layers, Move, RotateCcw, Check, Square, ArrowLeft, Timer } from 'lucide-react';
@@ -439,6 +439,7 @@ export default function Stage() {
     setAvatarLayout((current) => updateAvatarLayout(current, action));
   };
 
+  const [, navigate] = useLocation();
   const handle = useCallback((raw: string) => {
     const q = raw.trim().slice(0, 4000); if (!q) return;
     aiAbortRef.current?.abort();
@@ -465,6 +466,17 @@ export default function Stage() {
         lastSceneInteractionRef.current = Date.now();
         setScene('earth'); setSceneMode('single'); setFeiraTarget(true);
         setSceneFade(true); window.setTimeout(() => setSceneFade(false), 1000);
+        return sayRef.current(r.text);
+      case 'openTour':
+        navigate('/demos');
+        window.setTimeout(() => window.dispatchEvent(new CustomEvent('icaro:tour', { detail: { tour: r.tour } })), 300);
+        return sayRef.current(r.text);
+      case 'tour':
+        window.dispatchEvent(new CustomEvent('icaro:tour', { detail: { action: r.action } }));
+        return sayRef.current(r.text);
+      case 'openMusic':
+        navigate('/music');
+        if (r.play) window.setTimeout(() => window.dispatchEvent(new CustomEvent('icaro:music-play')), 400);
         return sayRef.current(r.text);
       case 'say': return sayRef.current(r.text);
       case 'intro': setLog((l) => [...l, { role: 'assistant', content: 'Reproduzindo a apresentação original.' }]); return playIntro();

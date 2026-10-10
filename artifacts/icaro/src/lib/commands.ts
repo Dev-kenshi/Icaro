@@ -9,7 +9,12 @@ export type CommandResult =
   | { kind: 'search'; query: string; text: string }
   | { kind: 'scene'; scene: 'galaxy' | 'system' | 'earth'; text: string }
   | { kind: 'flyFeira'; text: string }
+  | { kind: 'openTour'; tour: 'discipulus' | 'labeducontabil'; text: string }
+  | { kind: 'tour'; action: TourCommand; text: string }
+  | { kind: 'openMusic'; play: boolean; text: string }
   | { kind: 'ai' };
+
+import { parseOpenTour, parseTourCommand, tourById, type TourCommand } from './demo-tours';
 
 export const normalize = (s: string) =>
   s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[!?¿¡]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -124,6 +129,16 @@ export function interpret(input: string): CommandResult {
     return { kind: 'scene', scene: 'system', text: 'Abrindo o sistema solar.' };
   if (/\b(terra|earth)\b/.test(t) && /\b(mostrar|mostra|mostre|exibir|exiba|ver|abrir|open|show)\b/.test(t))
     return { kind: 'scene', scene: 'earth', text: 'Abrindo a visão ao vivo da Terra.' };
+
+  const openTour = parseOpenTour(t);
+  if (openTour) return { kind: 'openTour', tour: openTour, text: `Abrindo a demonstração guiada: ${tourById(openTour)?.name ?? openTour}.` };
+  const tourAction = parseTourCommand(t);
+  if (tourAction) {
+    const texts: Record<TourCommand, string> = { next: 'Próxima etapa.', previous: 'Voltando uma etapa.', pause: 'Demonstração pausada.', resume: 'Continuando a demonstração.', close: 'Demonstração encerrada.' };
+    return { kind: 'tour', action: tourAction, text: texts[tourAction] };
+  }
+  if (/\b(musica|musicas|spotify)\b/.test(t) && /\b(toque|tocar|toquei|abra|abrir|mostre|mostrar|reproduza|reproduzir|coloque)\b/.test(t))
+    return { kind: 'openMusic', play: /\b(toque|tocar|reproduza|reproduzir|coloque)\b/.test(t), text: 'Abrindo a página de música.' };
 
   if (/\b(o que|que) significa (o )?(icaro|i caro)|\bo que e (o )?(icaro|i caro)|significado d[eo] (icaro|i caro)/.test(t))
     return { kind: 'say', text: 'Eu sou o ÍCARO. ÍCARO significa Inteligência, Ciência de Dados, Análise de Dados, Resultados e Operações. Sou o assistente de aula da Contabilidade da UEFS.' };

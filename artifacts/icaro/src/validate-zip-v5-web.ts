@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { escapeIcsText, parseAgendaEntries, serializeCalendar, toIcsLocalDate, type AgendaEntry } from "./lib/agenda-format";
 import { parseSpotifyLink, spotifyEmbedUrl } from "./lib/spotify-links";
+import { DEMO_TOURS, parseOpenTour, parseTourCommand, tourById, tourStep } from "./lib/demo-tours";
+import { interpret, normalize } from "./lib/commands";
 
 let checks = 0;
 function check(value: unknown, message: string) {
@@ -58,5 +60,31 @@ check(parseSpotifyLink("texto livre") === null, "rejeita link inválido");
 check(spotifyEmbedUrl({ id: "4uLU6hMCjMI75M1A2tKUQC", title: "Demo", url: track }) === "https://open.spotify.com/embed/track/4uLU6hMCjMI75M1A2tKUQC", "constrói player seguro para faixa");
 check(spotifyEmbedUrl({ id: "x", title: "Demo", url: "https://evil.example/track/x" }) === "", "não incorpora host externo");
 
-assert.equal(checks, 43);
-process.stdout.write(`ÍCARO v5 web: ${checks}/${checks} validações de agenda e Spotify passaram.\n`);
+check(DEMO_TOURS.length === 2, "oferece os dois sistemas do professor");
+check(tourById("discipulus")?.steps.length === 6, "tour do Discipulus com seis etapas");
+check(tourById("labeducontabil")?.steps.length === 5, "tour do LabEduContábil com cinco etapas");
+check(tourById("inexistente") === null, "rejeita sistema desconhecido");
+check(tourStep(DEMO_TOURS[0], 0)?.title === "O que é", "tour inicia pela apresentação");
+check(tourStep(DEMO_TOURS[0], 99) === null, "rejeita etapa fora do intervalo");
+check(parseOpenTour(normalize("Ícaro, mostre o Discipulus")) === "discipulus", "voz abre o Discipulus");
+check(parseOpenTour(normalize("mostre o LabEduContábil")) === "labeducontabil", "voz abre o LabEduContábil");
+check(parseOpenTour(normalize("mostre a galáxia")) === null, "não confunde galáxia com sistema");
+check(parseTourCommand(normalize("próximo")) === "next", "voz avança o tour");
+check(parseTourCommand(normalize("volte")) === "previous", "voz volta o tour");
+check(parseTourCommand(normalize("pausa")) === "pause", "voz pausa o tour");
+check(parseTourCommand(normalize("continue")) === "resume", "voz retoma o tour");
+check(parseTourCommand(normalize("feche o sistema")) === "close", "voz fecha o tour");
+check(parseTourCommand(normalize("que horas são")) === null, "pergunta comum não vira comando de tour");
+const openTourCmd = interpret("Ícaro, mostre o Discipulus");
+check(openTourCmd.kind === "openTour" && openTourCmd.tour === "discipulus", "interpret abre o Discipulus");
+check(interpret("Ícaro, mostre o LabEduContábil").kind === "openTour", "interpret abre o LabEduContábil");
+check(interpret("próximo").kind === "tour", "interpret controla o tour");
+const playCmd = interpret("toque música");
+check(playCmd.kind === "openMusic" && playCmd.play, "interpret toca música");
+const openCmd = interpret("abra o spotify");
+check(openCmd.kind === "openMusic" && !openCmd.play, "interpret só abre o Spotify sem tocar");
+check(interpret("mostre a galáxia").kind === "scene", "cena da galáxia preservada");
+check(interpret("que horas são").kind === "say", "pergunta de hora preservada");
+
+assert.equal(checks, 65);
+process.stdout.write(`ÍCARO v5 web: ${checks}/${checks} validações de agenda, Spotify, tours e voz passaram.\n`);

@@ -16,10 +16,16 @@ function fmt(value: number, digits = 2) {
   return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
 }
 
+function sparkPoints(values: number[], w: number, h: number) {
+  const min = Math.min(...values), max = Math.max(...values), span = max - min || 1;
+  return values.map((v, i) => `${((i / (values.length - 1)) * w).toFixed(1)},${(h - 8 - ((v - min) / span) * (h - 16)).toFixed(1)}`).join(' ');
+}
+
 export default function FinanceWeather() {
   const [cityInput, setCityInput] = useState('Feira de Santana');
   const [city, setCity] = useState('Feira de Santana');
   const [metrics, setMetrics] = useState<Metric[]>([]);
+  const [dollarSeries, setDollarSeries] = useState<{ data: string; valor: number }[]>([]);
   const [weather, setWeather] = useState<WeatherPayload['current'] | null>(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -48,6 +54,7 @@ export default function FinanceWeather() {
       ['432', 'Selic meta', '% a.a.'],
       ['4389', 'CDI anualizado', '% a.a.'],
       ['13522', 'IPCA acumulado em 12 meses', '%'],
+      ['7832', 'Ibovespa', ' pontos'],
     ].map(async ([series, label, unit]) => {
       try {
         const response = await fetch(`https://api.bcb.gov.br/dados/serie/bcdata.sgs.${series}/dados/ultimos/1?formato=json`);
@@ -61,6 +68,19 @@ export default function FinanceWeather() {
         problems.push(`${label}: fonte do Banco Central temporariamente indisponível.`);
       }
     }));
+    const dollarJob = fetch('https://api.bcb.gov.br/dados/serie/bcdata.sgs.1/dados/ultimos/30?formato=json')
+      .then(async (r) => { if (!r.ok) throw new Error(); return await r.json() as BcbRow[]; })
+      .then((rows) => {
+        const points = rows.flatMap((row) => {
+          const value = Number(row.valor?.replace(',', '.'));
+          return row.data && Number.isFinite(value) ? [{ data: row.data, valor: value }] : [];
+        });
+        if (version === requestVersion.current) setDollarSeries(points);
+      })
+      .catch(() => {
+        if (version === requestVersion.current) setDollarSeries([]);
+        problems.push('Histórico do dólar: fonte do Banco Central temporariamente indisponível.');
+      });
     const weatherJob = (async () => {
       const geoResponse = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(requestedCity)}&count=1&language=pt&format=json`);
       if (!geoResponse.ok) throw new Error();
@@ -78,7 +98,7 @@ export default function FinanceWeather() {
       if (version === requestVersion.current) setWeather(null);
       problems.push(`Clima de ${requestedCity}: localização ou serviço indisponível.`);
     });
-    await Promise.all([currencyJob, bcbJob, weatherJob]);
+    await Promise.all([currencyJob, bcbJob, dollarJob, weatherJob]);
     if (version !== requestVersion.current) return;
     setMetrics(nextMetrics);
     setErrors(problems);
@@ -119,6 +139,13 @@ export default function FinanceWeather() {
           {!weather && !loading && <p className="mt-5 text-sm text-muted-foreground">Clima indisponível para esta cidade.</p>}
         </section>
       </div>
+      <section className="rounded-2xl border bg-card p-5 shadow-sm" aria-labelledby="dollar-title">
+        <h2 id="dollar-title" className="font-semibold">Dólar comercial (venda) · últimos 30 dias úteis</h2>
+        {dollarSeries.length > 1
+          ? <svg viewBox="0 0 600 160" className="mt-4 h-40 w-full" role="img" aria-label="Variação recente do dólar"><polyline fill="none" stroke="currentColor" strokeWidth="2" className="text-secondary" points={sparkPoints(dollarSeries.map((d) => d.valor), 600, 160)} /></svg>
+          : <p className="mt-4 text-sm text-muted-foreground">Histórico do dólar indisponível no momento.</p>}
+        {dollarSeries.length > 0 && <p className="mt-2 text-xs text-muted-foreground">Banco Central do Brasil · SGS 1 · {dollarSeries[0].data} a {dollarSeries.at(-1)?.data} · último: R$ {fmt(dollarSeries.at(-1)!.valor, 4)}</p>}
+      </section>
       {errors.length > 0 && <div role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">{errors.join(' ')}</div>}
       <p className="text-xs text-muted-foreground" aria-live="polite">{updated ? `Atualizado às ${updated}. Fontes externas podem atrasar ou ficar indisponíveis.` : 'Buscando fontes externas…'}</p>
     </section>
