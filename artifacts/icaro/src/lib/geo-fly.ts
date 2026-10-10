@@ -10,6 +10,12 @@ export type GeoTarget = {
 
 /** Extracts a place name from a normalized voice command ("onde fica Tóquio", "voe para Lisboa", "mostre Salvador no mapa"). */
 export function parseFlyQuery(t: string): string | null {
+  // Canonicalize the user's frequent destination and make explicit Maps/Earth
+  // requests deterministic instead of sending them to the conversational model.
+  if (/\bfeira(?: de santana)?\b/i.test(t)
+    && /\b(?:abra|abrir|mostre|mostrar|localize|localizar|voe|voar|navegue|zoom|mapa|maps|street view|streetview|google earth)\b/i.test(t)) {
+    return 'Feira de Santana, Bahia, Brasil';
+  }
   const m =
     /(?:onde fica|onde e|aonde fica)\s+(?:a |o |as |os )?(.+)$/i.exec(t) ??
     /(?:mostre|mostrar|mostra|exiba|ver)\s+(?:a |o )?(.+?)\s+no mapa$/i.exec(t) ??

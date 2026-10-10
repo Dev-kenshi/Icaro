@@ -134,6 +134,9 @@ check(interpret("onde fica Tóquio").kind === "flyTo", "voz inicia busca geográ
 check(interpret("vá para Lisboa").kind === "flyTo", "voz navega para destino");
 check(interpret("voe para Feira de Santana").kind === "flyFeira", "mantém rota especial de Feira");
 check(interpret("Ícaro, onde fica o Vaticano").kind === "flyTo", "aceita palavra de ativação");
+check(parseFlyQuery(normalize("abra aqui direto, dando zoom e chegando em Feira de Santana")) === "Feira de Santana, Bahia, Brasil", "reconhece pedido direto de chegada em Feira");
+check(interpret("abra Feira de Santana no Street View").kind === "flyTo", "Street View de Feira abre mapa em vez de resposta textual");
+check(interpret("abra aqui direto, dando zoom e chegando em Feira de Santana").kind === "flyTo", "pedido natural de abertura direta não cai na IA");
 
-assert.equal(checks, 109);
+assert.equal(checks, 112);
 process.stdout.write(`ÍCARO v5 web: ${checks}/${checks} validações de agenda, Spotify, tours, voz, geocodificação e Google Maps passaram.\n`);
