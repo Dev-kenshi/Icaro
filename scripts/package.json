@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "validate:geo": "tsx ../artifacts/icaro/src/validate-geo.ts",
     "hello": "tsx ./src/hello.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "validate:voice": "tsx ./src/validate-voice.ts",

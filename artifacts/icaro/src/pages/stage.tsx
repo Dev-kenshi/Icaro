@@ -6,7 +6,8 @@ import { Mic, X, BarChart3, ExternalLink, Trash2, Menu, Keyboard, Play, Maximize
 import { getGetAiStatusQueryKey, getGetAiVoicesQueryKey, getGetCosmosFeedsQueryKey, getHealthCheckQueryKey, useGetAiStatus, useGetAiVoices, useGetCosmosFeeds, useHealthCheck, useSendAiMessage, type AiChatResponse, type AiVoiceCatalog } from '@workspace/api-client-react';
 import { requestAiChatStream } from '@/lib/ai-chat-stream';
 import { interpret, formatDuration } from '@/lib/commands';
-import { cidadeUrl, geocodeUrl, parseCidade, parseGeocode, type GeoTarget } from '@/lib/geo-fly';
+import { parseGeocode, type GeoTarget } from '@/lib/geo-fly';
+import { buscarLugar } from '@/lib/geo-busca';
 import { GeoMapPanel } from '@/components/stage/geo-map-panel';
 import { speak, stopSpeaking, ensureAudio, activateAudio, connectMic, getAnalyser, getLevel, getMicRms, getOutputRms, setListeningActivity, releaseSpeechCache } from '@/lib/speech';
 import type { SpeechEmotion, SpeechEmotionMark } from '@/lib/speech-plan';
@@ -111,7 +112,7 @@ const readMotion = (): CosmosMotion => {
 const FEIRA: Lugar = { nome: 'Feira de Santana', regiao: 'Bahia', pais: 'Brasil', lat: -12.2664, lon: -38.9663, tipo: 'cidade' };
 const lugarDe = (g: GeoTarget): Lugar => ({
   nome: g.street ? (g.label.split(',')[0] || g.street) : (g.city || g.label.split(',')[0] || g.label),
-  regiao: g.street ? g.city : g.state, pais: g.country, lat: g.latitude, lon: g.longitude, tipo: g.street ? 'local' : 'cidade',
+  regiao: g.street ? g.city : g.state, pais: g.country, lat: g.latitude, lon: g.longitude, tipo: g.tipo ?? (g.street ? 'local' : 'cidade'),
 });
 
 const prefersReducedMotion = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -459,19 +460,9 @@ export default function Stage() {
 
   const [, navigate] = useLocation();
   const locatePlace = useCallback(async (query: string) => {
-    let place: GeoTarget | null = null;
-    const urlCidade = cidadeUrl(query);
-    if (urlCidade) {
-      try {
-        const r = await fetch(urlCidade, { signal: AbortSignal.timeout(8000) });
-        if (r.ok) place = parseCidade(await r.json());
-      } catch { /* segue para o Photon */ }
-    }
-    if (!place) {
-      const response = await fetch(geocodeUrl(query), { signal: AbortSignal.timeout(12_000) });
-      if (!response.ok) throw new Error('Geocoder unavailable');
-      place = parseGeocode(await response.json());
-    }
+    // Mundo inteiro: cidades (Open-Meteo/GeoNames), ruas e bairros (Photon/OpenStreetMap) e Nominatim de reserva,
+    // escolhendo o melhor candidato (nome exato, tamanho, Brasil e proximidade de Feira desempatam).
+    const place: GeoTarget | null = await buscarLugar(query);
     if (!place) return null;
     lastSceneInteractionRef.current = Date.now();
     setFeiraTarget(false);

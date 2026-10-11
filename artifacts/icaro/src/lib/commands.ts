@@ -132,7 +132,8 @@ export function interpret(input: string): CommandResult {
   const v5 = interpretV5(t);
   if (v5) return v5;
 
-  if (/\b(fly|go|travel)\s+to\b.*\b(feira de santana|feira)\b/.test(t) || /\b(voar|voe|ir|va|viajar|leve|voo)\b.*\b(feira de santana|feira)\b/.test(t) || /\b(feira de santana|feira)\b.*\b(voar|voe|ir|va|viajar|leve)\b/.test(t))
+  // Só quando o destino é a própria Feira ("voe para Feira de Santana"), não "vá para Bonfim de Feira".
+  if (/\b(?:fly|go|travel)\s+to\s+(?:feira de santana|feira)$/.test(t) || /\b(?:voar|voe|ir|va|viajar|leve|voo)\s+(?:para|pra|ate|a)?\s*(?:a |o )?(?:cidade de )?(?:feira de santana|feira)$/.test(t))
     return { kind: 'flyFeira', text: 'Ajustando a visualização para Feira de Santana.' };
   if (/\b(galaxia|galaxy)\b/.test(t) && /\b(mostrar|mostra|mostre|exibir|exiba|ver|abrir|open|show)\b/.test(t))
     return { kind: 'scene', scene: 'galaxy', text: 'Abrindo a visão da galáxia.' };

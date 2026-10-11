@@ -6,7 +6,29 @@ export type GeoTarget = {
   state?: string;
   country?: string;
   street?: string;
+  /** país, estado, cidade, bairro/distrito ou local (rua, endereço, ponto): define o zoom do globo. */
+  tipo?: 'pais' | 'estado' | 'cidade' | 'bairro' | 'local';
 };
+
+/**
+ * Tira do nome do lugar o que é comando ou fala solta: "Salvador no mapa", "o distrito de Bonfim de Feira",
+ * "Lisboa pra mim", "... Amém". Sem isso, "salvador no mapa" vai para o geocodificador e volta El Salvador.
+ */
+export function limparLugar(bruto: string): string {
+  let q = bruto.replace(/[.?!;]+/g, ' ').replace(/\s+/g, ' ').trim();
+  for (let i = 0; i < 4; i++) {
+    const antes = q;
+    q = q
+      .replace(/\s*,?\s*\b(?:amem|amém|por favor|obrigad[oa]|agora|rapido|rápido)$/i, '')
+      .replace(/\s+(?:no|do|pelo|na|em|via)\s+(?:mapa|globo|planeta|google maps|google earth|maps|street view|satelite|satélite)\b.*$/i, '')
+      .replace(/\s+(?:pra|para)\s+(?:mim|gente|nos|nós|turma)$/i, '')
+      .replace(/^(?:a |o |as |os |um |uma )/i, '')
+      .replace(/^(?:cidade|municipio|município|distrito|bairro|povoado|vila|estado|pais|país|regiao|região|capital)\s+(?:de|do|da|dos|das)\s+/i, '')
+      .trim();
+    if (q === antes) break;
+  }
+  return q;
+}
 
 /** Extracts a place name from a normalized voice command ("onde fica Tóquio", "voe para Lisboa", "mostre Salvador no mapa"). */
 export function parseFlyQuery(t: string): string | null {
@@ -15,20 +37,19 @@ export function parseFlyQuery(t: string): string | null {
     const name = knownPoint[1].toLowerCase() === 'uefs' ? 'UEFS' : 'Abrini';
     return knownPoint[2] ? `${name}, ${knownPoint[2]}` : `${name}, Feira de Santana, Bahia, Brasil`;
   }
-  // Canonicalize the user's frequent destination and make explicit Maps/Earth
-  // requests deterministic instead of sending them to the conversational model.
-  if (/\bfeira(?: de santana)?\b/i.test(t)
-    && /\b(?:abra|abrir|mostre|mostrar|localize|localizar|voe|voar|navegue|zoom|mapa|maps|street view|streetview|google earth)\b/i.test(t)) {
-    return 'Feira de Santana, Bahia, Brasil';
-  }
+  // "mostre Feira de Santana" (sem "no mapa") é o destino de casa; "Bonfim de Feira" segue o caminho normal.
+  if (/\b(?:mostre|mostrar|mostra|exiba|abra|abrir)\s+(?:a |o )?(?:cidade de )?feira(?: de santana)?$/i.test(t)) return 'Feira de Santana, Bahia, Brasil';
   const m =
     /(?:onde fica|onde e|aonde fica)\s+(?:a |o |as |os )?(.+)$/i.exec(t) ??
     /(?:mostre|mostrar|mostra|exiba|ver)\s+(?:a |o )?(.+?)\s+no mapa$/i.exec(t) ??
     /(?:localize|localizar|encontre no mapa|pesquise no mapa)\s+(?:a |o |um |uma )?(.+)$/i.exec(t) ??
     /(?:abra|abrir)\s+(?:o )?(?:google maps|maps|street view)\s+(?:de|para)\s+(.+)$/i.exec(t) ??
     /(?:va|voe|voar|viajar|leve|navegue|ir)\s+(?:para|ate)?\s*(?:a |o |ao )?(.+)$/i.exec(t);
-  const q = m?.[1]?.replace(/[.?!]+$/, '').trim();
-  return q && q.length >= 2 && q.length <= 80 ? q : null;
+  const q = m?.[1] ? limparLugar(m[1]) : '';
+  if (!q || q.length < 2 || q.length > 80) return null;
+  // Só "Feira" ou "Feira de Santana" é a cidade de casa; "Bonfim de Feira" é outro lugar.
+  if (/^feira(?: de santana)?(?:,? ?(?:bahia|ba))?$/i.test(q)) return 'Feira de Santana, Bahia, Brasil';
+  return q;
 }
 
 /** Photon geocoding supports cities, street names, and street numbers. */
