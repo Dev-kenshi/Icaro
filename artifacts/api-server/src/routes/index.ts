@@ -7,16 +7,18 @@ import ttsTimestampsRouter from "./tts-timestamps";
 import sttRouter from "./stt";
 import cosmosRouter from "./cosmos";
 import itcontRouter from "./itcont";
+import aoVivoRouter from "./ao-vivo";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
-router.use(["/ai", "/tts-ts", "/itcont"], requireAuth());
+router.use(["/ai", "/tts-ts", "/itcont", "/ao-vivo"], requireAuth());
 router.use(sttRouter);
 router.use(aiRouter);
 router.use(ttsTimestampsRouter);
 router.use(cosmosRouter);
 router.use(itcontRouter);
+router.use(aoVivoRouter);
 
 export default router;

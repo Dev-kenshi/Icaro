@@ -774,3 +774,58 @@
 /* Speed control for the automatic scene spin. */
 .cosmos-navigation__buttons .cosmos-navigation__speed { display: inline-flex; width: auto; gap: 4px; padding: 0 7px; font: 9px/1 'IBM Plex Mono', monospace; letter-spacing: .04em; }
 .cosmos-panel .cosmos-navigation__speed span { display: none; }
+
+/* ---------- Planeta Terra 3D atrás do Ícaro (porte do ÍCARO v5, MapLibre) ---------- */
+.globo-terra { position:absolute; inset:0; z-index:0; background:radial-gradient(ellipse at 45% 45%,#071a36,#02050c 72%); touch-action:none; }
+.globo-terra .maplibregl-ctrl-attrib { background:rgba(2,6,14,.6); color:#8193ad; font-size:9.5px; }
+.globo-terra .maplibregl-ctrl-attrib a { color:#a9bcd8; }
+.globo-veu { position:absolute; inset:0; z-index:1; pointer-events:none;
+  background:radial-gradient(ellipse 62% 58% at 40% 46%,rgba(2,5,12,0) 0,rgba(2,5,12,.2) 55%,rgba(2,5,12,.78) 100%); }
+.pino { display:flex; flex-direction:column; align-items:center; pointer-events:none; transform:translateY(-14px); }
+.pino i { width:16px; height:16px; border-radius:50%; background:#4fd1ff; border:3px solid #fff;
+  box-shadow:0 0 0 6px rgba(79,209,255,.35),0 0 24px #4fd1ff; animation:pino-pulsa 1.6s ease-in-out infinite; }
+.pino b { margin-top:8px; font-family:'IBM Plex Sans',sans-serif; font-size:15px; font-weight:700; color:#fff; letter-spacing:.02em; white-space:nowrap;
+  background:rgba(2,8,20,.78); border:1px solid rgba(79,209,255,.5); border-radius:9px; padding:4px 10px; text-shadow:0 1px 2px #000; }
+.pino.aqui i { background:#34d399; box-shadow:0 0 0 6px rgba(52,211,153,.35),0 0 24px #34d399; }
+@keyframes pino-pulsa { 50% { box-shadow:0 0 0 14px rgba(79,209,255,0),0 0 30px #4fd1ff; } }
+.lugar-titulo { position:absolute; left:50%; top:max(12px,env(safe-area-inset-top)); transform:translateX(-50%); z-index:7; text-align:center; pointer-events:none;
+  font-family:'IBM Plex Mono',monospace; letter-spacing:.2em; color:#e9f7ff; text-shadow:0 2px 6px #000,0 0 22px rgba(79,209,255,.6); animation:lugar-surge 1s ease both; }
+.lugar-titulo b { display:block; font-size:clamp(20px,2.6vw,40px); }
+.lugar-titulo small { display:block; font-size:clamp(10px,1vw,14px); color:#b8e4ff; margin-top:4px; }
+@keyframes lugar-surge { from { opacity:0; transform:translate(-50%,-10px); } }
+.globo-controles { position:absolute; right:12px; top:50%; transform:translateY(-50%); z-index:6; display:flex; flex-direction:column; gap:6px; }
+.globo-controles button { display:grid; place-items:center; width:34px; height:34px; border-radius:9px; border:1px solid rgba(79,209,255,.35); background:rgba(2,8,20,.7); color:#bfe9ff; }
+.globo-controles button:hover, .globo-controles button:focus-visible { border-color:#4fd1ff; color:#fff; }
+.stage:fullscreen .globo-controles { display:none; }
+
+/* ---------- Painel financeiro e clima, lado esquerdo do palco (ÍCARO v5) ---------- */
+.painel-vivo { position:absolute; left:12px; top:max(56px,8vh); bottom:calc(var(--dock-height,220px) + 18px); width:min(350px,32vw); z-index:8;
+  display:flex; flex-direction:column; gap:9px; overflow:auto; scrollbar-width:thin; scrollbar-color:rgba(79,209,255,.3) transparent; animation:painel-vivo-entra .45s ease both; }
+@keyframes painel-vivo-entra { from { opacity:0; transform:translateX(-24px); } }
+.painel-vivo__fechar { position:sticky; top:0; align-self:flex-end; display:grid; place-items:center; width:26px; height:26px; flex:none; border-radius:7px;
+  border:1px solid rgba(79,209,255,.3); background:rgba(4,12,26,.9); color:#9fb3cc; z-index:1; }
+.painel-vivo .dcard { background:rgba(4,12,26,.82); border:1px solid rgba(79,209,255,.22); border-radius:14px; padding:11px 13px; backdrop-filter:blur(8px); color:#dbeafe; font-size:13px; }
+.painel-vivo .dcard h5 { margin:0 0 8px; font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.16em; color:#9fd7ff; font-weight:600; display:flex; gap:8px; }
+.painel-vivo .dcard h5 span { margin-left:auto; color:#7d8ba6; font-weight:400; letter-spacing:.06em; }
+.painel-vivo .kpis { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+.painel-vivo .kpi { background:rgba(79,209,255,.05); border:1px solid rgba(79,209,255,.12); border-radius:10px; padding:7px 9px; min-width:0; }
+.painel-vivo .kpi small { display:block; font-size:10.5px; color:#9fb3cc; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.painel-vivo .kpi b { display:block; font-size:18px; font-weight:650; color:#f1f8ff; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.painel-vivo .kpi em { font-style:normal; font-size:11px; font-variant-numeric:tabular-nums; color:#9fb3cc; }
+.painel-vivo .kpi em.sobe { color:#5eead4; } .painel-vivo .kpi em.desce { color:#fca5a5; }
+.painel-vivo .clima { display:flex; align-items:center; gap:12px; }
+.painel-vivo .clima .graus { font-size:46px; font-weight:300; color:#fff; line-height:1; font-variant-numeric:tabular-nums; }
+.painel-vivo .clima .graus sup { font-size:20px; }
+.painel-vivo .clima .desc { font-size:13.5px; color:#dbeafe; line-height:1.45; }
+.painel-vivo .clima .desc b { display:block; font-size:15px; color:#fff; }
+.painel-vivo .spark-dolar { width:100%; height:84px; display:block; margin-top:4px; cursor:crosshair; }
+.painel-vivo .spark-dica { font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:#b8cbe4; min-height:14px; margin-top:2px; }
+.painel-vivo .fonte-dash { font-size:10px; color:#6f819c; line-height:1.4; padding:0 2px; }
+.stage[data-painel-vivo="true"] .face { translate:min(120px,9vw) 0; }
+@media (max-width: 767px) {
+  .painel-vivo { width:calc(100% - 24px); bottom:auto; max-height:46%; }
+  .stage[data-painel-vivo="true"] .face { translate:0 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pino i, .lugar-titulo, .painel-vivo { animation:none; }
+}

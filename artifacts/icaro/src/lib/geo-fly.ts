@@ -36,6 +36,27 @@ export function geocodeUrl(name: string) {
   return `https://photon.komoot.io/api/?q=${encodeURIComponent(name)}&limit=1`;
 }
 
+/**
+ * Nome solto de cidade/país ("Montevidéu", "Tóquio"): o Open-Meteo ordena por população e
+ * entende nomes em português; o Photon devolveria um vilarejo homônimo no Brasil.
+ * Endereços (com número ou vírgula) continuam no Photon.
+ */
+export function cidadeUrl(name: string) {
+  const q = name.trim();
+  if (!q || /[\d,]/.test(q) || /^(?:rua|avenida|av\.?|travessa|praca|praça|rodovia|estrada)\b/i.test(q)) return null;
+  return `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=1&language=pt&format=json`;
+}
+
+export function parseCidade(payload: unknown): GeoTarget | null {
+  const r = (payload as { results?: unknown } | null)?.results;
+  const c = Array.isArray(r) ? r[0] as Record<string, unknown> : null;
+  if (!c || typeof c.latitude !== 'number' || typeof c.longitude !== 'number' || typeof c.name !== 'string') return null;
+  const s = (v: unknown) => (typeof v === 'string' && v.trim() ? v : undefined);
+  const city = c.name, state = s(c.admin1), country = s(c.country);
+  const label = [city, state, country].filter((p, i, a): p is string => !!p && a.indexOf(p) === i).join(', ');
+  return { latitude: c.latitude, longitude: c.longitude, label, city, state, country, street: '' };
+}
+
 export function parseGeocode(payload: unknown): GeoTarget | null {
   if (!payload || typeof payload !== 'object') return null;
   const first = (payload as { features?: unknown }).features;

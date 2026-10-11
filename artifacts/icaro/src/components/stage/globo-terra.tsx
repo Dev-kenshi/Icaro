@@ -1,0 +1,196 @@
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { Globe2, LocateFixed, Minus, Plus } from 'lucide-react';
+import type { Map as MapLibreMap, Marker } from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import { subtituloLugar, zoomPara, type Lugar } from '@/lib/globo';
+
+export type { Lugar };
+
+/**
+ * Planeta Terra em 3D atrás do Ícaro (porte do ÍCARO v5): MapLibre GL com projeção de globo,
+ * imagens de satélite e rótulos da Esri. Arrastar gira, a roda aproxima; por voz ele voa até
+ * qualquer lugar, mostra o título e marca no mapa. Parado, o planeta gira devagar.
+ */
+
+export type GloboApi = {
+  voar: (lugar: Lugar, opcoes?: { zoom?: number; aqui?: boolean }) => void;
+  zoom: (delta: number) => void;
+  planeta: () => void;
+};
+
+const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
+const VISTA_INICIAL = { center: [-38.97, -12.27] as [number, number], zoom: 2.35 };
+const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
+
+type Props = {
+  /** Sem movimento automático (prefers-reduced-motion): mantém interação e voos curtos. */
+  reduzido: boolean;
+  onOnde: () => void;
+  onFalha: (motivo: string) => void;
+  onInteract?: () => void;
+  ocultarControles?: boolean;
+};
+
+export const GloboTerra = forwardRef<GloboApi, Props>(function GloboTerra({ reduzido, onOnde, onFalha, onInteract, ocultarControles }, ref) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<MapLibreMap | null>(null);
+  const libRef = useRef<typeof import('maplibre-gl') | null>(null);
+  const pinosRef = useRef<Marker[]>([]);
+  const aquiRef = useRef<Marker | null>(null);
+  const ultimaMexida = useRef(0);
+  const girar = useRef(true);
+  const [titulo, setTitulo] = useState<{ nome: string; sub: string; chave: number } | null>(null);
+  const tituloTimer = useRef(0);
+  const falhaRef = useRef(onFalha); falhaRef.current = onFalha;
+  // Voo pedido antes de o mapa carregar (ex.: "mostre Feira de Santana" ao abrir a página).
+  const pendenteRef = useRef<{ lugar: Lugar; opcoes: { zoom?: number; aqui?: boolean } } | null>(null);
+  const voarRef = useRef<(lugar: Lugar, opcoes?: { zoom?: number; aqui?: boolean }) => void>(() => undefined);
+  const interactRef = useRef(onInteract); interactRef.current = onInteract;
+
+  useEffect(() => {
+    let vivo = true;
+    let raf = 0;
+    void (async () => {
+      try {
+        const lib = await import('maplibre-gl');
+        if (!vivo || !hostRef.current) return;
+        libRef.current = lib;
+        const map = new lib.Map({
+          container: hostRef.current,
+          attributionControl: { compact: true },
+          center: VISTA_INICIAL.center,
+          zoom: VISTA_INICIAL.zoom,
+          maxPitch: 70,
+          renderWorldCopies: false,
+          fadeDuration: 0,
+          style: {
+            version: 8,
+            projection: { type: 'globe' },
+            sources: {
+              sat: { type: 'raster', tileSize: 256, maxzoom: 18, tiles: [`${ESRI}World_Imagery/MapServer/tile/{z}/{y}/{x}`], attribution: 'Imagens: Esri, Maxar, Earthstar Geographics' },
+              rot: { type: 'raster', tileSize: 256, maxzoom: 18, tiles: [`${ESRI}Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}`], attribution: 'Rótulos: Esri' },
+            },
+            layers: [
+              { id: 'fundo', type: 'background', paint: { 'background-color': '#04122a' } },
+              { id: 'sat', type: 'raster', source: 'sat', paint: { 'raster-saturation': 0.08, 'raster-fade-duration': 0 } },
+              { id: 'rot', type: 'raster', source: 'rot', minzoom: 2.2, paint: { 'raster-opacity': 0.92, 'raster-fade-duration': 0 } },
+            ],
+          },
+        });
+        mapRef.current = map;
+        map.on('load', () => {
+          const pendente = pendenteRef.current;
+          pendenteRef.current = null;
+          if (pendente) voarRef.current(pendente.lugar, pendente.opcoes);
+          try {
+            map.setSky({
+              'sky-color': '#0b2a5c', 'horizon-color': '#4fd1ff', 'fog-color': '#0a1730', 'sky-horizon-blend': 0.6,
+              'horizon-fog-blend': 0.5, 'fog-ground-blend': 0.6, 'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 5, 1, 7, 0],
+            });
+          } catch { /* atmosfera é opcional */ }
+        });
+        const mexeu = () => { ultimaMexida.current = Date.now(); interactRef.current?.(); };
+        for (const ev of ['mousedown', 'touchstart', 'wheel', 'dragstart'] as const) map.on(ev, mexeu);
+        map.on('error', (e) => {
+          const msg = String((e as { error?: Error }).error?.message ?? '');
+          if (msg && !/tile|Failed to fetch|NetworkError|AJAXError/i.test(msg)) console.warn('globo:', msg);
+        });
+        map.getCanvas().addEventListener('webglcontextlost', () => falhaRef.current('O navegador perdeu o contexto gráfico do globo.'));
+        // Giro lento quando ninguém mexe e a câmera está longe.
+        let anterior = performance.now();
+        const passo = (agora: number) => {
+          const dt = Math.min(0.1, (agora - anterior) / 1000); anterior = agora;
+          if (!reduzido && girar.current && !document.hidden && map.loaded() && !map.isMoving()
+            && Date.now() - ultimaMexida.current > 25_000 && map.getZoom() <= 3.2) {
+            const c = map.getCenter(); c.lng += dt * 1.6; if (c.lng > 180) c.lng -= 360;
+            map.jumpTo({ center: c });
+          }
+          raf = requestAnimationFrame(passo);
+        };
+        raf = requestAnimationFrame(passo);
+      } catch (error) {
+        if (vivo) falhaRef.current(error instanceof Error ? error.message : 'WebGL indisponível');
+      }
+    })();
+    return () => {
+      vivo = false;
+      cancelAnimationFrame(raf);
+      window.clearTimeout(tituloTimer.current);
+      mapRef.current?.remove();
+      mapRef.current = null;
+    };
+    // O mapa é criado uma vez; reduzido só muda o giro automático.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** O lugar procurado aparece à esquerda do rosto, não escondido atrás dele. */
+  const deslocamento = (): [number, number] => {
+    const host = hostRef.current?.getBoundingClientRect();
+    const face = document.querySelector('.stage .face-orb, .stage .face')?.getBoundingClientRect();
+    if (!host || !face || !face.width) return [0, 0];
+    const x = face.left - host.left > 220 ? face.left - 40 : face.left + face.width * 0.12;
+    const y = face.top + face.height * 0.62;
+    return [x - (host.left + host.width / 2), y - (host.top + host.height / 2)];
+  };
+
+  const zoomPor = (delta: number) => {
+    const map = mapRef.current; if (!map) return;
+    ultimaMexida.current = Date.now(); girar.current = false;
+    map.easeTo({ zoom: clamp(map.getZoom() + delta, 0.8, 18), duration: 900, offset: deslocamento() });
+  };
+  const planeta = () => {
+    const map = mapRef.current; if (!map) return;
+    girar.current = true; ultimaMexida.current = 0; setTitulo(null);
+    map.flyTo({ center: [map.getCenter().lng, -10], zoom: VISTA_INICIAL.zoom, pitch: 0, bearing: 0, speed: 1.1, essential: true });
+  };
+
+  const voar = (lugar: Lugar, opcoes: { zoom?: number; aqui?: boolean } = {}) => {
+      const map = mapRef.current, lib = libRef.current;
+      setTitulo({ nome: lugar.nome.toUpperCase(), sub: subtituloLugar(lugar), chave: Date.now() });
+      window.clearTimeout(tituloTimer.current);
+      tituloTimer.current = window.setTimeout(() => setTitulo(null), 12_000);
+      if (!map || !lib || !map.loaded()) { pendenteRef.current = { lugar, opcoes }; return; }
+      girar.current = false; ultimaMexida.current = Date.now();
+      const zoom = opcoes.zoom ?? zoomPara(lugar);
+      map.flyTo({
+        center: [lugar.lon, lugar.lat], zoom, pitch: zoom > 8 ? 50 : 20, bearing: zoom > 8 ? -12 : 0,
+        speed: reduzido ? 2.4 : 0.85, curve: 1.45, essential: true, offset: deslocamento(),
+      });
+      const el = document.createElement('div');
+      el.className = `pino${opcoes.aqui ? ' aqui' : ''}`;
+      el.innerHTML = '<i></i><b></b>';
+      (el.querySelector('b') as HTMLElement).textContent = lugar.nome;
+      const marcador = new lib.Marker({ element: el, anchor: 'bottom' }).setLngLat([lugar.lon, lugar.lat]).addTo(map);
+      if (opcoes.aqui) { aquiRef.current?.remove(); aquiRef.current = marcador; return; }
+      pinosRef.current.push(marcador);
+      while (pinosRef.current.length > 5) pinosRef.current.shift()?.remove();
+  };
+  voarRef.current = voar;
+
+  useImperativeHandle(ref, () => ({
+    voar,
+    zoom: zoomPor,
+    planeta,
+  }), [reduzido]);
+
+  return (
+    <>
+      <div ref={hostRef} className="globo-terra" data-testid="globo-terra" />
+      <div className="globo-veu" aria-hidden="true" />
+      {titulo && (
+        <div key={titulo.chave} className="lugar-titulo" role="status" aria-live="polite" data-testid="lugar-titulo">
+          <b>{titulo.nome}</b>
+          {titulo.sub && <small>{titulo.sub}</small>}
+        </div>
+      )}
+      {!ocultarControles && (
+        <div className="globo-controles" aria-label="Controles do planeta">
+          <button type="button" onClick={() => zoomPor(1.5)} aria-label="Aproximar" title="Aproximar" data-testid="globo-mais"><Plus size={15} /></button>
+          <button type="button" onClick={() => zoomPor(-1.5)} aria-label="Afastar" title="Afastar" data-testid="globo-menos"><Minus size={15} /></button>
+          <button type="button" onClick={onOnde} aria-label="Onde estamos" title="Onde estamos" data-testid="globo-onde"><LocateFixed size={15} /></button>
+          <button type="button" onClick={planeta} aria-label="Planeta inteiro" title="Planeta inteiro" data-testid="globo-planeta"><Globe2 size={15} /></button>
+        </div>
+      )}
+    </>
+  );
+});

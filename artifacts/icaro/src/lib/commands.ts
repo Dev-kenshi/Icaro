@@ -13,10 +13,15 @@ export type CommandResult =
   | { kind: 'tour'; action: TourCommand; text: string }
   | { kind: 'openMusic'; play: boolean; text: string }
   | { kind: 'flyTo'; query: string; text: string }
+  | { kind: 'painel'; abrir: boolean; text: string }
+  | { kind: 'tempo'; dia: 'hoje' | 'amanha'; cidade: string | null }
+  | { kind: 'globo'; acao: GloboAcao; text: string }
   | { kind: 'ai' };
 
 import { parseOpenTour, parseTourCommand, tourById, type TourCommand } from './demo-tours';
 import { parseFlyQuery } from './geo-fly';
+
+export type GloboAcao = 'mais' | 'menos' | 'planeta' | 'onde' | 'girar';
 
 export const normalize = (s: string) =>
   s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[!?¿¡]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -123,6 +128,10 @@ export function interpret(input: string): CommandResult {
   const t = normalize(input).replace(WAKE, '').replace(/[.]+$/, '').trim();
   if (!t) return { kind: 'say', text: 'Estou ouvindo, professor.' };
 
+  // Comandos do ÍCARO v5 resolvidos na máquina: painel financeiro, clima e o planeta.
+  const v5 = interpretV5(t);
+  if (v5) return v5;
+
   if (/\b(fly|go|travel)\s+to\b.*\b(feira de santana|feira)\b/.test(t) || /\b(voar|voe|ir|va|viajar|leve|voo)\b.*\b(feira de santana|feira)\b/.test(t) || /\b(feira de santana|feira)\b.*\b(voar|voe|ir|va|viajar|leve)\b/.test(t))
     return { kind: 'flyFeira', text: 'Ajustando a visualização para Feira de Santana.' };
   if (/\b(galaxia|galaxy)\b/.test(t) && /\b(mostrar|mostra|mostre|exibir|exiba|ver|abrir|open|show)\b/.test(t))
@@ -183,8 +192,11 @@ export function interpret(input: string): CommandResult {
   }
   const mathM = t.match(/^(?:calcule|calcular|calcula|quanto (?:e|da|sao))\s+(.+)$/);
   const bare = /^[\d\s.,+\-*/^%()x=]+$/.test(t) && /\d/.test(t) && /[+\-*/^%x]/.test(t);
-  if (mathM || bare || /^\d+(?:[.,]\d+)?\s*%\s*de\s*\d/.test(t)) {
-    const v = evaluate(prepMath(mathM ? mathM[1] : t));
+  const expr = prepMath(mathM ? mathM[1] : t);
+  // "calcule o custo de um funcionário" é pergunta para o servidor, não expressão.
+  const isExpression = !/[a-z]/.test(expr);
+  if ((mathM && isExpression) || bare || /^\d+(?:[.,]\d+)?\s*%\s*de\s*\d/.test(t)) {
+    const v = evaluate(expr);
     return { kind: 'say', text: v === null ? 'Não consegui calcular essa expressão. Exemplo: calcule 30% de 200.' : `O resultado é ${fmtNum(v)}.` };
   }
   return { kind: 'ai' };
@@ -200,4 +212,25 @@ export function splitSentences(text: string): string[] {
     else chunks.push(s);
   }
   return chunks;
+}
+
+/** Painel financeiro, clima e controle do planeta (frases do LEIA-ME do ÍCARO v5). */
+export function interpretV5(t: string): CommandResult | null {
+  if (/\b(feche|fechar|esconda|esconder|tire|tirar|oculte)\b.*\bpainel\b/.test(t))
+    return { kind: 'painel', abrir: false, text: 'Fechando o painel.' };
+  if (/\bpainel (financeiro|de cotacoes|de mercado)\b|\b(mostre|mostra|abra|abrir|exiba)\b.*\b(cotacoes|cambio|painel)\b|\bcotacao do (dolar|euro|peso)\b|\b(?:quanto (?:esta|ta|custa) o|qual (?:e )?o valor do) (dolar|euro|peso|bitcoin)\b/.test(t))
+    return { kind: 'painel', abrir: true, text: 'Abrindo o painel financeiro.' };
+  if (/\b(temperatura|clima|previsao do tempo|vai chover|como esta o tempo|esta chovendo|faz calor|faz frio)\b/.test(t) && !/\bclima (organizacional|de trabalho|empresarial)\b/.test(t)) {
+    const dia = /\bamanha\b/.test(t) ? 'amanha' : 'hoje';
+    const m = /\b(?:em|de|para)\s+([a-z][a-z ]{2,40}?)(?:\s+(?:hoje|amanha|agora))?$/.exec(t);
+    const cidade = m && !/^(hoje|amanha|agora|chuva|tempo)$/.test(m[1]) ? m[1].replace(/\b\w/g, (c) => c.toUpperCase()) : null;
+    return { kind: 'tempo', dia, cidade };
+  }
+  if (/\bonde (nos )?estamos\b|\bonde (voce|o icaro) esta\b/.test(t)) return { kind: 'globo', acao: 'onde', text: 'Localizando onde estamos.' };
+  if (/\b(volte|voltar) (para|pro|ao) (o )?(planeta|globo|espaco)\b|\bplaneta inteiro\b|\bvisao (global|do planeta)\b|\bmostre (a terra|o planeta|o globo)\b/.test(t))
+    return { kind: 'globo', acao: 'planeta', text: 'Voltando para o planeta.' };
+  if (/^(aproxime|aproxima|aproximar|chegue mais perto|zoom in|mais zoom|de zoom)\b/.test(t)) return { kind: 'globo', acao: 'mais', text: 'Aproximando.' };
+  if (/^(afaste|afasta|afastar|menos zoom|zoom out|tire o zoom)\b/.test(t)) return { kind: 'globo', acao: 'menos', text: 'Afastando.' };
+  if (/\bgir[ae] (a terra|o planeta|o globo)\b/.test(t)) return { kind: 'globo', acao: 'girar', text: 'Girando o planeta.' };
+  return null;
 }

@@ -6,7 +6,7 @@ import { Mic, X, BarChart3, ExternalLink, Trash2, Menu, Keyboard, Play, Maximize
 import { getGetAiStatusQueryKey, getGetAiVoicesQueryKey, getGetCosmosFeedsQueryKey, getHealthCheckQueryKey, useGetAiStatus, useGetAiVoices, useGetCosmosFeeds, useHealthCheck, useSendAiMessage, type AiChatResponse, type AiVoiceCatalog } from '@workspace/api-client-react';
 import { requestAiChatStream } from '@/lib/ai-chat-stream';
 import { interpret, formatDuration } from '@/lib/commands';
-import { geocodeUrl, parseGeocode, type GeoTarget } from '@/lib/geo-fly';
+import { cidadeUrl, geocodeUrl, parseCidade, parseGeocode, type GeoTarget } from '@/lib/geo-fly';
 import { GeoMapPanel } from '@/components/stage/geo-map-panel';
 import { speak, stopSpeaking, ensureAudio, activateAudio, connectMic, getAnalyser, getLevel, getMicRms, getOutputRms, setListeningActivity, releaseSpeechCache } from '@/lib/speech';
 import type { SpeechEmotion, SpeechEmotionMark } from '@/lib/speech-plan';
@@ -26,6 +26,9 @@ import { getMicMode, micErrorMessage, recordUtterance, setMicMode, SERVER_FALLBA
 import { CosmosRenderer, type CosmosMotion, type CosmosScene } from '@/components/stage/cosmos/renderer';
 import { CosmosOverview } from '@/components/stage/cosmos/CosmosOverview';
 import { NeuralWeb } from '@/components/stage/neural-web';
+import { GloboTerra, type GloboApi, type Lugar } from '@/components/stage/globo-terra';
+import { PainelAoVivo } from '@/components/stage/painel-ao-vivo';
+import { buscarFinancas, buscarTempo } from '@/lib/ao-vivo';
 import './stage.css';
 
 type State = 'idle' | 'listening' | 'thinking' | 'talking' | 'intro';
@@ -105,6 +108,12 @@ const readMotion = (): CosmosMotion => {
     return value === 'on' || value === 'off' ? value : 'system';
   } catch { return 'system'; }
 };
+const FEIRA: Lugar = { nome: 'Feira de Santana', regiao: 'Bahia', pais: 'Brasil', lat: -12.2664, lon: -38.9663, tipo: 'cidade' };
+const lugarDe = (g: GeoTarget): Lugar => ({
+  nome: g.street ? (g.label.split(',')[0] || g.street) : (g.city || g.label.split(',')[0] || g.label),
+  regiao: g.street ? g.city : g.state, pais: g.country, lat: g.latitude, lon: g.longitude, tipo: g.street ? 'local' : 'cidade',
+});
+
 const prefersReducedMotion = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const readSpeechDelay = () => {
   try {
@@ -186,6 +195,11 @@ export default function Stage() {
   const [feiraTarget, setFeiraTarget] = useState(false);
   const [geoTarget, setGeoTarget] = useState<GeoTarget | null>(null);
   const [mapOpen, setMapOpen] = useState(false);
+  // Planeta MapLibre do ÍCARO v5 atrás do rosto; se o WebGL falhar, volta para o globo three.js.
+  const globoRef = useRef<GloboApi>(null);
+  const [globoFalhou, setGloboFalhou] = useState(false);
+  const [painelVivo, setPainelVivo] = useState(false);
+  const [cidadePainel, setCidadePainel] = useState('Feira de Santana');
   const ambientRef = useRef<AudioContext | null>(null);
   const [typing, setTyping] = useState(false);
   const [text, setText] = useState('');
@@ -445,20 +459,65 @@ export default function Stage() {
 
   const [, navigate] = useLocation();
   const locatePlace = useCallback(async (query: string) => {
-    const response = await fetch(geocodeUrl(query), { signal: AbortSignal.timeout(12_000) });
-    if (!response.ok) throw new Error('Geocoder unavailable');
-    const place = parseGeocode(await response.json());
+    let place: GeoTarget | null = null;
+    const urlCidade = cidadeUrl(query);
+    if (urlCidade) {
+      try {
+        const r = await fetch(urlCidade, { signal: AbortSignal.timeout(8000) });
+        if (r.ok) place = parseCidade(await r.json());
+      } catch { /* segue para o Photon */ }
+    }
+    if (!place) {
+      const response = await fetch(geocodeUrl(query), { signal: AbortSignal.timeout(12_000) });
+      if (!response.ok) throw new Error('Geocoder unavailable');
+      place = parseGeocode(await response.json());
+    }
     if (!place) return null;
     lastSceneInteractionRef.current = Date.now();
     setFeiraTarget(false);
     setScene('earth');
     setSceneMode('single');
     setGeoTarget(place);
-    setMapOpen(true);
+    setMapOpen(globoFalhou);
     setSceneFade(true);
     window.setTimeout(() => setSceneFade(false), 1000);
     return place;
+  }, [globoFalhou]);
+  /** "Onde estamos?": localização do aparelho (se o usuário permitir), senão Feira de Santana. */
+  const ondeEstamos = useCallback(async () => {
+    let lugar: Lugar = FEIRA;
+    try {
+      const pos = await new Promise<GeolocationPosition | null>((ok) => {
+        // Em iframes sem allow="geolocation" o Chrome lança SecurityError de forma
+        // síncrona, e há navegadores que nunca chamam nenhum callback; o try/catch
+        // e o temporizador de guarda garantem que a resposta sempre chegue.
+        try {
+          if (!navigator.geolocation) { ok(null); return; }
+          const guarda = window.setTimeout(() => ok(null), 8000);
+          navigator.geolocation.getCurrentPosition(
+            (p) => { window.clearTimeout(guarda); ok(p); },
+            () => { window.clearTimeout(guarda); ok(null); },
+            { timeout: 7000, maximumAge: 600_000 },
+          );
+        } catch { ok(null); }
+      });
+      if (pos && pos.coords.accuracy <= 60_000) {
+        try {
+          const r = await fetch(`https://photon.komoot.io/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&limit=1`, { signal: AbortSignal.timeout(8000) });
+          const g = r.ok ? parseGeocode(await r.json()) : null;
+          if (g) lugar = { ...lugarDe(g), nome: g.city || lugarDe(g).nome, regiao: g.state, tipo: 'cidade', lat: pos.coords.latitude, lon: pos.coords.longitude };
+        } catch { /* sem internet: fica a cidade padrão */ }
+      }
+    } catch { /* qualquer falha: responde com a cidade padrão */ }
+    const resto = [lugar.regiao, lugar.pais].filter(Boolean).join(', ');
+    sayRef.current(`Estamos em ${lugar.nome}${resto ? `, ${resto}` : ''}.`);
+    try { globoRef.current?.voar(lugar, { zoom: 11, aqui: true }); } catch { /* globo em fallback: a fala já respondeu */ }
   }, []);
+
+  // O planeta acompanha os destinos pedidos por voz, texto ou pelo botão de Feira de Santana.
+  useEffect(() => { if (feiraTarget) globoRef.current?.voar(FEIRA); }, [feiraTarget]);
+  useEffect(() => { if (geoTarget) globoRef.current?.voar(lugarDe(geoTarget)); }, [geoTarget]);
+
   const handle = useCallback((raw: string) => {
     const q = raw.trim().slice(0, 4000); if (!q) return;
     aiAbortRef.current?.abort();
@@ -501,9 +560,34 @@ export default function Stage() {
         const flyQuery = r.query;
         sayRef.current(`Buscando ${flyQuery} no mapa.`);
         void locatePlace(flyQuery)
-          .then((place) => { sayRef.current(place ? `Mostrando ${place.label} no Google Maps e no globo.` : `Não encontrei ${flyQuery}. Tente informar rua, cidade e país.`); })
+          .then((place) => { sayRef.current(place ? `Aqui está ${place.label}.` : `Não encontrei ${flyQuery}. Tente informar rua, cidade e país.`); })
           .catch(() => sayRef.current('O serviço de localização está indisponível no momento.'));
         return;
+      }
+      case 'painel': {
+        setPainelVivo(r.abrir);
+        if (!r.abrir) return sayRef.current(r.text);
+        sayRef.current(r.text);
+        void buscarFinancas().then((f) => { if (turnRef.current === turn && f.fala) sayRef.current(f.fala); }).catch(() => undefined);
+        return;
+      }
+      case 'tempo': {
+        const cidade = r.cidade ?? 'Feira de Santana';
+        setCidadePainel(cidade);
+        setPainelVivo(true);
+        void buscarTempo(cidade, r.dia)
+          .then((t) => { if (turnRef.current === turn) sayRef.current(t.fala); })
+          .catch(() => { if (turnRef.current === turn) sayRef.current('Não consegui consultar a previsão do tempo agora.'); });
+        return;
+      }
+      case 'globo': {
+        lastSceneInteractionRef.current = Date.now();
+        if (scene !== 'earth' || sceneMode !== 'single') { setScene('earth'); setSceneMode('single'); }
+        if (r.acao === 'onde') { sayRef.current(r.text); void ondeEstamos(); return; }
+        if (r.acao === 'mais') globoRef.current?.zoom(1.5);
+        else if (r.acao === 'menos') globoRef.current?.zoom(-1.5);
+        else if (r.acao === 'planeta') { setFeiraTarget(false); setGeoTarget(null); globoRef.current?.planeta(); }
+        return sayRef.current(r.text);
       }
       case 'say': return sayRef.current(r.text);
       case 'intro': setLog((l) => [...l, { role: 'assistant', content: 'Reproduzindo a apresentação original.' }]); return playIntro();
@@ -593,7 +677,7 @@ export default function Stage() {
         });
       }
     }
-  }, [locatePlace, prime, playIntro, provider]);
+  }, [locatePlace, ondeEstamos, prime, playIntro, provider, scene, sceneMode]);
   const handleRef = useRef(handle); handleRef.current = handle;
 
   const listener = useWakeListener({
@@ -993,7 +1077,7 @@ export default function Stage() {
   };
 
   return (
-    <div ref={stageRef} className="stage" data-state={state} data-scene-mode={sceneMode} data-voice-active={listener.active} data-voice-enabled={voiceOn} data-layout-editing={stageLayout.editing || undefined} onPointerDown={prime}>
+    <div ref={stageRef} className="stage" data-state={state} data-scene-mode={sceneMode} data-voice-active={listener.active} data-voice-enabled={voiceOn} data-layout-editing={stageLayout.editing || undefined} data-painel-vivo={painelVivo || undefined} onPointerDown={prime}>
       {sceneMode === 'all' ? (
         <CosmosOverview
           quality={quality}
@@ -1006,6 +1090,15 @@ export default function Stage() {
           onEnableMotion={enableMotion}
           onInteract={markSceneInteraction}
           keyboardShortcuts={!panel && !helpOpen && !stageLayout.editing && !avatarControlsOpen}
+        />
+      ) : scene === 'earth' && !globoFalhou ? (
+        <GloboTerra
+          ref={globoRef}
+          reduzido={prefersReducedMotion()}
+          onOnde={() => { void ondeEstamos(); }}
+          onFalha={(motivo) => { console.warn('Globo MapLibre indisponível, usando o globo 3D:', motivo); setGloboFalhou(true); }}
+          onInteract={markSceneInteraction}
+          ocultarControles={stageLayout.editing}
         />
       ) : (
         <CosmosRenderer
@@ -1024,6 +1117,7 @@ export default function Stage() {
           keyboardShortcuts={!panel && !helpOpen && !stageLayout.editing && !avatarControlsOpen}
         />
       )}
+      {painelVivo && <PainelAoVivo cidade={cidadePainel} onClose={() => setPainelVivo(false)} />}
       {mapOpen && geoTarget && <GeoMapPanel target={geoTarget} onSearch={locatePlace} onClose={() => setMapOpen(false)} />}
       <div className={`scene-fade ${sceneFade ? 'scene-fade--active' : ''}`} aria-hidden="true" />
       <NeuralWeb state={state} scene={scene} emotion={emotion} longListening={longListening} thoughtTitle={state === 'thinking' ? 'SÍNTESE EM CURSO' : ''} />
