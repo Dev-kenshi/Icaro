@@ -24,4 +24,4 @@
 - [Calculation database capacity](calculation-database-capacity.md) — a development load is not production approval; verify production quota, existing use, and full table/index size first.
 - [Ícaro v5 web port](icaro-v5-web-port.md) — adapt the supplied Windows desktop project into the existing React/API app; do not run host-OS commands from the web server.
 - [Stage voice testing](stage-voice-testing.md) — captions vanish 2s after speech; verify answers in the Painel→Conversa log or /api/tts-ts logs, and guard geolocation in headless browsers.
-- [maplibre package firewall](maplibre-package-firewall.md) — maplibre-gl tarball hits HTTP 403 on the default registry path; fetch it from registry.npmjs.org and install manually.
+- [maplibre package firewall](maplibre-package-firewall.md) — firewall 403s every maplibre-gl tarball (breaks publish builds); durable fix is the vendored tarball + file: dependency.
