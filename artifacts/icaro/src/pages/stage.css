@@ -776,7 +776,8 @@
 .cosmos-panel .cosmos-navigation__speed span { display: none; }
 
 /* ---------- Planeta Terra 3D atrás do Ícaro (porte do ÍCARO v5, MapLibre) ---------- */
-.globo-terra { position:absolute; inset:0; z-index:0; background:radial-gradient(ellipse at 45% 45%,#071a36,#02050c 72%); touch-action:none; }
+.globo-terra { position:absolute; inset:0; z-index:0; isolation:isolate; background:radial-gradient(ellipse at 45% 45%,#071a36,#02050c 72%); touch-action:none; cursor:grab; }
+.globo-terra:active { cursor:grabbing; }
 .globo-terra .maplibregl-ctrl-attrib { background:rgba(2,6,14,.6); color:#8193ad; font-size:9.5px; }
 .globo-terra .maplibregl-ctrl-attrib a { color:#a9bcd8; }
 .globo-veu { position:absolute; inset:0; z-index:1; pointer-events:none;
@@ -794,6 +795,7 @@
 .lugar-titulo small { display:block; font-size:clamp(10px,1vw,14px); color:#b8e4ff; margin-top:4px; }
 @keyframes lugar-surge { from { opacity:0; transform:translate(-50%,-10px); } }
 .globo-controles { position:absolute; right:12px; top:50%; transform:translateY(-50%); z-index:6; display:flex; flex-direction:column; gap:6px; }
+.globo-controles__posicao { display:grid; grid-template-columns:repeat(2,34px); gap:4px; }
 .globo-controles button { display:grid; place-items:center; width:34px; height:34px; border-radius:9px; border:1px solid rgba(79,209,255,.35); background:rgba(2,8,20,.7); color:#bfe9ff; }
 .globo-controles button:hover, .globo-controles button:focus-visible { border-color:#4fd1ff; color:#fff; }
 .stage:fullscreen .globo-controles { display:none; }

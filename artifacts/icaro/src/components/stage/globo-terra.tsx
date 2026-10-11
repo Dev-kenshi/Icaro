@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { Globe2, LocateFixed, Minus, Plus } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Globe2, LocateFixed, Minus, Plus, RotateCcw, RotateCw } from 'lucide-react';
 import type { Map as MapLibreMap, Marker } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { subtituloLugar, zoomPara, type Lugar } from '@/lib/globo';
@@ -15,11 +15,14 @@ export type { Lugar };
 export type GloboApi = {
   voar: (lugar: Lugar, opcoes?: { zoom?: number; aqui?: boolean }) => void;
   zoom: (delta: number) => void;
+  girar: (delta: number) => void;
+  posicionar: (lon: number, lat: number) => void;
   planeta: () => void;
 };
 
 const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
 const VISTA_INICIAL = { center: [-38.97, -12.27] as [number, number], zoom: 2.35 };
+const PAUSA_GIRO_APOS_INTERACAO_MS = 5000;
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
 type Props = {
@@ -37,8 +40,8 @@ export const GloboTerra = forwardRef<GloboApi, Props>(function GloboTerra({ redu
   const libRef = useRef<typeof import('maplibre-gl') | null>(null);
   const pinosRef = useRef<Marker[]>([]);
   const aquiRef = useRef<Marker | null>(null);
+  const keyHandlerRef = useRef<((event: KeyboardEvent) => void) | null>(null);
   const ultimaMexida = useRef(0);
-  const girar = useRef(true);
   const [titulo, setTitulo] = useState<{ nome: string; sub: string; chave: number } | null>(null);
   const tituloTimer = useRef(0);
   const falhaRef = useRef(onFalha); falhaRef.current = onFalha;
@@ -61,6 +64,10 @@ export const GloboTerra = forwardRef<GloboApi, Props>(function GloboTerra({ redu
           center: VISTA_INICIAL.center,
           zoom: VISTA_INICIAL.zoom,
           maxPitch: 70,
+          dragPan: true,
+          dragRotate: true,
+          touchZoomRotate: true,
+          keyboard: true,
           renderWorldCopies: false,
           fadeDuration: 0,
           style: {
@@ -78,6 +85,17 @@ export const GloboTerra = forwardRef<GloboApi, Props>(function GloboTerra({ redu
           },
         });
         mapRef.current = map;
+        const canvas = map.getCanvas();
+        canvas.setAttribute('aria-label', 'Globo da Terra. Arraste para posicionar, use Ctrl e arraste para girar, setas para mover e Shift com as setas para inclinar. Tecla R recentraliza.');
+        const onMapKeyDown = (event: KeyboardEvent) => {
+          if (event.key.toLowerCase() !== 'r') return;
+          event.preventDefault();
+          ultimaMexida.current = 0;
+          setTitulo(null);
+          map.flyTo({ center: VISTA_INICIAL.center, zoom: VISTA_INICIAL.zoom, pitch: 0, bearing: 0, speed: 1.1, essential: true });
+        };
+        keyHandlerRef.current = onMapKeyDown;
+        canvas.addEventListener('keydown', onMapKeyDown);
         map.on('load', () => {
           const pendente = pendenteRef.current;
           pendenteRef.current = null;
@@ -100,8 +118,8 @@ export const GloboTerra = forwardRef<GloboApi, Props>(function GloboTerra({ redu
         let anterior = performance.now();
         const passo = (agora: number) => {
           const dt = Math.min(0.1, (agora - anterior) / 1000); anterior = agora;
-          if (!reduzido && girar.current && !document.hidden && map.loaded() && !map.isMoving()
-            && Date.now() - ultimaMexida.current > 25_000 && map.getZoom() <= 3.2) {
+          if (!reduzido && !document.hidden && map.loaded() && !map.isMoving()
+            && Date.now() - ultimaMexida.current > PAUSA_GIRO_APOS_INTERACAO_MS && map.getZoom() <= 3.2) {
             const c = map.getCenter(); c.lng += dt * 1.6; if (c.lng > 180) c.lng -= 360;
             map.jumpTo({ center: c });
           }
@@ -116,6 +134,8 @@ export const GloboTerra = forwardRef<GloboApi, Props>(function GloboTerra({ redu
       vivo = false;
       cancelAnimationFrame(raf);
       window.clearTimeout(tituloTimer.current);
+      if (keyHandlerRef.current) mapRef.current?.getCanvas().removeEventListener('keydown', keyHandlerRef.current);
+      keyHandlerRef.current = null;
       mapRef.current?.remove();
       mapRef.current = null;
     };
@@ -135,13 +155,24 @@ export const GloboTerra = forwardRef<GloboApi, Props>(function GloboTerra({ redu
 
   const zoomPor = (delta: number) => {
     const map = mapRef.current; if (!map) return;
-    ultimaMexida.current = Date.now(); girar.current = false;
+    ultimaMexida.current = Date.now();
     map.easeTo({ zoom: clamp(map.getZoom() + delta, 0.8, 18), duration: 900, offset: deslocamento() });
+  };
+  const girarPor = (delta: number) => {
+    const map = mapRef.current; if (!map) return;
+    ultimaMexida.current = Date.now();
+    map.easeTo({ bearing: map.getBearing() + delta, duration: 450 });
+  };
+  const posicionar = (lon: number, lat: number) => {
+    const map = mapRef.current; if (!map) return;
+    ultimaMexida.current = Date.now();
+    const center = map.getCenter();
+    map.easeTo({ center: [clamp(center.lng + lon, -180, 180), clamp(center.lat + lat, -85, 85)], duration: 650 });
   };
   const planeta = () => {
     const map = mapRef.current; if (!map) return;
-    girar.current = true; ultimaMexida.current = 0; setTitulo(null);
-    map.flyTo({ center: [map.getCenter().lng, -10], zoom: VISTA_INICIAL.zoom, pitch: 0, bearing: 0, speed: 1.1, essential: true });
+    ultimaMexida.current = 0; setTitulo(null);
+    map.flyTo({ center: VISTA_INICIAL.center, zoom: VISTA_INICIAL.zoom, pitch: 0, bearing: 0, speed: 1.1, essential: true });
   };
 
   const voar = (lugar: Lugar, opcoes: { zoom?: number; aqui?: boolean } = {}) => {
@@ -150,7 +181,7 @@ export const GloboTerra = forwardRef<GloboApi, Props>(function GloboTerra({ redu
       window.clearTimeout(tituloTimer.current);
       tituloTimer.current = window.setTimeout(() => setTitulo(null), 12_000);
       if (!map || !lib || !map.loaded()) { pendenteRef.current = { lugar, opcoes }; return; }
-      girar.current = false; ultimaMexida.current = Date.now();
+      ultimaMexida.current = Date.now();
       const zoom = opcoes.zoom ?? zoomPara(lugar);
       map.flyTo({
         center: [lugar.lon, lugar.lat], zoom, pitch: zoom > 8 ? 50 : 20, bearing: zoom > 8 ? -12 : 0,
@@ -170,6 +201,8 @@ export const GloboTerra = forwardRef<GloboApi, Props>(function GloboTerra({ redu
   useImperativeHandle(ref, () => ({
     voar,
     zoom: zoomPor,
+    girar: girarPor,
+    posicionar,
     planeta,
   }), [reduzido]);
 
@@ -184,9 +217,17 @@ export const GloboTerra = forwardRef<GloboApi, Props>(function GloboTerra({ redu
         </div>
       )}
       {!ocultarControles && (
-        <div className="globo-controles" aria-label="Controles do planeta">
+        <div className="globo-controles" aria-label="Controles do planeta" title="Arraste para posicionar; use Ctrl+arraste ou os botões para girar; use a roda para aproximar">
           <button type="button" onClick={() => zoomPor(1.5)} aria-label="Aproximar" title="Aproximar" data-testid="globo-mais"><Plus size={15} /></button>
           <button type="button" onClick={() => zoomPor(-1.5)} aria-label="Afastar" title="Afastar" data-testid="globo-menos"><Minus size={15} /></button>
+          <div className="globo-controles__posicao" role="group" aria-label="Posicionar o planeta">
+            <button type="button" onClick={() => posicionar(0, 10)} aria-label="Mover a vista para o norte" title="Mover para cima" data-testid="globo-mover-norte"><ArrowUp size={15} /></button>
+            <button type="button" onClick={() => posicionar(-10, 0)} aria-label="Mover a vista para oeste" title="Mover para a esquerda" data-testid="globo-mover-oeste"><ArrowLeft size={15} /></button>
+            <button type="button" onClick={() => posicionar(10, 0)} aria-label="Mover a vista para leste" title="Mover para a direita" data-testid="globo-mover-leste"><ArrowRight size={15} /></button>
+            <button type="button" onClick={() => posicionar(0, -10)} aria-label="Mover a vista para o sul" title="Mover para baixo" data-testid="globo-mover-sul"><ArrowDown size={15} /></button>
+          </div>
+          <button type="button" onClick={() => girarPor(-30)} aria-label="Girar para a esquerda" title="Girar para a esquerda" data-testid="globo-girar-esquerda"><RotateCcw size={15} /></button>
+          <button type="button" onClick={() => girarPor(30)} aria-label="Girar para a direita" title="Girar para a direita" data-testid="globo-girar-direita"><RotateCw size={15} /></button>
           <button type="button" onClick={onOnde} aria-label="Onde estamos" title="Onde estamos" data-testid="globo-onde"><LocateFixed size={15} /></button>
           <button type="button" onClick={planeta} aria-label="Planeta inteiro" title="Planeta inteiro" data-testid="globo-planeta"><Globe2 size={15} /></button>
         </div>
