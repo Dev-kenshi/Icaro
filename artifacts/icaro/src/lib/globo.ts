@@ -1,6 +1,6 @@
 /** Regras do planeta do palco (sem dependência do MapLibre, para poderem ser testadas). */
 
-export type Lugar = { nome: string; regiao?: string; pais?: string; lat: number; lon: number; tipo?: 'cidade' | 'local' };
+export type Lugar = { nome: string; regiao?: string; pais?: string; lat: number; lon: number; tipo?: 'pais' | 'estado' | 'cidade' | 'bairro' | 'local' };
 
 const norm = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 
@@ -11,4 +11,5 @@ export function subtituloLugar(l: Lugar): string {
 }
 
 /** Cidade aparece inteira; rua ou endereço chega mais perto. */
-export const zoomPara = (l: Lugar) => (l.tipo === 'local' ? 15 : 11);
+const ZOOM: Record<NonNullable<Lugar['tipo']>, number> = { pais: 4, estado: 6, cidade: 11, bairro: 13.5, local: 15 };
+export const zoomPara = (l: Lugar) => ZOOM[l.tipo ?? 'cidade'];
