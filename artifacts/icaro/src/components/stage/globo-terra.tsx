@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Globe2, LocateFixed, Minus, Plus, RotateCcw, RotateCw } from 'lucide-react';
 import type { Map as MapLibreMap, Marker } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import type { CosmosFeedsResponse } from '@workspace/api-client-react';
 import { subtituloLugar, zoomPara, type Lugar } from '@/lib/globo';
 
 export type { Lugar };
@@ -10,6 +11,8 @@ export type { Lugar };
  * Planeta Terra em 3D atrás do Ícaro (porte do ÍCARO v5): MapLibre GL com projeção de globo,
  * imagens de satélite e rótulos da Esri. Arrastar gira, a roda aproxima; por voz ele voa até
  * qualquer lugar, mostra o título e marca no mapa. Parado, o planeta gira devagar.
+ * É a ÚNICA Terra do palco: também aparece no painel da visão geral (modo compacto) e mostra a
+ * telemetria pública (Estação Espacial e terremotos) que antes só existia no globo three.js antigo.
  */
 
 export type GloboApi = {
@@ -32,9 +35,13 @@ type Props = {
   onFalha: (motivo: string) => void;
   onInteract?: () => void;
   ocultarControles?: boolean;
+  /** Painel pequeno da visão geral: sem controles nem título de lugar. */
+  compacto?: boolean;
+  /** Telemetria pública: posição da ISS e terremotos recentes viram marcadores no globo. */
+  feeds?: CosmosFeedsResponse;
 };
 
-export const GloboTerra = forwardRef<GloboApi, Props>(function GloboTerra({ reduzido, onOnde, onFalha, onInteract, ocultarControles }, ref) {
+export const GloboTerra = forwardRef<GloboApi, Props>(function GloboTerra({ reduzido, onOnde, onFalha, onInteract, ocultarControles, compacto = false, feeds }, ref) {
   const hostRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const libRef = useRef<typeof import('maplibre-gl') | null>(null);
@@ -49,6 +56,8 @@ export const GloboTerra = forwardRef<GloboApi, Props>(function GloboTerra({ redu
   const pendenteRef = useRef<{ lugar: Lugar; opcoes: { zoom?: number; aqui?: boolean } } | null>(null);
   const voarRef = useRef<(lugar: Lugar, opcoes?: { zoom?: number; aqui?: boolean }) => void>(() => undefined);
   const interactRef = useRef(onInteract); interactRef.current = onInteract;
+  const [mapaPronto, setMapaPronto] = useState(false);
+  const telemetriaRef = useRef<Marker[]>([]);
 
   useEffect(() => {
     let vivo = true;
@@ -97,6 +106,7 @@ export const GloboTerra = forwardRef<GloboApi, Props>(function GloboTerra({ redu
         keyHandlerRef.current = onMapKeyDown;
         canvas.addEventListener('keydown', onMapKeyDown);
         map.on('load', () => {
+          setMapaPronto(true);
           const pendente = pendenteRef.current;
           pendenteRef.current = null;
           if (pendente) voarRef.current(pendente.lugar, pendente.opcoes);
@@ -142,6 +152,29 @@ export const GloboTerra = forwardRef<GloboApi, Props>(function GloboTerra({ redu
     // O mapa é criado uma vez; reduzido só muda o giro automático.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Telemetria pública no mesmo globo: ISS (ponto verde-água) e terremotos (anéis âmbar pelo tamanho).
+  useEffect(() => {
+    const map = mapRef.current, lib = libRef.current;
+    if (!map || !lib || !mapaPronto) return;
+    for (const m of telemetriaRef.current) m.remove();
+    telemetriaRef.current = [];
+    if (!feeds) return;
+    const marcar = (lon: number, lat: number, classe: string, rotulo: string, tamanho?: number) => {
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+      const el = document.createElement('div');
+      el.className = classe;
+      el.title = rotulo;
+      el.setAttribute('aria-hidden', 'true');
+      if (tamanho) el.style.setProperty('--tam', `${tamanho}px`);
+      telemetriaRef.current.push(new lib.Marker({ element: el }).setLngLat([lon, lat]).addTo(map));
+    };
+    const iss = feeds.iss?.current;
+    if (iss) marcar(iss.longitude, iss.latitude, 'pino-iss', `Estação Espacial Internacional · ${Math.round(iss.altitudeKm)} km`);
+    for (const q of (feeds.earthquakes ?? []).slice(0, 8)) {
+      marcar(q.longitude, q.latitude, 'pino-sismo', `Terremoto M${q.magnitude.toFixed(1)} · ${q.place}`, Math.round(10 + Math.max(0, q.magnitude) * 4));
+    }
+  }, [feeds, mapaPronto]);
 
   /** O lugar procurado aparece à esquerda do rosto, não escondido atrás dele. */
   const deslocamento = (): [number, number] => {
@@ -208,15 +241,15 @@ export const GloboTerra = forwardRef<GloboApi, Props>(function GloboTerra({ redu
 
   return (
     <>
-      <div ref={hostRef} className="globo-terra" data-testid="globo-terra" />
+      <div ref={hostRef} className={`globo-terra${compacto ? ' globo-terra--compacto' : ''}`} data-testid="globo-terra" />
       <div className="globo-veu" aria-hidden="true" />
-      {titulo && (
+      {titulo && !compacto && (
         <div key={titulo.chave} className="lugar-titulo" role="status" aria-live="polite" data-testid="lugar-titulo">
           <b>{titulo.nome}</b>
           {titulo.sub && <small>{titulo.sub}</small>}
         </div>
       )}
-      {!ocultarControles && (
+      {!ocultarControles && !compacto && (
         <div className="globo-controles" aria-label="Controles do planeta" title="Arraste para posicionar; use Ctrl+arraste ou os botões para girar; use a roda para aproximar">
           <button type="button" onClick={() => zoomPor(1.5)} aria-label="Aproximar" title="Aproximar" data-testid="globo-mais"><Plus size={15} /></button>
           <button type="button" onClick={() => zoomPor(-1.5)} aria-label="Afastar" title="Afastar" data-testid="globo-menos"><Minus size={15} /></button>

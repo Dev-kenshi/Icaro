@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Move } from 'lucide-react';
 import type { CosmosFeedsResponse } from '@workspace/api-client-react';
 import { CosmosRenderer, type CosmosMotion, type CosmosScene } from './renderer';
+import { GloboTerra } from '../globo-terra';
 
 type Point = { x: number; y: number };
 type Panel = { scene: CosmosScene; label: string };
@@ -58,6 +59,8 @@ type Props = {
 export function CosmosOverview({ quality, visible, feeds, targetCity, targetGeo, state, getAudioLevel, motion, onEnableMotion, onInteract, keyboardShortcuts }: Props) {
   const [positions, setPositions] = useState(INITIAL_POSITIONS);
   const [draggingScene, setDraggingScene] = useState<CosmosScene | null>(null);
+  // Terra única: o painel usa o mesmo globo do palco; o globo three.js antigo só entra se o novo falhar.
+  const [globoFalhou, setGloboFalhou] = useState(false);
   const positionsRef = useRef(positions);
   const dragRef = useRef<DragState | null>(null);
   positionsRef.current = positions;
@@ -155,6 +158,16 @@ export function CosmosOverview({ quality, visible, feeds, targetCity, targetGeo,
             style={{ transform: `translate3d(${position.x}px, ${position.y}px, 0)` }}
           >
             <div className="cosmos-panel__drift">
+              {scene === 'earth' && !globoFalhou ? (
+                <GloboTerra
+                  compacto
+                  reduzido={motion === 'off'}
+                  feeds={feeds}
+                  onOnde={() => undefined}
+                  onFalha={(motivo) => { console.warn('Globo da visão geral indisponível, usando o globo 3D:', motivo); setGloboFalhou(true); }}
+                  onInteract={onInteract}
+                />
+              ) : (
               <CosmosRenderer
                 scene={scene}
                 quality={quality}
@@ -172,6 +185,7 @@ export function CosmosOverview({ quality, visible, feeds, targetCity, targetGeo,
                 onInteract={onInteract}
                 keyboardShortcuts={keyboardShortcuts}
               />
+              )}
             </div>
             <button
               type="button"

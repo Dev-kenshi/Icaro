@@ -831,3 +831,14 @@
 @media (prefers-reduced-motion: reduce) {
   .pino i, .lugar-titulo, .painel-vivo { animation:none; }
 }
+
+/* Terra única: painel compacto da visão geral e telemetria pública no globo MapLibre. */
+.globo-terra--compacto { background: transparent; border-radius: inherit; }
+.globo-terra--compacto .maplibregl-ctrl-attrib { font-size: 8px; opacity: .7; }
+.pino-iss { width: 14px; height: 14px; border-radius: 50%; background: #5ef0d0; border: 2px solid #e8fffa;
+  box-shadow: 0 0 0 5px rgba(94,240,208,.25), 0 0 18px #5ef0d0; pointer-events: auto; animation: pino-iss 2.4s ease-in-out infinite; }
+@keyframes pino-iss { 50% { box-shadow: 0 0 0 10px rgba(94,240,208,.08), 0 0 26px #5ef0d0; } }
+.pino-sismo { width: var(--tam, 16px); height: var(--tam, 16px); border-radius: 50%; border: 2px solid rgba(255,179,71,.9);
+  background: rgba(255,179,71,.18); box-shadow: 0 0 14px rgba(255,179,71,.55); pointer-events: auto; animation: pino-sismo 3s ease-out infinite; }
+@keyframes pino-sismo { 0% { transform: scale(.85); } 60% { transform: scale(1.08); } 100% { transform: scale(.85); } }
+@media (prefers-reduced-motion: reduce) { .pino-iss, .pino-sismo { animation: none; } }

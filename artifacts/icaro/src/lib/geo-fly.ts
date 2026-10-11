@@ -37,8 +37,14 @@ export function parseFlyQuery(t: string): string | null {
     const name = knownPoint[1].toLowerCase() === 'uefs' ? 'UEFS' : 'Abrini';
     return knownPoint[2] ? `${name}, ${knownPoint[2]}` : `${name}, Feira de Santana, Bahia, Brasil`;
   }
-  // "mostre Feira de Santana" (sem "no mapa") é o destino de casa; "Bonfim de Feira" segue o caminho normal.
-  if (/\b(?:mostre|mostrar|mostra|exiba|abra|abrir)\s+(?:a |o )?(?:cidade de )?feira(?: de santana)?$/i.test(t)) return 'Feira de Santana, Bahia, Brasil';
+  // Pedidos de mapa/zoom/chegada em Feira ("abra Feira no Street View", "chegando em Feira de Santana")
+  // são a cidade de casa. Não valem para "Bonfim DE Feira" (outro lugar) nem para endereços em Feira
+  // ("Avenida Getúlio Vargas, Feira de Santana"), que seguem para a busca normal.
+  if (/(?<!\b(?:de|da|do)\s)(?<!,\s?)\bfeira(?: de santana)?\b/i.test(t)
+    && !/\b(?:rua|avenida|av|travessa|praca|bairro|distrito|rodovia|estrada|condominio|loteamento)\b|\d/i.test(t)
+    && /\b(?:abra|abrir|mostre|mostrar|mostra|exiba|localize|localizar|voe|voar|navegue|zoom|chegando|chegar|mapa|maps|street view|streetview|google earth)\b/i.test(t)) {
+    return 'Feira de Santana, Bahia, Brasil';
+  }
   const m =
     /(?:onde fica|onde e|aonde fica)\s+(?:a |o |as |os )?(.+)$/i.exec(t) ??
     /(?:mostre|mostrar|mostra|exiba|ver)\s+(?:a |o )?(.+?)\s+no mapa$/i.exec(t) ??

@@ -198,7 +198,10 @@ export default function Stage() {
   const [mapOpen, setMapOpen] = useState(false);
   // Planeta MapLibre do ÍCARO v5 atrás do rosto; se o WebGL falhar, volta para o globo three.js.
   const globoRef = useRef<GloboApi>(null);
-  const [globoFalhou, setGloboFalhou] = useState(false);
+  // Terra única: se o globo MapLibre cair (ex.: o navegador perdeu o contexto gráfico), ele é recriado;
+  // só depois de 3 falhas o globo three.js antigo assume, e nunca os dois ao mesmo tempo.
+  const [globoFalhas, setGloboFalhas] = useState(0);
+  const globoFalhou = globoFalhas >= 3;
   const [painelVivo, setPainelVivo] = useState(false);
   const [cidadePainel, setCidadePainel] = useState('Feira de Santana');
   const ambientRef = useRef<AudioContext | null>(null);
@@ -469,7 +472,7 @@ export default function Stage() {
     setScene('earth');
     setSceneMode('single');
     setGeoTarget(place);
-    setMapOpen(globoFalhou);
+    // O painel de mapa (Google Maps) só abre pelo botão Maps; antes ele abria sozinho por cima da Terra.
     setSceneFade(true);
     window.setTimeout(() => setSceneFade(false), 1000);
     return place;
@@ -1087,7 +1090,9 @@ export default function Stage() {
           ref={globoRef}
           reduzido={prefersReducedMotion()}
           onOnde={() => { void ondeEstamos(); }}
-          onFalha={(motivo) => { console.warn('Globo MapLibre indisponível, usando o globo 3D:', motivo); setGloboFalhou(true); }}
+          key={`globo-${globoFalhas}`}
+          feeds={feeds.data}
+          onFalha={(motivo) => { console.warn(`Globo MapLibre falhou (${motivo}); recriando.`); window.setTimeout(() => setGloboFalhas((n) => n + 1), 400); }}
           onInteract={markSceneInteraction}
           ocultarControles={stageLayout.editing}
         />

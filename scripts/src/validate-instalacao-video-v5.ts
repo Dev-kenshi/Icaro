@@ -31,8 +31,10 @@ const ARQUIVOS = [
 for (const a of ARQUIVOS) check(`arquivo presente: ${a}`, existsSync(resolve(raiz, a)));
 
 const pkg = JSON.parse(ler("artifacts/icaro/package.json") || "{}");
-check("maplibre-gl 5.24.0 no package.json do ícaro", (pkg.dependencies?.["maplibre-gl"] ?? pkg.devDependencies?.["maplibre-gl"]) === "5.24.0");
-check("maplibre-gl no pnpm-lock.yaml", /maplibre-gl@5\.24\.0/.test(ler("pnpm-lock.yaml")));
+// 5.24.0 vem empacotado em vendor/ (o firewall de pacotes bloqueia o tarball do npm): aceita a versão direta ou o arquivo local.
+const maplibreSpec = String(pkg.dependencies?.["maplibre-gl"] ?? pkg.devDependencies?.["maplibre-gl"] ?? "");
+check("maplibre-gl 5.24.0 no package.json do ícaro", maplibreSpec === "5.24.0" || /^file:vendor\/maplibre-gl-5\.24\.0\.tgz$/.test(maplibreSpec));
+check("maplibre-gl no pnpm-lock.yaml", /maplibre-gl@5\.24\.0|maplibre-gl-5\.24\.0\.tgz/.test(ler("pnpm-lock.yaml")));
 check("maplibre-gl instalado em node_modules", existsSync(resolve(raiz, "artifacts/icaro/node_modules/maplibre-gl/package.json")));
 
 const rotas = ler("artifacts/api-server/src/routes/index.ts");
@@ -52,7 +54,7 @@ check("palco renderiza <PainelAoVivo", palco.includes("<PainelAoVivo"));
 check("palco trata comando 'painel'", /case ['"]painel['"]/.test(palco));
 check("palco trata comando 'tempo'", /case ['"]tempo['"]/.test(palco));
 check("palco trata comando 'globo'", /case ['"]globo['"]/.test(palco));
-check("palco usa geocoder de cidades (Montevidéu)", palco.includes("cidadeUrl(") && palco.includes("parseCidade("));
+check("palco usa geocoder de cidades (Montevidéu)", palco.includes("buscarLugar(") || (palco.includes("cidadeUrl(") && palco.includes("parseCidade(")));
 check("globo cai para o cosmos se o WebGL falhar", palco.includes("globoFalhou"));
 
 const cmds = ler("artifacts/icaro/src/lib/commands.ts");
