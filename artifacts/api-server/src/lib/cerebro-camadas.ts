@@ -326,6 +326,16 @@ export function createCerebroLayers(options: { dataDir: string; now?: () => numb
     const estimatedTokens = Math.max(1, Math.ceil(question.length / 4));
     if (!normalized || containsPersonalData(question)) return { kind: "miss", layer: "L6" };
 
+    // Esta resposta factual do sistema deve prevalecer sobre respostas L6 antigas
+    // já armazenadas para a mesma pergunta (inclusive a explicação incorreta de
+    // ausência total de dados ao vivo).
+    const capabilityAnswer = resolveKnowledgeAnswer(question);
+    if (capabilityAnswer?.id === "geral-icaro-tempo-real") {
+      track("L4", question, capabilityAnswer.answer, 0, estimatedTokens);
+      await saveCache(question, capabilityAnswer.answer, "L4", capabilityAnswer.id);
+      return { kind: "answer", answer: capabilityAnswer.answer, layer: "L4", sourceId: capabilityAnswer.id };
+    }
+
     const exact = knowledgeMode === "auto" ? state.cache.find((entry) =>
       entry.key === digest(normalized) && entry.expiresAt > now(),
     ) : undefined;

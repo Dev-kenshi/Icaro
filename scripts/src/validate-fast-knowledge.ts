@@ -109,6 +109,37 @@ check("Legislação, cotação e temas atuais continuam com o provedor remoto", 
   assert.equal(resolveKnowledgeAnswer("Qual é a cotação do dólar hoje?"), null);
 });
 
+check("Explica com precisão quais dados ao vivo o ÍCARO oferece", () => {
+  const hit = resolveKnowledgeAnswer("Por que você não tem informações de tempo real?");
+  assert.equal(hit?.id, "geral-icaro-tempo-real");
+  assert.match(hit?.answer ?? "", /clima e finanças/);
+  assert.match(hit?.answer ?? "", /placares esportivos.*ainda não estão conectados/);
+  assert.doesNotMatch(hit?.answer ?? "", /meu treinamento terminou em 2024/);
+});
+
+check("Resposta de capacidade correta substitui resposta antiga incorreta em cache", async () => {
+  const question = "Por que você não tem informações de tempo real?";
+  const dataDir = mkdtempSync(path.join(tmpdir(), "icaro-live-data-faq-"));
+  const cerebro = createCerebroLayers({ dataDir });
+  try {
+    await cerebro.recordAnswer({
+      question,
+      answer: "Não tenho acesso a dados ao vivo porque meu treinamento terminou em 2024.",
+      layer: "L6",
+      provider: "test",
+      tokensSpent: 20,
+    });
+    const result = await cerebro.resolve(question);
+    assert.equal(result.kind, "answer");
+    assert.equal(result.sourceId, "geral-icaro-tempo-real");
+    assert.match(result.answer, /clima e finanças/);
+    assert.doesNotMatch(result.answer, /meu treinamento terminou em 2024/);
+    await cerebro.flush();
+  } finally {
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
 check("Rota consulta o banco antes de qualquer provedor e identifica provider local", () => {
   const route = read("artifacts/api-server/src/routes/ai.ts");
   const localCall = route.indexOf("const layered = await cerebro.resolve(userMessage");
@@ -193,7 +224,7 @@ check("Guarda de eco e retomada da captura ficam curtos sem abrir conversa ambie
   assert.equal(echoStop.active, false);
 });
 
-assert.equal(checks.length, 17, `Esperadas exatamente 17 validações; encontradas ${checks.length}.`);
+assert.equal(checks.length, 19, `Esperadas exatamente 19 validações; encontradas ${checks.length}.`);
 let failed = 0;
 for (const [index, [name, fn]] of checks.entries()) {
   try {

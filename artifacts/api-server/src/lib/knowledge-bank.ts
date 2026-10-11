@@ -362,6 +362,16 @@ export const KNOWLEDGE_BANK: KnowledgeEntry[] = [
     ],
     answer: "Na análise financeira, a IA pode comparar indicadores, resumir relatórios e detectar padrões em séries de dados. As conclusões precisam ser revisadas com contexto, premissas e fontes confiáveis.",
   },
+  {
+    id: "geral-icaro-tempo-real",
+    category: "geral",
+    title: "Dados em tempo real disponíveis no ÍCARO",
+    triggers: [
+      ["por que voce", "tempo real"],
+      ["por que o icaro", "tempo real"],
+    ],
+    answer: "Não é correto dizer que eu não tenho nenhum dado ao vivo. No palco, há consultas configuradas para clima e finanças, além de feeds de posição da Estação Espacial Internacional e terremotos; nem toda pergunta de texto aciona essas fontes, e elas podem ficar indisponíveis ou mostrar dados em cache. Eu não tenho acesso irrestrito à internet, e placares esportivos como o do Flamengo ainda não estão conectados, então não devo inventar resultados. A alegação sobre uma data de encerramento do meu treinamento ou uma proibição geral da UEFS não corresponde aos recursos deste sistema.",
+  },
 ];
 
 const REMOTE_ONLY_RE = /\b(?:lei|legislacao|norma|aliquota|vigente|atual|hoje|agora|noticia|cotacao|previsao do tempo|prazo legal)\b/;
