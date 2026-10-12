@@ -14,9 +14,11 @@ export default function Convidados() {
         <div className="itc-speakers">
           {ITCONT.convidados.map(({ nome, foto }) => (
             <article className="itc-speaker itc-card" key={nome} data-testid={`card-guest-${iniciais(nome).toLowerCase()}`}>
-              {failed.includes(nome)
-                ? <div className="itc-speaker-fallback" aria-label={`Iniciais de ${nome}`}>{iniciais(nome)}</div>
-                : <img className="itc-speaker-photo" src={foto} alt={nome} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setFailed((current) => current.includes(nome) ? current : [...current, nome])} data-testid={`img-guest-${iniciais(nome).toLowerCase()}`} />}
+              <div className="itc-speaker-photo-frame">
+                {failed.includes(nome)
+                  ? <div className="itc-speaker-fallback" aria-label={`Iniciais de ${nome}`}>{iniciais(nome)}</div>
+                  : <img className="itc-speaker-photo" src={foto} alt={nome} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setFailed((current) => current.includes(nome) ? current : [...current, nome])} data-testid={`img-guest-${iniciais(nome).toLowerCase()}`} />}
+              </div>
               <span className="itc-speaker-name">{nome}</span>
             </article>
           ))}

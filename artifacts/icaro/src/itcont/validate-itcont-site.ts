@@ -46,7 +46,7 @@ check('sessões não se sobrepõem', () => {
   for (let i = 1; i < o.length; i++) assert.ok(instante(o[i].data, o[i].inicio) >= instante(o[i - 1].data, o[i - 1].fim), o[i].id);
 });
 check('7 convidados com nomes únicos', () => { assert.equal(ITCONT.convidados.length, 7); assert.equal(new Set(ITCONT.convidados.map((c) => c.nome)).size, 7); });
-check('fotos servidas pelo Even3 em https', () => ITCONT.convidados.forEach((c) => assert.match(c.foto, /^https:\/\/images\.even3\.com\//, c.nome)));
+check('fotos oficiais em alta resolução servidas pelo Even3', () => ITCONT.convidados.forEach((c) => assert.match(c.foto, /^https:\/\/static\.even3\.com\//, c.nome)));
 check('inscrição aponta para a página oficial (https, Even3)', () => { assert.equal(ITCONT.inscricaoUrl, FONTE_OFICIAL); assert.match(FONTE_OFICIAL, /^https:\/\/www\.even3\.com\.br\//); });
 check('3 categorias de inscrição, todas gratuitas', () => { assert.deepEqual(ITCONT.categorias.map((c) => c.nome), ['Graduação', 'Docente', 'Profissional Contábil']); ITCONT.categorias.forEach((c) => assert.equal(c.precoCentavos, 0)); });
 const seed = ler(join(RAIZ, 'lib/db/src/seed/itcont.ts'));
@@ -147,7 +147,12 @@ check('menu marca a seção atual (aria-current)', () => assert.match(sec('Naveg
 check('contagem anunciada a leitores de tela (aria-live)', () => assert.match(sec('Contagem'), /aria-live=["']polite["']/));
 check('toda <img> tem alt', () => { const imgs = UI.split('<img').slice(1).map((t) => t.slice(0, t.indexOf('/>'))); assert.ok(imgs.length > 0); imgs.forEach((t) => assert.match(t, /\balt=/)); });
 check('foto que falha vira iniciais', () => { const c = sec('Convidados'); assert.match(c, /onError/); assert.match(c, /iniciais\(/); });
-check('fotos dos convidados com loading="lazy"', () => assert.match(sec('Convidados'), /loading=["']lazy["']/));
+check('fotos dos convidados em alta definição, sem corte e com orientação original', () => {
+  assert.match(sec('Convidados'), /loading=["']lazy["']/);
+  assert.match(CSS, /\.itc-speaker-photo-frame\s*\{[^}]*aspect-ratio:\s*4\/5/);
+  assert.match(CSS, /\.itc-speaker-photo\s*\{[^}]*object-fit:\s*contain/);
+  assert.match(CSS, /\.itc-speaker-photo\s*\{[^}]*image-orientation:\s*from-image/);
+});
 check('links externos com rel="noopener noreferrer"', () => assert.ok(conta(UI, /target=["']_blank["']/g) <= conta(UI, /rel=["']noopener noreferrer["']/g)));
 check('botão de inscrição usa a URL oficial', () => assert.match(UI, /ITCONT\.inscricaoUrl/));
 check('nenhuma data/hora escrita à mão nos componentes', () => assert.doesNotMatch(UI, /\b2[12]\/10\b|2026-10-\d\d|\b19h\b|21h30|de outubro/));

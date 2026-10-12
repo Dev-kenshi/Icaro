@@ -75,7 +75,7 @@ Direção: vitrine digital inspirada em páginas de jogos para PC — superfíci
 54. Não depender de hover para revelar informação essencial.
 55. Usar estados ativos para indicar o dia selecionado na agenda.
 56. Destacar a sessão atual com cor de alerta e texto explícito.
-57. Manter os cartões de convidados com fotos em proporção uniforme.
+57. Exibir todas as fotos de convidados em molduras 4:5, sem cortes e com orientação original.
 58. Preservar alternativa com iniciais quando uma foto falhar.
 59. Tornar o FAQ fácil de escanear e abrir por teclado.
 60. Manter o mapa legível sem sequestrar a rolagem da página.
