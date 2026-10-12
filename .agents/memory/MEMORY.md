@@ -21,6 +21,7 @@
 - [Ícaro responsive navigation](icaro-responsive-navigation.md) — keep phone drawer/bottom nav, tablet icon rail, and full desktop sidebar; avoid overlays on signed-in content.
 - [ITCONT data scope](itcont-data-scope.md) — keep public event/guest details and image links only; never copy images or import registrants, payroll, accounts, or ops data.
 - [Health check contract boundaries](health-check-contract-boundaries.md) — test each endpoint against its actual source of truth; OpenAPI omissions can be intentional.
+- [Ícaro API documentation](icaro-api-documentation.md) — the in-app API reference should cover every implemented route in a Postman-style explorer with safe code examples.
 - [Calculation database capacity](calculation-database-capacity.md) — a development load is not production approval; verify production quota, existing use, and full table/index size first.
 - [Ícaro v5 web port](icaro-v5-web-port.md) — adapt the supplied Windows desktop project into the existing React/API app; do not run host-OS commands from the web server.
 - [Stage voice testing](stage-voice-testing.md) — captions vanish 2s after speech; verify answers in the Painel→Conversa log or /api/tts-ts logs, and guard geolocation in headless browsers.
