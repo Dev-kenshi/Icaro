@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import MarkdownIt from 'markdown-it';
 import { BookOpen, ChevronRight, FileText } from 'lucide-react';
+import ApiReferenceExplorer from '@/components/documentation/api-reference-explorer';
 import readme from '../../../../docs/README.md?raw';
 import apiReference from '../../../../docs/API-REFERENCE.md?raw';
 import architecture from '../../../../docs/ARQUITETURA-ADS.md?raw';
@@ -111,16 +112,22 @@ export default function Documentation() {
         </nav>
       </section>
 
-      <article
-        className="documentation-content rounded-3xl border border-border bg-card px-5 py-6 shadow-sm sm:px-8 sm:py-9"
-        aria-label={activeDocument.title}
-        onClick={handleDocumentLink}
-      >
-        <div
-          className="prose prose-sm max-w-none prose-headings:font-display prose-headings:tracking-tight prose-a:text-primary prose-code:rounded prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:text-foreground prose-pre:overflow-x-auto prose-pre:rounded-2xl prose-pre:border prose-pre:border-border prose-pre:bg-slate-950 prose-pre:text-slate-100 prose-th:text-foreground prose-td:text-muted-foreground sm:prose-base"
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
-      </article>
+      {activeId === 'api' ? (
+        <section className="documentation-content" aria-label={activeDocument.title}>
+          <ApiReferenceExplorer />
+        </section>
+      ) : (
+        <article
+          className="documentation-content rounded-3xl border border-border bg-card px-5 py-6 shadow-sm sm:px-8 sm:py-9"
+          aria-label={activeDocument.title}
+          onClick={handleDocumentLink}
+        >
+          <div
+            className="prose prose-sm max-w-none prose-headings:font-display prose-headings:tracking-tight prose-a:text-primary prose-code:rounded prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:text-foreground prose-pre:overflow-x-auto prose-pre:rounded-2xl prose-pre:border prose-pre:border-border prose-pre:bg-slate-950 prose-pre:text-slate-100 prose-th:text-foreground prose-td:text-muted-foreground sm:prose-base"
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+        </article>
+      )}
     </div>
   );
 }

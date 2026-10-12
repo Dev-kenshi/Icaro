@@ -227,6 +227,46 @@
   body { background-attachment: scroll; }
 }
 
+/* API reference: compact engineering-console treatment within the existing Ícaro palette. */
+.api-docs {
+  --api-line: hsl(var(--border) / .8);
+  --api-code: hsl(166 28% 12%);
+  --api-code-text: hsl(42 38% 93%);
+}
+.dark .api-docs {
+  --api-code: hsl(166 30% 7%);
+  --api-code-text: hsl(42 38% 93%);
+}
+.api-docs-code {
+  background: var(--api-code);
+  color: var(--api-code-text);
+  font-family: var(--app-font-mono);
+  font-size: .72rem;
+  line-height: 1.7;
+  tab-size: 2;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.api-docs-scrollbar {
+  scrollbar-color: hsl(var(--muted-foreground) / .35) transparent;
+  scrollbar-width: thin;
+}
+.api-docs-navitem[aria-current="true"] {
+  background: hsl(var(--secondary) / .11);
+  border-color: hsl(var(--secondary) / .38);
+}
+.api-docs-navitem[aria-current="true"] .api-docs-navpath {
+  color: hsl(var(--foreground));
+}
+.api-docs-navitem:hover { background: hsl(var(--muted) / .65); }
+.api-docs-panel {
+  animation: api-panel-in .22s ease-out both;
+}
+@keyframes api-panel-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
 }
