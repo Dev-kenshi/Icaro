@@ -1,0 +1,50 @@
+O zip está pronto em Downloads/Site-ITCONT.zip. Ele traz o prompt completo para o Replit Agent e o código-base do site, com as 100 validações.
+
+Como usar no Replit:
+
+Arraste o zip para a lista de arquivos do Replit e rode no Shell:
+unzip -o Site-ITCONT.zip && bash Site-ITCONT/instalar-kit.sh
+
+O instalador mostra 67/100 nesse momento, o que está certo: dados, regras e cores já passam, e as 33 que faltam dependem da interface.
+
+Cole o conteúdo de PROMPT_REPLIT_SITE_ITCONT.md no Replit Agent. Ele constrói o site até chegar a 100/100, mostra prints das 5 telas e envia ao GitHub.
+O site fica em seu-site/itcont, sem login, no mesmo Render gratuito.
+
+Como o site vai ser:
+
+Visual: cores e textura tiradas do banner oficial:
+azul royal com efeito 3D e brilho neon;
+prata escovada no “CONTÁBIL”;
+fundo azul-escuro com uma grade luminosa;
+um feixe de luz que atravessa o topo da página.
+Responsividade diferente: cada tela ganha uma experiência própria.
+Celular: o topo vira um ingresso digital, com abas na parte de baixo.
+Celular deitado: tela dividida em dois painéis.
+Tablet: blocos de tamanhos variados, em mosaico.
+Computador: visual de cinema, com a programação das 2 noites numa linha do tempo.
+Telão do auditório (?modo=telao): mostra “Agora no palco / A seguir”, a contagem regressiva e um QR code do site.
+Recursos tirados de sites de evento:
+contagem regressiva;
+aviso “ao vivo” durante as palestras;
+adicionar à agenda;
+como chegar;
+compartilhar no WhatsApp;
+perguntas frequentes;
+um cartão de divulgação com o nome da pessoa para postar.
+Dados: vêm da página oficial no Even3 e batem com o que já está no banco do projeto. As fotos ficam como links do Even3, sem copiar arquivos.
+
+As 100 validações:
+
+Grupo	Quantidade
+Dados oficiais	14
+Regras (contagem, fases, agenda)	28
+Cores e beleza (contraste, proporção áurea)	15
+Interface (heurísticas de Nielsen)	40
+Integração	3
+
+Testes que fiz: simulei a instalação numa cópia limpa do projeto. Os 67 itens que não dependem da interface passaram, e meus arquivos não geraram nenhum erro de compilação. A interface em si eu não construí, então os 100/100 só aparecem depois que o Agent terminar.
+
+Duas observações:
+
+“10 leis da beleza”: não encontrei uma lista oficial com esse nome. Usei os 10 princípios clássicos de estética: proporção áurea, regra dos terços, simetria, contraste, hierarquia, ritmo, unidade, espaço vazio, harmonia de cor e movimento com propósito. Se você tinha outra lista em mente, me mande que eu ajusto.
+Documento interno da organização: o PDF com as comissões não entrou no site. Segui a regra que já existe no projeto de usar só os dados públicos do Even3.
