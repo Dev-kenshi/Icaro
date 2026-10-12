@@ -140,7 +140,7 @@ export default function SiteItcont() {
 
   return (
     <div className="itc" data-layout={layout} data-testid="page-itcont">
-      {!telaoAtivo && <TerraFundo />}
+      <TerraFundo />
       <ModoTelao ativo={telaoAtivo} onSair={() => { window.history.replaceState({}, '', window.location.pathname); setTelaoAtivo(false); setLayout('desktop'); }} />
       <div className="itc-main-site">
         <Navegacao />

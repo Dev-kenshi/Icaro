@@ -1,5 +1,5 @@
 /**
- * 100 validações do site do I ITCONT: dados oficiais, regras (contagem, fases, agenda),
+ * 102 validações do site do I ITCONT: dados oficiais, regras (contagem, fases, agenda),
  * identidade visual e leis da beleza, heurísticas de Nielsen na interface e integração.
  * Roda sem internet, sem banco e sem navegador.
  * Uso: pnpm --filter @workspace/scripts run validate:itcont-site
@@ -152,6 +152,15 @@ check('adicionar à agenda (.ics + Google)', () => { assert.match(UI, /gerarICS\
 check('como chegar (mapa)', () => assert.match(UI, /mapaUrl\(\)/));
 check('compartilhar (WhatsApp ou navigator.share)', () => assert.match(UI, /whatsappUrl\(|navigator\.share/));
 check('modo telão usa a regra oficial', () => assert.match(sec('ModoTelao') + ler(join(AQUI, 'SiteItcont.tsx')), /modoTelao\(|layoutPara\(/));
+check('contagem do telão explica dias, horas e minutos', () => {
+  const telao = sec('ModoTelao');
+  assert.match(telao, /Tempo até o início do evento/);
+  for (const unidade of ['dias', 'horas', 'minutos']) assert.match(telao, new RegExp(`>${unidade}<`));
+});
+check('globo permanece no fundo fixo da página inteira', () => {
+  assert.match(ler(join(AQUI, 'SiteItcont.tsx')), /<TerraFundo\s*\/>/);
+  assert.match(CSS, /\.itc \.itc-earth-backdrop\s*\{\s*position:\s*fixed/);
+});
 check('FAQ acessível (details/summary ou aria-expanded)', () => assert.match(sec('Faq'), /<details|aria-expanded/));
 check('todo <button> começa com type=', () => assert.equal(conta(UI, /<button(?!\s+type=)/g), 0));
 check('sem lorem ipsum, TODO ou FIXME', () => assert.doesNotMatch(UI + CSS, /lorem|ipsum|TODO|FIXME/i));
@@ -183,6 +192,6 @@ for (const r of resultados) {
   if (r.grupo !== atual) { atual = r.grupo; console.log(`\n${atual}`); }
   console.log(`${r.erro ? '✗' : '✓'} ${String(r.n).padStart(3)}. ${r.nome}${r.erro ? ` → ${r.erro}` : ''}`);
 }
-if (resultados.length !== 100) { console.log(`\n✗ o validador deveria ter 100 checagens, tem ${resultados.length}`); process.exit(1); }
-console.log(`\n${100 - falhas.length}/100 validações do site do ITCONT`);
+if (resultados.length !== 102) { console.log(`\n✗ o validador deveria ter 102 checagens, tem ${resultados.length}`); process.exit(1); }
+console.log(`\n${102 - falhas.length}/102 validações do site do ITCONT`);
 process.exit(falhas.length ? 1 : 0);

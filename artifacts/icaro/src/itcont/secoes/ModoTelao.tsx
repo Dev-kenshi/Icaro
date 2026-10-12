@@ -139,7 +139,16 @@ export default function ModoTelao({ ativo, onSair }: Props) {
         <div className="itc-eyebrow">{ITCONT.sigla} · {ITCONT.local.instituicao}</div>
         {panel === 0 && <>
           <div className="itc-kiosk-title">{ITCONT.titulo}</div>
-          <div className="itc-kiosk-count">{String(countdown.dias).padStart(2, '0')} : {String(countdown.horas).padStart(2, '0')} : {String(countdown.minutos).padStart(2, '0')}</div>
+          <div className="itc-kiosk-count-label">Tempo até o início do evento</div>
+          <div
+            className="itc-kiosk-count"
+            aria-label={`Faltam ${countdown.dias} dias, ${countdown.horas} horas e ${countdown.minutos} minutos para o início`}
+            data-testid="kiosk-countdown"
+          >
+            <span><strong>{String(countdown.dias).padStart(2, '0')}</strong><small>dias</small></span>
+            <span><strong>{String(countdown.horas).padStart(2, '0')}</strong><small>horas</small></span>
+            <span><strong>{String(countdown.minutos).padStart(2, '0')}</strong><small>minutos</small></span>
+          </div>
           <p>{dataExtenso(ITCONT.inicio)} — {dataExtenso(ITCONT.fim)} · {ITCONT.local.nome}</p>
         </>}
         {panel === 1 && <>
