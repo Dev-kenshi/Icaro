@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Activity, BarChart3, BrainCircuit, CalendarDays, CircleDollarSign, Database, FileUp, Gauge, HeartPulse, Languages, Menu, Music2, Presentation, X } from 'lucide-react';
+import { Activity, BarChart3, BookOpen, BrainCircuit, CalendarDays, CircleDollarSign, Database, FileUp, Gauge, HeartPulse, Languages, Menu, Music2, Presentation, X } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { getGetAiStatusQueryKey, getHealthCheckQueryKey, useGetAiStatus, useHealthCheck } from '@workspace/api-client-react';
 import { useDataset } from '@/lib/dataset-context';
@@ -15,6 +15,7 @@ const navigation: { href: string; labelKey: StringKey; icon: typeof Gauge }[] = 
   { href: '/agenda', labelKey: 'navAgenda', icon: CalendarDays },
   { href: '/music', labelKey: 'navMusic', icon: Music2 },
   { href: '/demos', labelKey: 'navDemos', icon: Presentation },
+  { href: '/documentation', labelKey: 'navDocumentation', icon: BookOpen },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {

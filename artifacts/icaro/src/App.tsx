@@ -15,6 +15,7 @@ import FinanceWeather from '@/pages/finance-weather';
 import Agenda from '@/pages/agenda';
 import Music from '@/pages/music';
 import Demos from '@/pages/demos';
+import Documentation from '@/pages/documentation';
 import { LangProvider } from '@/lib/i18n';
 import { LoginGate, useAuthUser } from '@/components/login/login-gate';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
@@ -46,6 +47,7 @@ function Shelled() {
         <Route path="/agenda" component={Agenda} />
         <Route path="/music" component={Music} />
         <Route path="/demos" component={Demos} />
+        <Route path="/documentation" component={Documentation} />
         <Route path="/admin/cerebro" component={AdminCerebro} />
         <Route component={NotFound} />
       </Switch>

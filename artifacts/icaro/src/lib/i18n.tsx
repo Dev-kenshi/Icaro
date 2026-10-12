@@ -7,6 +7,7 @@ const STRINGS = {
   'pt-BR': {
     navOverview: 'Visão geral', navAnalysis: 'Explorar dados', navAssistant: 'Copiloto',
     navFinance: 'Finanças', navAgenda: 'Agenda', navMusic: 'Música', navDemos: 'Sistemas', navAdmin: 'Administração',
+    navDocumentation: 'Documentação',
     financeTitle: 'Finanças e clima', financeKicker: 'Painel ao vivo',
     agendaTitle: 'Agenda e rotinas', musicTitle: 'Spotify',
     demosTitle: 'Sistemas do professor Rômulo',
@@ -17,6 +18,7 @@ const STRINGS = {
   'es-UY': {
     navOverview: 'Panorama', navAnalysis: 'Explorar datos', navAssistant: 'Copiloto',
     navFinance: 'Finanzas', navAgenda: 'Agenda', navMusic: 'Música', navDemos: 'Sistemas', navAdmin: 'Administración',
+    navDocumentation: 'Documentación',
     financeTitle: 'Finanzas y clima', financeKicker: 'Panel en vivo',
     agendaTitle: 'Agenda y rutinas', musicTitle: 'Spotify',
     demosTitle: 'Sistemas del profesor Rômulo',
