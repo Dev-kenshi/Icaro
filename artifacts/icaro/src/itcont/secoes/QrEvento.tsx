@@ -1,13 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { X } from 'lucide-react';
-import { ITCONT } from '../dados';
-import { contagem, dataExtenso, faseDoEvento, horaCurta, sessoesOrdenadas } from '../logica';
-
-type Props = { ativo: boolean; onSair: () => void };
-
 function qrModules(payload: string) {
-  const version = 5;
-  const size = version * 4 + 17;
+  const size = 37;
   const dataCapacity = 108;
   const eccCapacity = 26;
   const bytes = Array.from(new TextEncoder().encode(payload));
@@ -106,57 +98,17 @@ function qrModules(payload: string) {
   return matrix;
 }
 
-function QrInline() {
+export default function QrEvento() {
   const url = `${window.location.origin}${window.location.pathname}`;
   const matrix = qrModules(url);
   const size = matrix.length;
-  return <svg className="itc-qr" viewBox={`0 0 ${size + 8} ${size + 8}`} role="img" aria-label={`QR code para abrir ${url}`}>
-    <rect width={size + 8} height={size + 8} fill="var(--itc-branco)" />
-    {matrix.flatMap((row, y) => row.map((cell, x) => cell ? <rect key={`${x}-${y}`} x={x + 4} y={y + 4} width="1" height="1" fill="var(--itc-abismo)" /> : null))}
-  </svg>;
-}
-
-export default function ModoTelao({ ativo, onSair }: Props) {
-  const [panel, setPanel] = useState(0);
-  const [now, setNow] = useState(() => new Date());
-  const exitRef = useRef(onSair);
-  exitRef.current = onSair;
-  useEffect(() => {
-    if (!ativo) return;
-    const rotation = window.setInterval(() => setPanel((current) => (current + 1) % 3), 12_000);
-    const clock = window.setInterval(() => setNow(new Date()), 1000);
-    const exit = (event: KeyboardEvent) => { if (event.key === 'Escape') exitRef.current(); };
-    window.addEventListener('keydown', exit);
-    return () => { window.clearInterval(rotation); window.clearInterval(clock); window.removeEventListener('keydown', exit); };
-  }, [ativo]);
-  if (!ativo) return null;
-  const phase = faseDoEvento(now);
-  const countdown = contagem(now);
-  const sessions = sessoesOrdenadas();
   return (
-    <section className="itc-kiosk" aria-label="Modo auditório do ITCONT" data-testid="screen-kiosk">
-      <div className="itc-kiosk-content">
-        <div className="itc-eyebrow">{ITCONT.sigla} · {ITCONT.local.instituicao}</div>
-        {panel === 0 && <>
-          <div className="itc-kiosk-title">{ITCONT.titulo}</div>
-          <div className="itc-kiosk-count">{String(countdown.dias).padStart(2, '0')} : {String(countdown.horas).padStart(2, '0')} : {String(countdown.minutos).padStart(2, '0')}</div>
-          <p>{dataExtenso(ITCONT.inicio)} — {dataExtenso(ITCONT.fim)} · {ITCONT.local.nome}</p>
-        </>}
-        {panel === 1 && <>
-          <div className="itc-eyebrow">{phase.fase === 'ao-vivo' ? 'AGORA NO PALCO' : 'STATUS DO EVENTO'}</div>
-          <h2>{phase.fase === 'ao-vivo' ? phase.atual.titulo : phase.fase === 'intervalo' ? 'A SEGUIR' : phase.fase === 'encerrado' ? 'Obrigado por participar' : 'A próxima imersão começa em breve'}</h2>
-          {phase.fase !== 'ao-vivo' && phase.fase !== 'encerrado' && <p>{phase.fase === 'intervalo' ? phase.proxima.titulo : sessions[0].titulo}</p>}
-          <div className="itc-kiosk-row"><span>Horário de Brasília<strong>{phase.fase === 'ao-vivo' ? horaCurta(phase.atual.inicio) : horaCurta(sessions[0].inicio)}</strong></span><span>Presencial<strong>{ITCONT.local.nome}</strong></span></div>
-        </>}
-        {panel === 2 && <>
-          <h2>Uma imersão em novas possibilidades</h2>
-          <div className="itc-kiosk-speakers">{ITCONT.convidados.map(({ nome }) => <span key={nome}>{nome}</span>)}</div>
-          <QrInline />
-          <p>{ITCONT.resumo}</p>
-        </>}
-      </div>
-      <button type="button" className="itc-secondary itc-exit-kiosk" onClick={onSair} data-testid="button-exit-kiosk"><X size={16} aria-hidden="true" /> Sair do modo telão</button>
-      <span className="sr-only" aria-live="polite">{panel + 1} de 3</span>
-    </section>
+    <figure className="itc-intro-qr">
+      <svg className="itc-qr" viewBox={`0 0 ${size + 8} ${size + 8}`} role="img" aria-label={`QR code para abrir ${url}`}>
+        <rect width={size + 8} height={size + 8} fill="var(--itc-branco)" />
+        {matrix.flatMap((row, y) => row.map((cell, x) => cell ? <rect key={`${x}-${y}`} x={x + 4} y={y + 4} width="1" height="1" fill="var(--itc-abismo)" /> : null))}
+      </svg>
+      <figcaption>Aponte a câmera para abrir o site</figcaption>
+    </figure>
   );
 }

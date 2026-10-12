@@ -1,5 +1,5 @@
 /**
- * 100 validações do site do I ITCONT: dados oficiais, regras (contagem, fases, agenda),
+ * 103 validações do site do ITCONT: dados oficiais, regras (contagem, fases, agenda),
  * identidade visual e leis da beleza, heurísticas de Nielsen na interface e integração.
  * Roda sem internet, sem banco e sem navegador.
  * Uso: pnpm --filter @workspace/scripts run validate:itcont-site
@@ -12,13 +12,14 @@ import { fileURLToPath } from 'node:url';
 import { FONTE_OFICIAL, ITCONT } from './dados';
 import {
   aberturaEvento, contagem, contraste, dataExtenso, duracaoMin, encerramentoEvento, escalaAurea, faseDoEvento,
-  gerarICS, googleAgendaUrl, horaCurta, iniciais, instante, layoutPara, mapaUrl, modoTelao, proximaSessao,
+  gerarICS, googleAgendaUrl, horaCurta, iniciais, instante, layoutPara, mapaUrl, proximaSessao,
   sessoesOrdenadas, sessoesPorDia, whatsappUrl,
 } from './logica';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const RAIZ = resolve(AQUI, '../../../..');
 const ler = (p: string) => (existsSync(p) ? readFileSync(p, 'utf8') : '');
+const TOTAL_VALIDACOES = 103;
 
 const resultados: Array<{ n: number; grupo: string; nome: string; erro?: string }> = [];
 let grupo = '';
@@ -45,7 +46,7 @@ check('sessões não se sobrepõem', () => {
   for (let i = 1; i < o.length; i++) assert.ok(instante(o[i].data, o[i].inicio) >= instante(o[i - 1].data, o[i - 1].fim), o[i].id);
 });
 check('7 convidados com nomes únicos', () => { assert.equal(ITCONT.convidados.length, 7); assert.equal(new Set(ITCONT.convidados.map((c) => c.nome)).size, 7); });
-check('fotos servidas pelo Even3 em https', () => ITCONT.convidados.forEach((c) => assert.match(c.foto, /^https:\/\/images\.even3\.com\//, c.nome)));
+check('fotos oficiais em alta resolução servidas pelo Even3', () => ITCONT.convidados.forEach((c) => assert.match(c.foto, /^https:\/\/static\.even3\.com\//, c.nome)));
 check('inscrição aponta para a página oficial (https, Even3)', () => { assert.equal(ITCONT.inscricaoUrl, FONTE_OFICIAL); assert.match(FONTE_OFICIAL, /^https:\/\/www\.even3\.com\.br\//); });
 check('3 categorias de inscrição, todas gratuitas', () => { assert.deepEqual(ITCONT.categorias.map((c) => c.nome), ['Graduação', 'Docente', 'Profissional Contábil']); ITCONT.categorias.forEach((c) => assert.equal(c.precoCentavos, 0)); });
 const seed = ler(join(RAIZ, 'lib/db/src/seed/itcont.ts'));
@@ -80,10 +81,9 @@ check('.ics escapa vírgulas do local', () => assert.match(ICS, /LOCATION:[^\r]*
 check('Google Agenda com datas e fuso', () => { const u = new URL(googleAgendaUrl(S[0])); assert.equal(u.hostname, 'calendar.google.com'); assert.equal(u.searchParams.get('dates'), '20261021T220000Z/20261022T000000Z'); assert.equal(u.searchParams.get('ctz'), 'America/Sao_Paulo'); });
 check('mapa do Google com o endereço codificado', () => { const u = new URL(mapaUrl()); assert.equal(u.hostname, 'www.google.com'); assert.match(u.searchParams.get('query') ?? '', /UEFS Módulo IV/); });
 check('compartilhar no WhatsApp leva o link do site', () => { const u = new URL(whatsappUrl('https://exemplo.org/itcont')); assert.equal(u.hostname, 'wa.me'); assert.match(u.searchParams.get('text') ?? '', /https:\/\/exemplo\.org\/itcont/); });
-check('modo telão por ?modo=telao ou tela ≥ 1920px', () => { assert.equal(modoTelao('?modo=telao', 800), true); assert.equal(modoTelao('', 1920), true); assert.equal(modoTelao('', 1440), false); });
-check('5 modos de layout', () => assert.deepEqual(
-  [layoutPara(390, 844), layoutPara(844, 390), layoutPara(820, 1180), layoutPara(1440, 900), layoutPara(1280, 720, '?modo=telao')],
-  ['celular', 'celular-deitado', 'tablet', 'desktop', 'telao']));
+check('4 modos responsivos sem ativação especial de telão', () => assert.deepEqual(
+  [layoutPara(390, 844), layoutPara(844, 390), layoutPara(820, 1180), layoutPara(1440, 900)],
+  ['celular', 'celular-deitado', 'tablet', 'desktop']));
 check('contraste WCAG: branco/preto = 21', () => { assert.equal(contraste('#ffffff', '#000000'), 21); assert.equal(contraste('#123456', '#123456'), 1); });
 check('escala na razão áurea', () => { assert.equal(escalaAurea(1), 25.89); assert.equal(escalaAurea(2), 41.89); });
 
@@ -109,6 +109,11 @@ check('no máximo 3 famílias de fonte', () => assert.equal(TOK.match(/--itc-fon
 check('respeita "reduzir movimento"', () => assert.match(TOK, /prefers-reduced-motion:\s*reduce/));
 check('foco do teclado visível', () => assert.match(TOK, /:focus-visible\s*\{[^}]*outline/));
 check('alvo de toque mínimo de 44px', () => assert.match(TOK, /--itc-toque:\s*44px/));
+check('documento contém exatamente 100 critérios visuais em ordem', () => {
+  const regras = ler(join(AQUI, 'design-rules.md'));
+  const numeros = [...regras.matchAll(/^(\d{2,3})\. /gm)].map((m) => Number(m[1]));
+  assert.deepEqual(numeros, Array.from({ length: 100 }, (_, index) => index + 1));
+});
 
 // ───────────── D. Interface (heurísticas de Nielsen + leis da beleza) ─────────────
 grupo = 'D. Interface';
@@ -116,7 +121,7 @@ function arquivos(dir: string): string[] {
   if (!existsSync(dir)) return [];
   return readdirSync(dir).flatMap((f) => { const p = join(dir, f); return statSync(p).isDirectory() ? arquivos(p) : [p]; });
 }
-const SECOES = ['Navegacao', 'Hero', 'Contagem', 'Sobre', 'Programacao', 'Convidados', 'Local', 'Inscricao', 'Faq', 'Rodape', 'ModoTelao'];
+const SECOES = ['Navegacao', 'Hero', 'Contagem', 'Sobre', 'Programacao', 'Convidados', 'Local', 'Inscricao', 'Faq', 'Rodape'];
 const TSX = arquivos(AQUI).filter((p) => p.endsWith('.tsx'));
 const UI = TSX.map(ler).join('\n');
 const sec = (n: string) => ler(join(AQUI, 'secoes', `${n}.tsx`));
@@ -125,7 +130,7 @@ const APP = ler(join(AQUI, '..', 'App.tsx'));
 const conta = (txt: string, re: RegExp) => txt.match(re)?.length ?? 0;
 
 check('SiteItcont.tsx existe e exporta a página', () => assert.match(ler(join(AQUI, 'SiteItcont.tsx')), /export default function SiteItcont/));
-check('as 11 seções existem em secoes/', () => SECOES.forEach((n) => assert.ok(sec(n), `secoes/${n}.tsx`)));
+check('as 10 seções existem em secoes/', () => SECOES.forEach((n) => assert.ok(sec(n), `secoes/${n}.tsx`)));
 check('página importa tokens.css e site.css', () => { const p = ler(join(AQUI, 'SiteItcont.tsx')); assert.match(p, /import ['"]\.\/tokens\.css['"]/); assert.match(p, /import ['"]\.\/site\.css['"]/); });
 check('/itcont é pública: abre antes do LoginGate', () => {
   assert.match(APP, /ehRotaItcont/); const i = APP.indexOf('<SiteItcont'); const j = APP.indexOf('<LoginGate');
@@ -142,7 +147,12 @@ check('menu marca a seção atual (aria-current)', () => assert.match(sec('Naveg
 check('contagem anunciada a leitores de tela (aria-live)', () => assert.match(sec('Contagem'), /aria-live=["']polite["']/));
 check('toda <img> tem alt', () => { const imgs = UI.split('<img').slice(1).map((t) => t.slice(0, t.indexOf('/>'))); assert.ok(imgs.length > 0); imgs.forEach((t) => assert.match(t, /\balt=/)); });
 check('foto que falha vira iniciais', () => { const c = sec('Convidados'); assert.match(c, /onError/); assert.match(c, /iniciais\(/); });
-check('fotos dos convidados com loading="lazy"', () => assert.match(sec('Convidados'), /loading=["']lazy["']/));
+check('fotos dos convidados em alta definição, sem corte e com orientação original', () => {
+  assert.match(sec('Convidados'), /loading=["']lazy["']/);
+  assert.match(CSS, /\.itc-speaker-photo-frame\s*\{[^}]*aspect-ratio:\s*4\/5/);
+  assert.match(CSS, /\.itc-speaker-photo\s*\{[^}]*object-fit:\s*contain/);
+  assert.match(CSS, /\.itc-speaker-photo\s*\{[^}]*image-orientation:\s*from-image/);
+});
 check('links externos com rel="noopener noreferrer"', () => assert.ok(conta(UI, /target=["']_blank["']/g) <= conta(UI, /rel=["']noopener noreferrer["']/g)));
 check('botão de inscrição usa a URL oficial', () => assert.match(UI, /ITCONT\.inscricaoUrl/));
 check('nenhuma data/hora escrita à mão nos componentes', () => assert.doesNotMatch(UI, /\b2[12]\/10\b|2026-10-\d\d|\b19h\b|21h30|de outubro/));
@@ -151,14 +161,28 @@ check('status do evento visível (faseDoEvento)', () => assert.match(UI, /faseDo
 check('adicionar à agenda (.ics + Google)', () => { assert.match(UI, /gerarICS\(/); assert.match(UI, /googleAgendaUrl\(/); });
 check('como chegar (mapa)', () => assert.match(UI, /mapaUrl\(\)/));
 check('compartilhar (WhatsApp ou navigator.share)', () => assert.match(UI, /whatsappUrl\(|navigator\.share/));
-check('modo telão usa a regra oficial', () => assert.match(sec('ModoTelao') + ler(join(AQUI, 'SiteItcont.tsx')), /modoTelao\(|layoutPara\(/));
+check('hero usa a chamada aprovada e convidados oficiais', () => {
+  assert.match(sec('Hero'), /Uma imersão em novas possibilidades/);
+  assert.match(sec('Hero'), /ITCONT\.convidados\.map/);
+});
+check('QR code aparece no hero e representa o endereço público', () => {
+  assert.match(sec('Hero'), /<QrEvento\s*\/>/);
+  assert.match(sec('QrEvento'), /window\.location\.origin.*window\.location\.pathname/);
+});
+check('modo telão foi removido do site público', () => {
+  assert.doesNotMatch(UI + CSS, /ModoTelao|modoTelao|data-layout=["']telao|itc-kiosk|itc-exit-kiosk/);
+});
+check('globo permanece no fundo fixo da página inteira', () => {
+  assert.match(ler(join(AQUI, 'SiteItcont.tsx')), /<TerraFundo\s*\/>/);
+  assert.match(CSS, /\.itc \.itc-earth-backdrop\s*\{\s*position:\s*fixed/);
+});
 check('FAQ acessível (details/summary ou aria-expanded)', () => assert.match(sec('Faq'), /<details|aria-expanded/));
 check('todo <button> começa com type=', () => assert.equal(conta(UI, /<button(?!\s+type=)/g), 0));
 check('sem lorem ipsum, TODO ou FIXME', () => assert.doesNotMatch(UI + CSS, /lorem|ipsum|TODO|FIXME/i));
 check('sem console.log', () => assert.doesNotMatch(UI, /console\.log/));
 check('sem localhost nem links http inseguros', () => assert.doesNotMatch(UI + CSS, /localhost|127\.0\.0\.1|["'(]http:\/\//));
 check('cores só por tokens (sem hex solto)', () => assert.doesNotMatch(UI + CSS, /#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b(?![\w-])/));
-check('site.css tem os 5 modos de layout', () => ['celular', 'celular-deitado', 'tablet', 'desktop', 'telao'].forEach((m) => assert.match(CSS, new RegExp(`data-layout=["']?${m}["']?\\]`), m)));
+check('site.css mantém os 4 modos responsivos', () => ['celular', 'celular-deitado', 'tablet', 'desktop'].forEach((m) => assert.match(CSS, new RegExp(`data-layout=["']?${m}["']?\\]`), m)));
 check('consultas de contêiner (@container)', () => assert.match(CSS, /@container/));
 check('versão para imprimir (@media print)', () => assert.match(CSS, /@media print/));
 check('tipografia fluida (clamp)', () => assert.match(CSS + TOK, /clamp\(/));
@@ -183,6 +207,6 @@ for (const r of resultados) {
   if (r.grupo !== atual) { atual = r.grupo; console.log(`\n${atual}`); }
   console.log(`${r.erro ? '✗' : '✓'} ${String(r.n).padStart(3)}. ${r.nome}${r.erro ? ` → ${r.erro}` : ''}`);
 }
-if (resultados.length !== 100) { console.log(`\n✗ o validador deveria ter 100 checagens, tem ${resultados.length}`); process.exit(1); }
-console.log(`\n${100 - falhas.length}/100 validações do site do ITCONT`);
+if (resultados.length !== TOTAL_VALIDACOES) { console.log(`\n✗ o validador deveria ter ${TOTAL_VALIDACOES} checagens, tem ${resultados.length}`); process.exit(1); }
+console.log(`\n${TOTAL_VALIDACOES - falhas.length}/${TOTAL_VALIDACOES} validações do site do ITCONT`);
 process.exit(falhas.length ? 1 : 0);
