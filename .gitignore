@@ -11,6 +11,14 @@ out-tsc
 # dependencies
 node_modules
 
+# Local environment files may contain credentials; use Replit Secrets instead.
+.env
+.env.*
+*.env
+!.env.example
+!.env.*.example
+!*.example.env
+
 # IDEs and editors
 /.idea
 .project

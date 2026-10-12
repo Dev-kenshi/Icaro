@@ -3,3 +3,11 @@
 
 # No need to store the pnpm store twice.
 .local
+
+# Keep local environment files out of Replit deployment uploads.
+.env
+.env.*
+*.env
+!.env.example
+!.env.*.example
+!*.example.env
