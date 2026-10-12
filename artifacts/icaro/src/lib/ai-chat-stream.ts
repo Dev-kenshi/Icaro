@@ -8,6 +8,7 @@ export type AiChatStreamResult = {
   layer?: string;
   emotionMarks: SpeechEmotionMark[];
   sources?: { title: string; url: string }[];
+  searchSuggestionHtml?: string;
 };
 
 const EMOTIONS = new Set(['entusiasmo', 'sério', 'curioso', 'alerta', 'sorriso']);
@@ -74,6 +75,8 @@ export async function requestAiChatStream(
           return [];
         }
       });
+    } else if (event === 'searchSuggestions' && typeof payload.html === 'string') {
+      result.searchSuggestionHtml = payload.html;
     } else if (event === 'done') {
       doneSeen = true;
       if (typeof payload.provider === 'string') result.provider = payload.provider;

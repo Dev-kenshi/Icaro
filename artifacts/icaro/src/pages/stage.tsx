@@ -41,7 +41,7 @@ const classicProviderRank = (id: string) => {
   return index === -1 ? CLASSIC_PROVIDER_ORDER.length : index;
 };
 type GroundingSource = { title: string; url: string };
-type Entry = { role: 'user' | 'assistant'; content: string; link?: string; sources?: GroundingSource[] };
+type Entry = { role: 'user' | 'assistant'; content: string; link?: string; sources?: GroundingSource[]; searchSuggestionHtml?: string };
 type Note = { text: string; at: number };
 type VisualQuality = 'auto' | 'high' | 'medium' | 'low';
 
@@ -408,12 +408,12 @@ export default function Stage() {
     ensureAudio();
   }, []);
 
-  const say = useCallback((t: string, link?: string, emotionMarks?: readonly SpeechEmotionMark[], sources?: GroundingSource[]) => {
+  const say = useCallback((t: string, link?: string, emotionMarks?: readonly SpeechEmotionMark[], sources?: GroundingSource[], searchSuggestionHtml?: string) => {
     const turn = turnRef.current;
     lastAnswerRef.current = t;
     setSpeechError('');
     window.clearTimeout(captionTimerRef.current);
-    setLog((l) => [...l, { role: 'assistant', content: t, link, sources }]);
+    setLog((l) => [...l, { role: 'assistant', content: t, link, sources, searchSuggestionHtml }]);
     setCaptionWords(null);
     setCaption(t);
     if (!voiceOnRef.current) { activeRef.current = false; setState('idle'); commandCompleteRef.current(); return; }
@@ -631,14 +631,16 @@ export default function Stage() {
           }).then((res) => {
             if (turnRef.current !== turn) return;
             const providerId = res.provider;
-            const source = providerId === 'local'
+            const source = googleSearchEnabled
+              ? 'PESQUISA GOOGLE · GEMINI'
+              : providerId === 'local'
               ? 'BANCO LOCAL'
               : res.layer
                 ? `BASE ${res.layer}`
                 : `IA · ${PROVIDER_NAMES[providerId as Provider] ?? providerId.toUpperCase()}`;
             setResponseMeta({ source, durationMs: Math.round(performance.now() - requestStartedAt) });
             setQuotaNotice(false);
-            sayRef.current(res.answer, undefined, res.emotionMarks, res.sources);
+            sayRef.current(res.answer, undefined, res.emotionMarks, res.sources, res.searchSuggestionHtml);
           }).catch((error: unknown) => {
             if (controller.signal.aborted || turnRef.current !== turn) return;
             speechPendingRef.current = false;
@@ -657,14 +659,16 @@ export default function Stage() {
           onSuccess: (res: AiChatResponse) => {
             if (turnRef.current !== turn) return;
             const providerId = String(res.provider);
-            const source = providerId === 'local'
+            const source = googleSearchEnabled
+              ? 'PESQUISA GOOGLE · GEMINI'
+              : providerId === 'local'
               ? 'BANCO LOCAL'
               : res.layer
                 ? `BASE ${String(res.layer)}`
                 : `IA · ${PROVIDER_NAMES[providerId as Provider] ?? providerId.toUpperCase()}`;
             setResponseMeta({ source, durationMs: Math.round(performance.now() - requestStartedAt) });
             setQuotaNotice(false);
-            sayRef.current(res.answer, undefined, undefined, res.sources);
+            sayRef.current(res.answer, undefined, undefined, res.sources, res.searchSuggestionHtml);
           },
           onError: (e) => {
             if (turnRef.current !== turn) return;
@@ -1376,6 +1380,30 @@ export default function Stage() {
                     <div className="mono text-[10px] uppercase tracking-widest text-[color:var(--dim)]">{m.role === 'user' ? 'Você' : 'ÍCARO'}</div>
                     <div className={m.role === 'user' ? 'text-[color:var(--ink)]' : 'text-[color:var(--holo)]'}>{m.content}</div>
                     {m.link && <a href={m.link} target="_blank" rel="noopener noreferrer" className="mono text-xs underline">Abrir pesquisa <ExternalLink size={12} /></a>}
+                    {!!m.sources?.length && (
+                      <div className="mt-2 border-t border-[color:var(--line)] pt-2">
+                        <div className="mono mb-1 text-[10px] uppercase tracking-widest text-[color:var(--dim)]">Fontes da Pesquisa Google</div>
+                        <ul className="space-y-1">
+                          {m.sources.map((source) => (
+                            <li key={source.url}>
+                              <a href={source.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-[color:var(--holo)] underline">
+                                <Globe2 size={12} aria-hidden="true" />{source.title}<ExternalLink size={11} aria-hidden="true" />
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {m.searchSuggestionHtml && (
+                      <iframe
+                        title="Sugestões da Pesquisa Google"
+                        srcDoc={m.searchSuggestionHtml}
+                        sandbox="allow-popups allow-popups-to-escape-sandbox"
+                        className="mt-2 h-24 w-full rounded-lg border-0"
+                        referrerPolicy="no-referrer"
+                        data-testid={`google-search-suggestions-${i}`}
+                      />
+                    )}
                   </div>
                 ))}
                 {sendMessage.isPending && <div role="status" aria-live="polite" className="flex items-center gap-2 text-xs text-[color:var(--dim)]" data-testid="status-stage-ai-loading"><span className="h-2 w-2 animate-pulse rounded-full bg-[color:var(--holo)]" />Ícaro está preparando uma resposta…</div>}
@@ -1546,6 +1574,26 @@ export default function Stage() {
           )}
           {tab === 'conexao' && (
             <div className="space-y-3">
+              <div className="card space-y-2">
+                <label className="flex cursor-pointer items-center justify-between gap-3" htmlFor="google-search-toggle">
+                  <span className="flex items-center gap-2 font-semibold"><Globe2 size={16} aria-hidden="true" /> Pesquisa Google · Gemini</span>
+                  <input
+                    id="google-search-toggle"
+                    type="checkbox"
+                    checked={googleSearchEnabled}
+                    disabled={status.isLoading || status.isError || !(status.data?.providers.some((item) => item.id === 'gemini' && item.available) ?? false)}
+                    onChange={(event) => setGoogleSearchEnabled(event.target.checked)}
+                    aria-describedby="google-search-description"
+                    data-testid="toggle-google-search"
+                  />
+                </label>
+                <p id="google-search-description" className="text-xs leading-5 text-[color:var(--dim)]">
+                  {status.data?.providers.some((item) => item.id === 'gemini' && item.available)
+                    ? 'Quando ligada, perguntas de conhecimento usam Gemini com busca atual do Google, mesmo com outro provedor selecionado. O Google recebe a pergunta, o histórico e trechos relevantes da base local; pode manter esses dados por 30 dias. Recurso pago, para usuários maiores de 18 anos. A preferência fica neste dispositivo e começa desligada. Evite enviar dados sensíveis.'
+                    : 'Indisponível: configure o provedor Gemini no ambiente seguro para habilitar esta conexão.'}
+                </p>
+                <a href="https://ai.google.dev/gemini-api/terms#grounding-with-google-search" target="_blank" rel="noopener noreferrer" className="mono text-[10px] text-[color:var(--holo)] underline">Termos de uso da Pesquisa Google do Gemini</a>
+              </div>
               {status.isLoading ? [0, 1, 2].map((i) => <div key={i} className="h-14 animate-pulse rounded-xl bg-[color:var(--panel)]" />)
                 : status.isError ? <div className="card text-[color:var(--bad)]">Não foi possível consultar os provedores. <button className="underline" onClick={() => status.refetch()} data-testid="button-retry-status">Tentar novamente</button></div>
                 : [

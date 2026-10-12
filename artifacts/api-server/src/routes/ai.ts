@@ -199,11 +199,20 @@ async function requestGeminiGoogleSearch(input: {
     throw error;
   }
   const data = await response.json() as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    candidates?: Array<{
+      content?: { parts?: Array<{ text?: string }> };
+      groundingMetadata?: { searchEntryPoint?: { renderedContent?: string } };
+    }>;
   };
-  const answer = data.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("").trim();
+  const candidate = data.candidates?.[0];
+  const answer = candidate?.content?.parts?.map((part) => part.text ?? "").join("").trim();
   if (!answer) throw new Error("Gemini Google Search returned no text");
-  return { answer, sources: getGoogleGroundingSources(data) };
+  const searchSuggestionHtml = candidate?.groundingMetadata?.searchEntryPoint?.renderedContent;
+  return {
+    answer,
+    sources: getGoogleGroundingSources(data),
+    ...(typeof searchSuggestionHtml === "string" && searchSuggestionHtml ? { searchSuggestionHtml } : {}),
+  };
 }
 
 function getOpenAiKey() {
@@ -514,20 +523,15 @@ router.post("/ai/chat", async (req, res) => {
         userMessage: safeUserMessage,
         maxOutputTokens: responseTokenLimit,
       });
-      const answer = normalizeAnswerText(presenterize(grounded.answer));
-      await cerebro.recordAnswer({
-        question: userMessage,
-        answer,
-        layer: "L6",
-        provider: "gemini",
-        tokensSpent: Math.max(1, Math.ceil((safeUserMessage.length + answer.length) / 4)),
-      });
+      const answer = grounded.answer;
+      res.setHeader("Cache-Control", "no-store");
       res.json(SendAiMessageResponse.parse({
         answer,
         provider: "gemini",
         model: GEMINI_MODEL,
         layer: "L6",
         sources: grounded.sources,
+        ...(grounded.searchSuggestionHtml ? { searchSuggestionHtml: grounded.searchSuggestionHtml } : {}),
       }));
     } catch (error) {
       const statusCode = error && typeof error === "object" && "statusCode" in error
@@ -1057,10 +1061,6 @@ router.post("/ai/chat/stream", async (req, res) => {
     return;
   }
   const input = parsed.data;
-  if (!input.webSearch && input.provider !== "auto" && !isAutoProviderId(input.provider)) {
-    res.status(400).json({ error: "A transmissão incremental não oferece este provedor selecionado." });
-    return;
-  }
   const userMessage = input.question.trim();
   const safeUserMessage = redactPersonalData(userMessage);
   const safeHistory = input.history.map((message) => ({
@@ -1095,7 +1095,7 @@ router.post("/ai/chat/stream", async (req, res) => {
 
   res.status(200);
   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Cache-Control", "no-store, no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
   res.flushHeaders();
 
@@ -1115,19 +1115,12 @@ router.post("/ai/chat/stream", async (req, res) => {
         userMessage: safeUserMessage,
         maxOutputTokens: input.persona === "icaro" ? 1024 : 8192,
       });
-      const answer = normalizeAnswerText(presenterize(grounded.answer));
+      const answer = grounded.answer;
       for (let offset = 0; offset < answer.length; offset += 48) {
-        emotionOutput.feed(answer.slice(offset, offset + 48));
+        sendEvent("token", { text: answer.slice(offset, offset + 48) });
       }
-      emotionOutput.flush();
-      await cerebro.recordAnswer({
-        question: userMessage,
-        answer,
-        layer: "L6",
-        provider: "gemini",
-        tokensSpent: Math.max(1, Math.ceil((safeUserMessage.length + answer.length) / 4)),
-      });
       sendEvent("sources", grounded.sources);
+      if (grounded.searchSuggestionHtml) sendEvent("searchSuggestions", { html: grounded.searchSuggestionHtml });
       sendEvent("done", { provider: "gemini", model: GEMINI_MODEL, partial: false, layer: "L6" });
     } catch (error) {
       const statusCode = error && typeof error === "object" && "statusCode" in error
@@ -1138,6 +1131,11 @@ router.post("/ai/chat/stream", async (req, res) => {
     } finally {
       if (!res.destroyed && !res.writableEnded) res.end();
     }
+    return;
+  }
+
+  if (input.provider !== "auto" && !isAutoProviderId(input.provider)) {
+    res.status(400).json({ error: "A transmissão incremental não oferece este provedor selecionado." });
     return;
   }
 

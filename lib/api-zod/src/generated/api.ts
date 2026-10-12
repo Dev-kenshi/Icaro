@@ -277,7 +277,8 @@ export const SendAiMessageResponse = zod.object({
   "sources": zod.array(zod.object({
   "title": zod.string(),
   "url": zod.string().url()
-})).optional()
+})).optional(),
+  "searchSuggestionHtml": zod.string().optional()
 })
 
 

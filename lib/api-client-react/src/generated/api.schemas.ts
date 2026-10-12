@@ -408,6 +408,7 @@ export interface AiChatResponse {
   model: string;
   layer?: AiChatResponseLayer;
   sources?: AiGroundingSource[];
+  searchSuggestionHtml?: string;
 }
 
 export interface CosmosIssCurrent {
