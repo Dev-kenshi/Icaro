@@ -12,12 +12,12 @@ import { fileURLToPath } from 'node:url';
 import { FONTE_OFICIAL, ITCONT } from './dados';
 import {
   aberturaEvento, contagem, contraste, dataExtenso, duracaoMin, encerramentoEvento, escalaAurea, faseDoEvento,
-  gerarICS, googleAgendaUrl, horaCurta, iniciais, instante, layoutPara, mapaUrl, modoTelao, proximaSessao,
+  gerarICS, googleAgendaUrl, horaCurta, iniciais, instante, layoutPara, mapaUrl, proximaSessao,
   sessoesOrdenadas, sessoesPorDia, whatsappUrl,
 } from './logica';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
-const RAIZ = resolve(AQUI, '../../../..');
+const RAIZ = resolve(AQUI, '../../../../../../../');
 const ler = (p: string) => (existsSync(p) ? readFileSync(p, 'utf8') : '');
 
 const resultados: Array<{ n: number; grupo: string; nome: string; erro?: string }> = [];
@@ -80,10 +80,10 @@ check('.ics escapa vírgulas do local', () => assert.match(ICS, /LOCATION:[^\r]*
 check('Google Agenda com datas e fuso', () => { const u = new URL(googleAgendaUrl(S[0])); assert.equal(u.hostname, 'calendar.google.com'); assert.equal(u.searchParams.get('dates'), '20261021T220000Z/20261022T000000Z'); assert.equal(u.searchParams.get('ctz'), 'America/Sao_Paulo'); });
 check('mapa do Google com o endereço codificado', () => { const u = new URL(mapaUrl()); assert.equal(u.hostname, 'www.google.com'); assert.match(u.searchParams.get('query') ?? '', /UEFS Módulo IV/); });
 check('compartilhar no WhatsApp leva o link do site', () => { const u = new URL(whatsappUrl('https://exemplo.org/itcont')); assert.equal(u.hostname, 'wa.me'); assert.match(u.searchParams.get('text') ?? '', /https:\/\/exemplo\.org\/itcont/); });
-check('modo telão por ?modo=telao ou tela ≥ 1920px', () => { assert.equal(modoTelao('?modo=telao', 800), true); assert.equal(modoTelao('', 1920), true); assert.equal(modoTelao('', 1440), false); });
-check('5 modos de layout', () => assert.deepEqual(
-  [layoutPara(390, 844), layoutPara(844, 390), layoutPara(820, 1180), layoutPara(1440, 900), layoutPara(1280, 720, '?modo=telao')],
-  ['celular', 'celular-deitado', 'tablet', 'desktop', 'telao']));
+check('tela larga preserva a página normal', () => assert.equal(layoutPara(1920, 1080), 'desktop'));
+check('4 modos de layout responsivo', () => assert.deepEqual(
+  [layoutPara(390, 844), layoutPara(844, 390), layoutPara(820, 1180), layoutPara(1440, 900)],
+  ['celular', 'celular-deitado', 'tablet', 'desktop']));
 check('contraste WCAG: branco/preto = 21', () => { assert.equal(contraste('#ffffff', '#000000'), 21); assert.equal(contraste('#123456', '#123456'), 1); });
 check('escala na razão áurea', () => { assert.equal(escalaAurea(1), 25.89); assert.equal(escalaAurea(2), 41.89); });
 
@@ -116,22 +116,22 @@ function arquivos(dir: string): string[] {
   if (!existsSync(dir)) return [];
   return readdirSync(dir).flatMap((f) => { const p = join(dir, f); return statSync(p).isDirectory() ? arquivos(p) : [p]; });
 }
-const SECOES = ['Navegacao', 'Hero', 'Contagem', 'Sobre', 'Programacao', 'Convidados', 'Local', 'Inscricao', 'Faq', 'Rodape', 'ModoTelao'];
+const SECOES = ['Navegacao', 'Hero', 'Contagem', 'Sobre', 'Programacao', 'Convidados', 'Local', 'Inscricao', 'Faq', 'Rodape'];
 const TSX = arquivos(AQUI).filter((p) => p.endsWith('.tsx'));
 const UI = TSX.map(ler).join('\n');
 const sec = (n: string) => ler(join(AQUI, 'secoes', `${n}.tsx`));
 const CSS = ler(join(AQUI, 'site.css'));
-const APP = ler(join(AQUI, '..', 'App.tsx'));
+const PREVIEW_WRAPPER = ler(join(AQUI, '..', 'Review.tsx'));
 const conta = (txt: string, re: RegExp) => txt.match(re)?.length ?? 0;
 
 check('SiteItcont.tsx existe e exporta a página', () => assert.match(ler(join(AQUI, 'SiteItcont.tsx')), /export default function SiteItcont/));
 check('as 11 seções existem em secoes/', () => SECOES.forEach((n) => assert.ok(sec(n), `secoes/${n}.tsx`)));
 check('página importa tokens.css e site.css', () => { const p = ler(join(AQUI, 'SiteItcont.tsx')); assert.match(p, /import ['"]\.\/tokens\.css['"]/); assert.match(p, /import ['"]\.\/site\.css['"]/); });
-check('/itcont é pública: abre antes do LoginGate', () => {
-  assert.match(APP, /ehRotaItcont/); const i = APP.indexOf('<SiteItcont'); const j = APP.indexOf('<LoginGate');
-  assert.ok(i > -1 && j > -1 && i < j, 'SiteItcont precisa ser renderizado fora/antes do LoginGate');
+check('preview não depende de login', () => { assert.ok(PREVIEW_WRAPPER); assert.doesNotMatch(PREVIEW_WRAPPER, /LoginGate|AuthGate/); });
+check('preview monta a versão review diretamente', () => {
+  assert.match(PREVIEW_WRAPPER, /import SiteItcont from ['"]\.\/review\/SiteItcont['"]/);
+  assert.match(PREVIEW_WRAPPER, /<SiteItcont\s*\/>/);
 });
-check('página carregada sob demanda (lazy)', () => assert.match(APP, /lazy\(\s*\(\)\s*=>\s*import\(['"]\.\/itcont\/SiteItcont['"]\)\s*\)/));
 check('âncoras das seções', () => ['inicio', 'sobre', 'programacao', 'convidados', 'local', 'inscricao', 'faq'].forEach((id) => assert.match(UI, new RegExp(`id=["']${id}["']`), id)));
 check('link "Pular para o conteúdo"', () => assert.match(UI, /href=["']#conteudo["'][^>]*>\s*Pular para o conteúdo/));
 check('<main id="conteudo">', () => assert.match(UI, /<main\b[^>]*id=["']conteudo["']/));
@@ -151,14 +151,17 @@ check('status do evento visível (faseDoEvento)', () => assert.match(UI, /faseDo
 check('adicionar à agenda (.ics + Google)', () => { assert.match(UI, /gerarICS\(/); assert.match(UI, /googleAgendaUrl\(/); });
 check('como chegar (mapa)', () => assert.match(UI, /mapaUrl\(\)/));
 check('compartilhar (WhatsApp ou navigator.share)', () => assert.match(UI, /whatsappUrl\(|navigator\.share/));
-check('modo telão usa a regra oficial', () => assert.match(sec('ModoTelao') + ler(join(AQUI, 'SiteItcont.tsx')), /modoTelao\(|layoutPara\(/));
+check('tela de telão foi removida do preview', () => {
+  assert.doesNotMatch(UI + CSS, /ModoTelao|modoTelao|data-layout=["']telao|itc-kiosk|itc-exit-kiosk|modo=telao/);
+  assert.equal(existsSync(join(AQUI, 'secoes', 'ModoTelao.tsx')), false);
+});
 check('FAQ acessível (details/summary ou aria-expanded)', () => assert.match(sec('Faq'), /<details|aria-expanded/));
 check('todo <button> começa com type=', () => assert.equal(conta(UI, /<button(?!\s+type=)/g), 0));
 check('sem lorem ipsum, TODO ou FIXME', () => assert.doesNotMatch(UI + CSS, /lorem|ipsum|TODO|FIXME/i));
 check('sem console.log', () => assert.doesNotMatch(UI, /console\.log/));
 check('sem localhost nem links http inseguros', () => assert.doesNotMatch(UI + CSS, /localhost|127\.0\.0\.1|["'(]http:\/\//));
 check('cores só por tokens (sem hex solto)', () => assert.doesNotMatch(UI + CSS, /#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b(?![\w-])/));
-check('site.css tem os 5 modos de layout', () => ['celular', 'celular-deitado', 'tablet', 'desktop', 'telao'].forEach((m) => assert.match(CSS, new RegExp(`data-layout=["']?${m}["']?\\]`), m)));
+check('site.css tem os 4 modos responsivos', () => ['celular', 'celular-deitado', 'tablet', 'desktop'].forEach((m) => assert.match(CSS, new RegExp(`data-layout=["']?${m}["']?\\]`), m)));
 check('consultas de contêiner (@container)', () => assert.match(CSS, /@container/));
 check('versão para imprimir (@media print)', () => assert.match(CSS, /@media print/));
 check('tipografia fluida (clamp)', () => assert.match(CSS + TOK, /clamp\(/));

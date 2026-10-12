@@ -141,19 +141,7 @@
 .itc .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .itc .itc-footer p { color: var(--itc-gelo); margin-bottom: .4rem; }
 .itc .itc-bottom-nav, .itc .itc-sticky-register { display: none; }
-.itc .itc-kiosk { min-height: 100dvh; display: grid; place-items: center; text-align: center; padding: 5vw; position: relative; overflow: hidden; background: var(--itc-grade), var(--itc-fundo); }
-.itc .itc-kiosk-content { width: min(1400px, 100%); }
-.itc .itc-kiosk h1 { font: 900 clamp(3rem, 9vw, 9rem)/.95 var(--itc-fonte-titulo); text-shadow: var(--itc-brilho); }
-.itc .itc-kiosk-title { font: 900 clamp(3rem, 9vw, 9rem)/.95 var(--itc-fonte-titulo); text-shadow: var(--itc-brilho); }
-.itc .itc-kiosk h2 { font-size: clamp(2rem, 5vw, 5rem); }
-.itc .itc-kiosk-count { font: 700 clamp(2.4rem, 8vw, 8rem) var(--itc-fonte-rotulo); color: var(--itc-neon); }
-.itc .itc-kiosk-row { display: flex; justify-content: center; gap: clamp(1rem, 5vw, 5rem); flex-wrap: wrap; color: var(--itc-gelo); }
-.itc .itc-kiosk-row strong { color: var(--itc-branco); display: block; font-size: clamp(1.5rem, 3vw, 3rem); }
-.itc .itc-kiosk-speakers { display: flex; justify-content: center; flex-wrap: wrap; gap: 1rem; margin: 2rem; }
-.itc .itc-kiosk-speakers span { border: 1px solid var(--itc-azul); background: var(--itc-marinho); border-radius: 99px; padding: .65rem 1rem; }
 .itc .itc-qr { width: 150px; height: 150px; margin: 1.5rem auto; padding: 8px; background: var(--itc-branco); }
-.itc .itc-exit-kiosk { position: fixed; z-index: 40; right: 1rem; bottom: 1rem; opacity: .24; }
-.itc .itc-exit-kiosk:focus, .itc .itc-exit-kiosk:hover { opacity: 1; }
 .itc .itc-back-top { position: fixed; right: 1rem; bottom: 1rem; z-index: 15; }
 .itc[data-layout="celular"] .itc-shell { width: min(100% - 32px, 620px); }
 .itc[data-layout="celular"] .itc-hero { min-height: auto; padding: 6rem 0 2rem; }
@@ -232,9 +220,6 @@
 .itc[data-layout="tablet"] .itc-title { font-size: clamp(2.15rem, 4.5vw, 3.8rem); }
 .itc[data-layout="tablet"] .itc-speakers { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .itc[data-layout="desktop"] .itc-card:hover { transition: transform .08s linear; }
-.itc[data-layout="telao"] { overflow: hidden; height: 100dvh; }
-.itc[data-layout="telao"] .itc-topline, .itc[data-layout="telao"] .itc-nav, .itc[data-layout="telao"] .itc-icarolink, .itc[data-layout="telao"] .itc-main-site, .itc[data-layout="telao"] .itc-bottom-nav { display: none; }
-.itc[data-layout="telao"] .itc-kiosk { display: grid; }
 .itc[data-layout="desktop"] .itc-hero { min-height: 100svh; }
 .itc[data-layout="desktop"] .itc-days { display: none; }
 .itc[data-layout="desktop"] .itc-agenda-board { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; }
@@ -244,7 +229,6 @@
 .itc[data-layout="desktop"] .itc-session { grid-template-columns: 1fr; margin-left: 0; }
 .itc[data-layout="desktop"] .itc-speakers { perspective: 1000px; }
 .itc[data-layout="desktop"] .itc-promo { position: sticky; top: 2rem; }
-.itc[data-layout="desktop"] .itc-kiosk { display: none; }
 @container (max-width: 680px) {
   .itc-pillar-grid { grid-template-columns: 1fr; }
   .itc-session { grid-template-columns: 1fr; }
@@ -260,7 +244,7 @@
 }
 @media print {
   .itc { background: var(--itc-branco); color: var(--itc-abismo); overflow: visible; }
-  .itc::before, .itc::after, .itc-nav, .itc-topline, .itc-bottom-nav, .itc-sticky-register, .itc-hero-actions, .itc-session-actions, .itc-back-top, .itc-exit-kiosk { display: none !important; }
+  .itc::before, .itc::after, .itc-nav, .itc-topline, .itc-bottom-nav, .itc-sticky-register, .itc-hero-actions, .itc-session-actions, .itc-back-top { display: none !important; }
   .itc .itc-section { padding: 1rem 0; break-inside: avoid; }
   .itc .itc-card { background: var(--itc-branco); border: 1px solid var(--itc-cromo-3); box-shadow: none; color: var(--itc-abismo); }
   .itc .itc-section-head p, .itc .itc-session p, .itc .itc-footer p { color: var(--itc-abismo); }

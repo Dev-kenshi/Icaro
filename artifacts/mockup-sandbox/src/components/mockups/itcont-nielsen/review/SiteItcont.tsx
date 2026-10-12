@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ITCONT } from './dados';
-import { layoutPara, modoTelao } from './logica';
+import { layoutPara } from './logica';
 import './tokens.css';
 import './site.css';
 import Navegacao from './secoes/Navegacao';
@@ -13,18 +13,15 @@ import Local from './secoes/Local';
 import Inscricao from './secoes/Inscricao';
 import Faq from './secoes/Faq';
 import Rodape from './secoes/Rodape';
-import ModoTelao from './secoes/ModoTelao';
 
 export default function SiteItcont() {
-  const [layout, setLayout] = useState(() => layoutPara(window.innerWidth, window.innerHeight, window.location.search));
-  const [telaoAtivo, setTelaoAtivo] = useState(() => modoTelao(window.location.search, window.innerWidth));
+  const [layout, setLayout] = useState(() => layoutPara(window.innerWidth, window.innerHeight));
   useEffect(() => {
     let timer = 0;
     const update = () => {
       window.clearTimeout(timer);
       timer = window.setTimeout(() => {
-        setLayout(layoutPara(window.innerWidth, window.innerHeight, window.location.search));
-        setTelaoAtivo(modoTelao(window.location.search, window.innerWidth));
+        setLayout(layoutPara(window.innerWidth, window.innerHeight));
       }, 120);
     };
     window.addEventListener('resize', update);
@@ -75,10 +72,6 @@ export default function SiteItcont() {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.matches('input, textarea, select, [contenteditable="true"]')) return;
-      if (event.key.toLowerCase() === 't') {
-        window.location.search = telaoAtivo ? '' : '?modo=telao';
-        return;
-      }
       keySequence.push(event.key.toLowerCase());
       window.clearTimeout(resetTimer);
       if (keySequence.slice(-2).join('') === 'gp') document.getElementById('programacao')?.scrollIntoView({ behavior: 'smooth' });
@@ -91,7 +84,7 @@ export default function SiteItcont() {
       window.removeEventListener('keydown', onKey);
       window.clearTimeout(resetTimer);
     };
-  }, [telaoAtivo]);
+  }, []);
 
   useEffect(() => {
     let raf = 0;
@@ -139,7 +132,6 @@ export default function SiteItcont() {
 
   return (
     <div className="itc" data-layout={layout} data-testid="page-itcont">
-      <ModoTelao ativo={telaoAtivo} onSair={() => { window.history.replaceState({}, '', window.location.pathname); setTelaoAtivo(false); setLayout('desktop'); }} />
       <div className="itc-main-site">
         <Navegacao />
         <main id="conteudo">

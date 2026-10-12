@@ -138,16 +138,10 @@ export function whatsappUrl(urlDoSite: string): string {
   return `https://wa.me/?text=${encodeURIComponent(texto)}`;
 }
 
-/** Modo telão (projetor do auditório): ?modo=telao ou tela ≥ 1920px de largura. */
-export function modoTelao(busca: string, larguraTela: number): boolean {
-  return new URLSearchParams(busca).get('modo') === 'telao' || larguraTela >= 1920;
-}
+export type Layout = 'celular' | 'celular-deitado' | 'tablet' | 'desktop';
 
-export type Layout = 'celular' | 'celular-deitado' | 'tablet' | 'desktop' | 'telao';
-
-/** Os 5 modos de layout do site (responsividade por intenção, não só por largura). */
-export function layoutPara(largura: number, altura: number, busca = ''): Layout {
-  if (modoTelao(busca, largura)) return 'telao';
+/** Os 4 modos responsivos do site, sem tela de telão. */
+export function layoutPara(largura: number, altura: number): Layout {
   if (altura < 500 && largura > altura && largura < 1024) return 'celular-deitado';
   if (largura < 600) return 'celular';
   if (largura < 1024) return 'tablet';
