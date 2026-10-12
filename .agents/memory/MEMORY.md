@@ -4,6 +4,7 @@
 - [Voice output activation](voice-output-activation.md) — mic permission and audible output are separate; unlock Web Audio from a user gesture and report playback failures.
 - [Voice activation policy](voice-activation-policy.md) — each wake authorizes one question; ambient speech and delayed self-transcription must never trigger replies.
 - [Vendor speech lifetime](vendor-speech-lifetime.md) — isolate reply queues and drive portrait mouth motion from the shared viseme timeline.
+- [Spotify inline playback](spotify-inline-playback.md) — use Spotify's official embed controls; browsers may block playback initiated asynchronously, so keep a direct in-page play action.
 - [Avatar atlas reframing](avatar-atlas-reframing.md) — padding must translate positions, not rescale tile dimensions; preserve original face pixels for sprite registration.
 - [Groq model availability](groq-model-availability.md) — verify a real authenticated request; documentation and a configured key do not prove a model is usable.
 - [Local knowledge matching](knowledge-bank-matching.md) — rank subject specificity above question phrasing so generic local triggers do not swallow questions for the remote provider.
