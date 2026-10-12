@@ -7,4 +7,4 @@ For the current public ITCONT visual direction, use dark charcoal/blue surfaces 
 
 **Why:** The owner explicitly replaced the earlier white/silver direction with a Steam-inspired storefront presentation for the public event site.
 
-**How to apply:** Keep the official logo, data, and registration route intact. Apply the dark storefront direction only to the public ITCONT experience; preserve contrast, accessibility, and the Earth backdrop. The telão needs a transparent background layer so its fixed globe remains visible.
+**How to apply:** Keep the official identity, event facts, registration route, contrast, accessibility, and Earth backdrop intact. Limit ITCONT visual refreshes to the public event experience; do not alter Ícaro's authenticated screens as part of this work.
