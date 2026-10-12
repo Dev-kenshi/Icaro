@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ITCONT } from './dados';
 import { layoutPara, modoTelao } from './logica';
+import TerraFundo from './secoes/TerraFundo';
 import './tokens.css';
 import './site.css';
 import Navegacao from './secoes/Navegacao';
@@ -139,6 +140,7 @@ export default function SiteItcont() {
 
   return (
     <div className="itc" data-layout={layout} data-testid="page-itcont">
+      {!telaoAtivo && <TerraFundo />}
       <ModoTelao ativo={telaoAtivo} onSair={() => { window.history.replaceState({}, '', window.location.pathname); setTelaoAtivo(false); setLayout('desktop'); }} />
       <div className="itc-main-site">
         <Navegacao />

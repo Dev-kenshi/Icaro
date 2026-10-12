@@ -381,8 +381,94 @@
 @media print {
   .itc { background: var(--itc-branco); color: var(--itc-abismo); overflow: visible; }
   .itc::before, .itc::after, .itc-nav, .itc-topline, .itc-bottom-nav, .itc-sticky-register, .itc-hero-actions, .itc-session-actions, .itc-back-top, .itc-exit-kiosk { display: none !important; }
+  .itc-earth-backdrop { display: none !important; }
   .itc .itc-section { padding: 1rem 0; break-inside: avoid; }
   .itc .itc-card { background: var(--itc-branco); border: 1px solid var(--itc-cromo-3); box-shadow: none; color: var(--itc-abismo); }
   .itc .itc-section-head p, .itc .itc-session p, .itc .itc-footer p { color: var(--itc-abismo); }
   .itc .itc-title span { color: var(--itc-abismo); background: none; -webkit-text-fill-color: var(--itc-abismo); text-shadow: none; }
+}
+
+/* A quiet orbital landmark: NASA's equirectangular day map turns inside a shaded sphere. */
+.itc .itc-main-site { position: relative; z-index: 1; }
+.itc .itc-earth-backdrop {
+  position: fixed;
+  z-index: 0;
+  top: clamp(5rem, 12vh, 9rem);
+  right: clamp(-11rem, 1vw, 1rem);
+  width: clamp(300px, 46vw, 650px);
+  aspect-ratio: 1;
+  pointer-events: none;
+  opacity: .32;
+  contain: layout paint;
+}
+.itc .itc-earth-orbit {
+  position: absolute;
+  inset: 4%;
+  border: 1px solid rgb(44 92 151 / .16);
+  border-radius: 50%;
+  transform: rotate(-18deg) scaleY(.88);
+}
+.itc .itc-earth-globe {
+  position: absolute;
+  inset: 8%;
+  overflow: hidden;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 36% 32%, var(--itc-cromo-1) 0, var(--itc-gelo) 42%, var(--itc-azul) 75%, var(--itc-marinho) 100%);
+  box-shadow:
+    inset -24px -8px 42px rgb(16 39 71 / .72),
+    inset 7px 4px 22px rgb(255 255 255 / .52),
+    0 0 0 1px rgb(48 104 159 / .22);
+}
+.itc .itc-earth-map,
+.itc .itc-earth-map-image,
+.itc .itc-earth-fallback-map,
+.itc .itc-earth-shade,
+.itc .itc-earth-atmosphere { position: absolute; inset: 0; width: 100%; height: 100%; }
+.itc .itc-earth-map { overflow: hidden; border-radius: 50%; }
+.itc .itc-earth-map-image {
+  display: block;
+  inset: 0 auto 0 0;
+  width: 200%;
+  height: 100%;
+  object-fit: fill;
+  animation: itc-earth-turn 84s linear infinite;
+  filter: saturate(.74) contrast(.94);
+}
+.itc .itc-earth-fallback-map {
+  width: 200%;
+  fill: var(--itc-planeta-terra);
+  animation: itc-earth-turn 84s linear infinite;
+}
+.itc .itc-earth-shade {
+  background:
+    radial-gradient(ellipse at 30% 28%, rgb(255 255 255 / .4), transparent 39%),
+    linear-gradient(90deg, transparent 45%, rgb(13 38 70 / .22) 72%, rgb(10 28 53 / .58));
+  border-radius: 50%;
+}
+.itc .itc-earth-atmosphere {
+  border: 1px solid rgb(114 174 215 / .34);
+  border-radius: 50%;
+  box-shadow: inset 0 0 22px rgb(255 255 255 / .13), 0 0 20px rgb(92 155 202 / .10);
+}
+.itc .itc-earth-map[data-fallback="true"] {
+  background:
+    radial-gradient(ellipse at 32% 35%, rgb(255 255 255 / .3), transparent 32%),
+    linear-gradient(180deg, var(--itc-neon) 0%, var(--itc-azul) 52%, var(--itc-marinho) 100%);
+}
+@keyframes itc-earth-turn {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@media (max-width: 767px) {
+  .itc .itc-earth-backdrop {
+    top: 4rem;
+    right: -11rem;
+    width: min(94vw, 410px);
+    opacity: .22;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .itc .itc-earth-map-image,
+  .itc .itc-earth-fallback-map { animation: none; }
 }
