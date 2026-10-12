@@ -1,5 +1,5 @@
 /**
- * 102 validações do site do I ITCONT: dados oficiais, regras (contagem, fases, agenda),
+ * 103 validações do site do I ITCONT: dados oficiais, regras (contagem, fases, agenda),
  * identidade visual e leis da beleza, heurísticas de Nielsen na interface e integração.
  * Roda sem internet, sem banco e sem navegador.
  * Uso: pnpm --filter @workspace/scripts run validate:itcont-site
@@ -19,6 +19,7 @@ import {
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const RAIZ = resolve(AQUI, '../../../..');
 const ler = (p: string) => (existsSync(p) ? readFileSync(p, 'utf8') : '');
+const TOTAL_VALIDACOES = 103;
 
 const resultados: Array<{ n: number; grupo: string; nome: string; erro?: string }> = [];
 let grupo = '';
@@ -109,6 +110,11 @@ check('no máximo 3 famílias de fonte', () => assert.equal(TOK.match(/--itc-fon
 check('respeita "reduzir movimento"', () => assert.match(TOK, /prefers-reduced-motion:\s*reduce/));
 check('foco do teclado visível', () => assert.match(TOK, /:focus-visible\s*\{[^}]*outline/));
 check('alvo de toque mínimo de 44px', () => assert.match(TOK, /--itc-toque:\s*44px/));
+check('documento contém exatamente 100 critérios visuais em ordem', () => {
+  const regras = ler(join(AQUI, 'design-rules.md'));
+  const numeros = [...regras.matchAll(/^(\d{2,3})\. /gm)].map((m) => Number(m[1]));
+  assert.deepEqual(numeros, Array.from({ length: 100 }, (_, index) => index + 1));
+});
 
 // ───────────── D. Interface (heurísticas de Nielsen + leis da beleza) ─────────────
 grupo = 'D. Interface';
@@ -192,6 +198,6 @@ for (const r of resultados) {
   if (r.grupo !== atual) { atual = r.grupo; console.log(`\n${atual}`); }
   console.log(`${r.erro ? '✗' : '✓'} ${String(r.n).padStart(3)}. ${r.nome}${r.erro ? ` → ${r.erro}` : ''}`);
 }
-if (resultados.length !== 102) { console.log(`\n✗ o validador deveria ter 102 checagens, tem ${resultados.length}`); process.exit(1); }
-console.log(`\n${102 - falhas.length}/102 validações do site do ITCONT`);
+if (resultados.length !== TOTAL_VALIDACOES) { console.log(`\n✗ o validador deveria ter ${TOTAL_VALIDACOES} checagens, tem ${resultados.length}`); process.exit(1); }
+console.log(`\n${TOTAL_VALIDACOES - falhas.length}/${TOTAL_VALIDACOES} validações do site do ITCONT`);
 process.exit(falhas.length ? 1 : 0);
