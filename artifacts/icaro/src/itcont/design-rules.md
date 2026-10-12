@@ -113,15 +113,15 @@ Direção: vitrine digital inspirada em páginas de jogos para PC — superfíci
 83. Evitar animações de hover em telas sem ponteiro fino.
 84. Manter transições curtas e funcionais, sem atrasar a ação.
 85. Exibir o progresso de leitura sem cobrir conteúdo.
-86. Deixar o controle de sair do modo telão encontrável por teclado.
-87. Usar contraste legível no modo telão a longa distância.
-88. Manter a contagem do telão rotulada em dias, horas e minutos.
-89. Evitar que a rotação automática de painéis interfira no conteúdo essencial.
+86. Apresentar a chamada principal e os convidados oficiais já na introdução.
+87. Manter o QR code da introdução acessível e ligado ao endereço público do evento.
+88. Exibir o resumo oficial junto à chamada, sem substituir dados ou links do evento.
+89. Não alternar painéis automaticamente nem ocultar conteúdo essencial.
 90. Manter versões de impressão sem fundos pesados nem elementos fixos.
 
 ## Responsividade e robustez
 
-91. Testar os cinco modos existentes: celular, celular deitado, tablet, desktop e telão.
+91. Testar os quatro modos existentes: celular, celular deitado, tablet e desktop.
 92. Evitar rolagem horizontal acidental em todas as larguras.
 93. Manter nomes e botões legíveis em telas estreitas.
 94. Não sobrepor a navegação móvel ao botão de inscrição.
