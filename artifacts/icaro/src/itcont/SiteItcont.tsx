@@ -40,7 +40,7 @@ export default function SiteItcont() {
   useEffect(() => {
     const title = document.title;
     const nodes = new Map<string, { node: HTMLMetaElement | null; content: string | null }>();
-    const themeColor = getComputedStyle(document.querySelector('.itc') ?? document.documentElement).getPropertyValue('--itc-abismo').trim();
+    const themeColor = getComputedStyle(document.querySelector('.itc') ?? document.documentElement).getPropertyValue('--itc-fundo').trim();
     const specs: Array<[string, string, string]> = [
       ['name', 'description', ITCONT.descricao],
       ['property', 'og:title', `${ITCONT.sigla} 2026 · ${ITCONT.titulo}`],
@@ -99,7 +99,11 @@ export default function SiteItcont() {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
         const full = document.documentElement.scrollHeight - window.innerHeight;
-        document.documentElement.style.setProperty('--itc-scroll', `${full > 0 ? window.scrollY / full * 100 : 0}%`);
+      const progress = full > 0 ? Math.round(window.scrollY / full * 100) : 0;
+      document.documentElement.style.setProperty('--itc-scroll', `${progress}%`);
+      const indicator = document.querySelector<HTMLElement>('.itc-topline');
+      indicator?.setAttribute('aria-valuenow', String(progress));
+      indicator?.setAttribute('aria-valuetext', `${progress}% da página percorrida`);
       });
     };
     window.addEventListener('scroll', onScroll, { passive: true });

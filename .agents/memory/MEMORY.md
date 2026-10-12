@@ -19,6 +19,7 @@
 - [Auth secret reload](auth-secret-reload.md) — compare in-process and live API login tests; restart the workflow when results disagree before rotating passwords.
 - [GitHub sync through the connector](github-sync.md) — REST-based pushes can leave the local branch with different commit IDs; reconcile local history deliberately.
 - [Ícaro Nielsen review scope](icaro-nielsen-scope.md) — apply usability heuristics to the complete user-facing interface, not the developer API.
+- [ITCONT visual direction](itcont-visual-direction.md) — keep white/silver dominant and blue restrained; preserve the official identity and a futuristic, readable tone.
 - [Ícaro responsive navigation](icaro-responsive-navigation.md) — keep phone drawer/bottom nav, tablet icon rail, and full desktop sidebar; avoid overlays on signed-in content.
 - [ITCONT data scope](itcont-data-scope.md) — keep public event/guest details and image links only; never copy images or import registrants, payroll, accounts, or ops data.
 - [Health check contract boundaries](health-check-contract-boundaries.md) — test each endpoint against its actual source of truth; OpenAPI omissions can be intentional.

@@ -21,12 +21,21 @@
   --itc-branco: #ffffff;
   --itc-alerta: #ffcf5a;      /* "ao vivo agora" */
 
+  /* Interface pública: prata e branco à frente; azul reservado à identidade e às ações. */
+  --itc-fundo-claro: #f3f5f7;
+  --itc-superficie-clara: #ffffff;
+  --itc-superficie-prata: #e8ebef;
+  --itc-borda-clara: #c7cdd4;
+  --itc-tinta: #202a35;
+  --itc-tinta-2: #4d5965;
+  --itc-sombra-clara: 0 18px 48px rgb(35 48 63 / .09);
+
   /* Pares de contraste conferidos pelo validador (texto ≥ 4,5:1, interface ≥ 3:1) */
-  --itc-texto: var(--itc-branco);
-  --itc-texto-2: var(--itc-gelo);
-  --itc-fundo: var(--itc-abismo);
-  --itc-superficie: var(--itc-marinho);
-  --itc-foco: var(--itc-neon);
+  --itc-texto: var(--itc-tinta);
+  --itc-texto-2: var(--itc-tinta-2);
+  --itc-fundo: var(--itc-fundo-claro);
+  --itc-superficie: var(--itc-superficie-clara);
+  --itc-foco: var(--itc-royal);
 
   /* Texturas */
   --itc-cromo: linear-gradient(180deg, var(--itc-cromo-1) 0%, var(--itc-cromo-2) 48%, var(--itc-cromo-3) 52%, var(--itc-cromo-1) 100%);

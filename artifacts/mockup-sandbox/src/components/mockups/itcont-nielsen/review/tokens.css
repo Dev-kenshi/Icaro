@@ -1,0 +1,92 @@
+/*
+ * Identidade visual do I ITCONT, tirada do banner oficial: letras 3D em azul royal
+ * com brilho neon, "CONTÁBIL" em prata escovada e fundo azul-abismo.
+ * Todas as cores do site saem daqui; os componentes não usam hex solto.
+ * Desenvolvedor do projeto: Emanuel Macêdo Luz
+ */
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Michroma&family=DM+Sans:wght@400;500;700&display=swap');
+
+.itc {
+  /* Cores (banner oficial) */
+  --itc-abismo: #00021f;      /* fundo principal */
+  --itc-marinho: #0b1631;     /* superfícies */
+  --itc-royal: #022175;       /* botões, faixa ITCONT */
+  --itc-azul: #1c4389;        /* bordas, trilhas */
+  --itc-eletrico: #2f7bff;    /* brilho neon, destaques */
+  --itc-neon: #7cc0ff;        /* texto de destaque e foco */
+  --itc-gelo: #8fb4dc;        /* texto secundário */
+  --itc-cromo-1: #f4f7fa;     /* prata clara */
+  --itc-cromo-2: #a9b3bd;     /* prata média */
+  --itc-cromo-3: #5d6670;     /* prata escura */
+  --itc-branco: #ffffff;
+  --itc-alerta: #ffcf5a;      /* "ao vivo agora" */
+
+  /* Interface pública: prata e branco à frente; azul reservado à identidade e às ações. */
+  --itc-fundo-claro: #f3f5f7;
+  --itc-superficie-clara: #ffffff;
+  --itc-superficie-prata: #e8ebef;
+  --itc-borda-clara: #c7cdd4;
+  --itc-tinta: #202a35;
+  --itc-tinta-2: #4d5965;
+  --itc-sombra-clara: 0 18px 48px rgb(35 48 63 / .09);
+
+  /* Pares de contraste conferidos pelo validador (texto ≥ 4,5:1, interface ≥ 3:1) */
+  --itc-texto: var(--itc-tinta);
+  --itc-texto-2: var(--itc-tinta-2);
+  --itc-fundo: var(--itc-fundo-claro);
+  --itc-superficie: var(--itc-superficie-clara);
+  --itc-foco: var(--itc-royal);
+
+  /* Texturas */
+  --itc-cromo: linear-gradient(180deg, var(--itc-cromo-1) 0%, var(--itc-cromo-2) 48%, var(--itc-cromo-3) 52%, var(--itc-cromo-1) 100%);
+  --itc-metal-azul: linear-gradient(180deg, #3b7bff 0%, var(--itc-royal) 55%, #01113f 100%);
+  --itc-escovado: repeating-linear-gradient(90deg, rgb(255 255 255 / .035) 0 1px, transparent 1px 3px);
+  --itc-grade: linear-gradient(rgb(47 123 255 / .08) 1px, transparent 1px) 0 0 / 48px 48px,
+               linear-gradient(90deg, rgb(47 123 255 / .08) 1px, transparent 1px) 0 0 / 48px 48px;
+  --itc-brilho: 0 0 12px rgb(47 123 255 / .65), 0 0 36px rgb(47 123 255 / .35);
+  --itc-chanfro: inset 0 1px 0 rgb(255 255 255 / .35), inset 0 -2px 0 rgb(0 0 0 / .45);
+
+  /* Tipografia: 3 famílias no máximo; escala na razão áurea (1,618) */
+  --itc-fonte-titulo: 'Archivo', 'Arial Black', sans-serif; /* usar font-stretch: 125%; weight 900 */
+  --itc-fonte-rotulo: 'Michroma', 'Arial', sans-serif;       /* rótulos espaçados "I T C O N T" */
+  --itc-fonte-texto: 'DM Sans', system-ui, sans-serif;
+  --itc-t-0: 1rem;        /* 16px */
+  --itc-t-1: 1.618rem;    /* 25,9px */
+  --itc-t-2: 2.618rem;    /* 41,9px */
+  --itc-t-3: 4.236rem;    /* 67,8px */
+  --itc-t-hero: clamp(2.618rem, 9vw + 1rem, 11.09rem);
+  --itc-rastreio: .42em;  /* espaçamento do slogan */
+
+  /* Espaço: grade de 8px */
+  --itc-e-1: 8px;
+  --itc-e-2: 16px;
+  --itc-e-3: 24px;
+  --itc-e-4: 32px;
+  --itc-e-6: 48px;
+  --itc-e-8: 64px;
+  --itc-e-12: 96px;
+
+  --itc-raio: 14px;
+  --itc-raio-faixa: 10px;
+  --itc-toque: 44px;      /* alvo mínimo de toque */
+  --itc-ritmo: cubic-bezier(.2, .7, .2, 1);
+
+  color: var(--itc-texto);
+  background: var(--itc-fundo);
+  font-family: var(--itc-fonte-texto);
+}
+
+.itc :focus-visible {
+  outline: 3px solid var(--itc-foco);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itc *, .itc *::before, .itc *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

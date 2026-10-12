@@ -25,7 +25,16 @@ export default function Programacao() {
           <p>Uma programação presencial em duas noites. Cada horário segue o horário de Brasília.</p>
         </header>
         <div className="itc-days" role="tablist" aria-label="Noites da programação">
-          {days.map((day, index) => <button type="button" key={day.data} className="itc-day-tab" role="tab" aria-selected={dayIndex === index} aria-controls={`day-panel-${index}`} onClick={() => setDayIndex(index)} data-testid={`button-agenda-day-${index}`}>
+          {days.map((day, index) => <button type="button" key={day.data} id={`day-tab-${index}`} className="itc-day-tab" role="tab" tabIndex={dayIndex === index ? 0 : -1} aria-selected={dayIndex === index} aria-controls={`day-panel-${index}`} onClick={() => setDayIndex(index)} onKeyDown={(event) => {
+            const next = event.key === 'ArrowRight' ? (index + 1) % days.length
+              : event.key === 'ArrowLeft' ? (index - 1 + days.length) % days.length
+                : event.key === 'Home' ? 0 : event.key === 'End' ? days.length - 1 : -1;
+            if (next >= 0) {
+              event.preventDefault();
+              setDayIndex(next);
+              document.getElementById(`day-tab-${next}`)?.focus();
+            }
+          }} data-testid={`button-agenda-day-${index}`}>
             {day.rotulo.split(' · ')[0]}
           </button>)}
         </div>

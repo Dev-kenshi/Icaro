@@ -29,20 +29,20 @@ export default function Navegacao() {
   return (
     <>
       <a className="itc-skip" href="#conteudo" data-testid="link-skip-content">Pular para o conteúdo</a>
-      <div className="itc-topline" aria-hidden="true" />
+      <div className="itc-topline" role="progressbar" aria-label="Progresso de leitura" aria-valuemin={0} aria-valuemax={100} aria-valuenow={0} aria-valuetext="0% da página percorrida" />
       <a className="itc-icarolink" href="/icaro" data-testid="link-access-icaro">
         <Bot size={17} aria-hidden="true" /><span>Acessar Ícaro</span>
       </a>
       <nav className="itc-nav" aria-label="Seções do site">
         {links.map(({ id, label, Icon }) => (
-          <a key={id} href={`#${id}`} aria-label={label} aria-current={active === id ? 'true' : undefined} data-testid={`nav-${id}`}>
+            <a key={id} href={`#${id}`} aria-label={label} aria-current={active === id ? 'location' : undefined} data-testid={`nav-${id}`}>
             <Icon size={17} aria-hidden="true" /><span>{label}</span>
           </a>
         ))}
       </nav>
       <nav className="itc-bottom-nav" aria-label="Navegação principal">
         {links.filter(({ id }) => id !== 'faq').map(({ id, label, Icon }) => (
-          <a key={id} href={`#${id}`} aria-current={active === id ? 'true' : undefined} data-testid={`mobile-nav-${id}`}>
+          <a key={id} href={`#${id}`} aria-current={active === id ? 'location' : undefined} data-testid={`mobile-nav-${id}`}>
             <Icon size={18} aria-hidden="true" /><span>{label}</span>
           </a>
         ))}
