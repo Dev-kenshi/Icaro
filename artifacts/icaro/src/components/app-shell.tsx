@@ -51,7 +51,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="icaro-app-shell min-h-[100dvh] bg-background text-foreground">
       <aside className={`fixed inset-y-0 left-0 z-40 flex w-[256px] flex-col bg-sidebar text-sidebar-foreground transition-transform duration-300 md:w-[84px] md:items-center md:translate-x-0 xl:w-[256px] xl:items-stretch ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex items-center justify-between px-6 py-6 md:w-full md:justify-center md:px-2 xl:justify-between xl:px-6">
-          <Link href="/" className="flex items-center gap-3" data-testid="link-brand">
+          <Link href="/icaro" className="flex items-center gap-3" data-testid="link-brand">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-sidebar-primary text-sm font-bold text-sidebar-primary-foreground">í</span>
             <span className="font-display text-2xl tracking-tight md:hidden xl:inline">Ícaro</span>
           </Link>

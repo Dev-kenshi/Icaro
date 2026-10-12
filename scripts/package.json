@@ -26,7 +26,8 @@
     "validate:health-100": "tsx ./src/validate-health-100.ts",
     "repair:health": "tsx ./src/repair-health.ts",
     "sync:check": "tsx ./src/sync-doctor.ts",
-    "sync:fix": "tsx ./src/sync-doctor.ts --fix"
+    "sync:fix": "tsx ./src/sync-doctor.ts --fix",
+    "validate:itcont-site": "tsx ../artifacts/icaro/src/itcont/validate-itcont-site.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",

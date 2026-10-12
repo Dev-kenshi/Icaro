@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { AppShell } from '@/components/app-shell';
@@ -21,13 +21,20 @@ import { LoginGate, useAuthUser } from '@/components/login/login-gate';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 
 const queryClient = new QueryClient();
+const SiteItcont = lazy(() => import('./itcont/SiteItcont'));
+
+function ehRotaItcont() {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+  const path = window.location.pathname.replace(base, '').replace(/\/$/, '') || '/';
+  return path === '/' || path === '/itcont';
+}
 
 function Router() {
   const [location] = useLocation();
   return (
     <ErrorBoundary resetKey={location}>
       <Switch>
-        <Route path="/" component={Stage} />
+        <Route path="/icaro" component={Stage} />
         <Route>
           <Shelled />
         </Route>
@@ -67,6 +74,14 @@ function WithLang() {
 }
 
 function App(): ReactNode {
+  if (ehRotaItcont()) {
+    return (
+      <Suspense fallback={<div className="itc" style={{ minHeight: '100dvh' }} />}>
+        <SiteItcont />
+      </Suspense>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <DatasetProvider>
