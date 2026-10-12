@@ -203,6 +203,19 @@ export interface AiProviderStatus {
   providers: AiProviderHealth[];
 }
 
+/**
+ * Provedores clássicos de chat exibidos individualmente no painel de conexão.
+ */
+export type AiProviderId = typeof AiProviderId[keyof typeof AiProviderId];
+
+
+export const AiProviderId = {
+  gemini: 'gemini',
+  openai: 'openai',
+  groq: 'groq',
+  claude: 'claude',
+} as const;
+
 export interface LayerCount {
   count: number;
   percent: number;
@@ -348,6 +361,7 @@ export interface AiChatInput {
   /** @maxItems 12 */
   history: AiChatHistoryMessage[];
   knowledgeMode?: AiChatInputKnowledgeMode;
+  webSearch?: boolean;
   dataset: DatasetContext | null;
 }
 
@@ -383,11 +397,17 @@ export const AiChatResponseLayer = {
   L6: 'L6',
 } as const;
 
+export interface AiGroundingSource {
+  title: string;
+  url: string;
+}
+
 export interface AiChatResponse {
   answer: string;
   provider: AiChatResponseProvider;
   model: string;
   layer?: AiChatResponseLayer;
+  sources?: AiGroundingSource[];
 }
 
 export interface CosmosIssCurrent {

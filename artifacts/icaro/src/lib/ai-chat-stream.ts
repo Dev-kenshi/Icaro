@@ -7,6 +7,7 @@ export type AiChatStreamResult = {
   model: string;
   layer?: string;
   emotionMarks: SpeechEmotionMark[];
+  sources?: { title: string; url: string }[];
 };
 
 const EMOTIONS = new Set(['entusiasmo', 'sério', 'curioso', 'alerta', 'sorriso']);
@@ -29,7 +30,7 @@ export async function requestAiChatStream(
   }
   if (!response.body) throw new Error('O fluxo de resposta do Ícaro está vazio.');
 
-  const result: AiChatStreamResult = { answer: '', provider: '', model: '', emotionMarks: [] };
+  const result: AiChatStreamResult = { answer: '', provider: '', model: '', emotionMarks: [], sources: [] };
   const decoder = new TextDecoder();
   const reader = response.body.getReader();
   let pending = '';
@@ -59,6 +60,20 @@ export async function requestAiChatStream(
       onToken?.(payload.text);
     } else if (event === 'emocao' && typeof payload.emotion === 'string' && EMOTIONS.has(payload.emotion)) {
       result.emotionMarks.push({ offset: result.answer.length, emotion: payload.emotion as SpeechEmotionMark['emotion'] });
+    } else if (event === 'sources' && Array.isArray(payload)) {
+      result.sources = payload.flatMap((source) => {
+        if (!source || typeof source !== 'object') return [];
+        const item = source as { title?: unknown; url?: unknown };
+        if (typeof item.title !== 'string' || typeof item.url !== 'string') return [];
+        try {
+          const url = new URL(item.url);
+          return url.protocol === 'https:' || url.protocol === 'http:'
+            ? [{ title: item.title, url: url.href }]
+            : [];
+        } catch {
+          return [];
+        }
+      });
     } else if (event === 'done') {
       doneSeen = true;
       if (typeof payload.provider === 'string') result.provider = payload.provider;

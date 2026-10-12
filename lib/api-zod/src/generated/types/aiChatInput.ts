@@ -24,5 +24,6 @@ export interface AiChatInput {
   /** @maxItems 12 */
   history: AiChatHistoryMessage[];
   knowledgeMode?: AiChatInputKnowledgeMode;
+  webSearch?: boolean;
   dataset: DatasetContext | null;
 }

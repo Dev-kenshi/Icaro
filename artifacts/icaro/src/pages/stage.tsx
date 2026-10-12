@@ -40,7 +40,8 @@ const classicProviderRank = (id: string) => {
   const index = (CLASSIC_PROVIDER_ORDER as readonly string[]).indexOf(id);
   return index === -1 ? CLASSIC_PROVIDER_ORDER.length : index;
 };
-type Entry = { role: 'user' | 'assistant'; content: string; link?: string };
+type GroundingSource = { title: string; url: string };
+type Entry = { role: 'user' | 'assistant'; content: string; link?: string; sources?: GroundingSource[] };
 type Note = { text: string; at: number };
 type VisualQuality = 'auto' | 'high' | 'medium' | 'low';
 
@@ -70,6 +71,10 @@ const PROVIDER_NAMES: Record<Provider, string> = {
 };
 const media = (f: string) => `${import.meta.env.BASE_URL}media/${f}`;
 const NOTES_KEY = 'icaro.notes';
+const GOOGLE_SEARCH_KEY = 'icaro.stage.google-search';
+const readGoogleSearchEnabled = () => {
+  try { return localStorage.getItem(GOOGLE_SEARCH_KEY) === 'true'; } catch { return false; }
+};
 const VOICE_SELECTION_KEY = 'icaro.voice-test.selection';
 // The first Feira/Bahia voice-design batch used overt regional clichés. Keep
 // those voices in the user's ElevenLabs account, but do not offer them in Ícaro.
@@ -206,6 +211,7 @@ export default function Stage() {
   const [text, setText] = useState('');
   const [log, setLog] = useState<Entry[]>([]);
   const [provider, setProvider] = useState<Provider>('groq');
+  const [googleSearchEnabled, setGoogleSearchEnabled] = useState(readGoogleSearchEnabled);
   const bargeCandidateRef = useRef<{ text: string; at: number } | null>(null);
   const bargeHandledRef = useRef(false);
   const pitch = .95, rate = .92, voiceURI = null;
@@ -295,6 +301,9 @@ export default function Stage() {
   useEffect(() => {
     try { localStorage.setItem(MOTION_KEY, motion); } catch { /* storage can be disabled */ }
   }, [motion]);
+  useEffect(() => {
+    try { localStorage.setItem(GOOGLE_SEARCH_KEY, String(googleSearchEnabled)); } catch { /* storage can be disabled */ }
+  }, [googleSearchEnabled]);
   useEffect(() => {
     const goOnline = () => setOnline(true);
     const goOffline = () => setOnline(false);
@@ -399,12 +408,12 @@ export default function Stage() {
     ensureAudio();
   }, []);
 
-  const say = useCallback((t: string, link?: string, emotionMarks?: readonly SpeechEmotionMark[]) => {
+  const say = useCallback((t: string, link?: string, emotionMarks?: readonly SpeechEmotionMark[], sources?: GroundingSource[]) => {
     const turn = turnRef.current;
     lastAnswerRef.current = t;
     setSpeechError('');
     window.clearTimeout(captionTimerRef.current);
-    setLog((l) => [...l, { role: 'assistant', content: t, link }]);
+    setLog((l) => [...l, { role: 'assistant', content: t, link, sources }]);
     setCaptionWords(null);
     setCaption(t);
     if (!voiceOnRef.current) { activeRef.current = false; setState('idle'); commandCompleteRef.current(); return; }
@@ -615,6 +624,7 @@ export default function Stage() {
             history,
             dataset: null,
             knowledgeMode: 'auto',
+            webSearch: googleSearchEnabled,
           }, controller.signal, (chunk) => {
             streamedText += chunk;
             if (turnRef.current === turn) setCaption(streamedText);
@@ -628,7 +638,7 @@ export default function Stage() {
                 : `IA · ${PROVIDER_NAMES[providerId as Provider] ?? providerId.toUpperCase()}`;
             setResponseMeta({ source, durationMs: Math.round(performance.now() - requestStartedAt) });
             setQuotaNotice(false);
-            sayRef.current(res.answer, undefined, res.emotionMarks);
+            sayRef.current(res.answer, undefined, res.emotionMarks, res.sources);
           }).catch((error: unknown) => {
             if (controller.signal.aborted || turnRef.current !== turn) return;
             speechPendingRef.current = false;
@@ -643,7 +653,7 @@ export default function Stage() {
           });
           return;
         }
-        sendRef.current({ data: { provider, persona: 'icaro', question: q, history, dataset: null } }, {
+        sendRef.current({ data: { provider, persona: 'icaro', question: q, history, dataset: null, webSearch: googleSearchEnabled } }, {
           onSuccess: (res: AiChatResponse) => {
             if (turnRef.current !== turn) return;
             const providerId = String(res.provider);
@@ -654,7 +664,7 @@ export default function Stage() {
                 : `IA · ${PROVIDER_NAMES[providerId as Provider] ?? providerId.toUpperCase()}`;
             setResponseMeta({ source, durationMs: Math.round(performance.now() - requestStartedAt) });
             setQuotaNotice(false);
-            sayRef.current(res.answer);
+            sayRef.current(res.answer, undefined, undefined, res.sources);
           },
           onError: (e) => {
             if (turnRef.current !== turn) return;
@@ -668,7 +678,7 @@ export default function Stage() {
         });
       }
     }
-  }, [locatePlace, ondeEstamos, prime, playIntro, provider, scene, sceneMode]);
+  }, [googleSearchEnabled, locatePlace, ondeEstamos, prime, playIntro, provider, scene, sceneMode]);
   const handleRef = useRef(handle); handleRef.current = handle;
 
   const listener = useWakeListener({

@@ -237,6 +237,7 @@ export const sendAiMessageBodyHistoryItemContentMax = 4000;
 export const sendAiMessageBodyHistoryMax = 12;
 
 export const sendAiMessageBodyKnowledgeModeDefault = `auto`;
+export const sendAiMessageBodyWebSearchDefault = false;
 export const sendAiMessageBodyDatasetOneNameMax = 160;
 
 export const sendAiMessageBodyDatasetOneColumnsItemMax = 160;
@@ -259,6 +260,7 @@ export const SendAiMessageBody = zod.object({
   "content": zod.string().max(sendAiMessageBodyHistoryItemContentMax)
 })).max(sendAiMessageBodyHistoryMax),
   "knowledgeMode": zod.enum(['auto', 'base']).default(sendAiMessageBodyKnowledgeModeDefault),
+  "webSearch": zod.boolean().default(sendAiMessageBodyWebSearchDefault),
   "dataset": zod.union([zod.object({
   "name": zod.string().max(sendAiMessageBodyDatasetOneNameMax),
   "columns": zod.array(zod.string().max(sendAiMessageBodyDatasetOneColumnsItemMax)).max(sendAiMessageBodyDatasetOneColumnsMax),
@@ -271,7 +273,11 @@ export const SendAiMessageResponse = zod.object({
   "answer": zod.string(),
   "provider": zod.enum(['auto', 'gemini', 'openai', 'groq', 'claude', 'cerebras', 'openrouter', 'mistral', 'github', 'nvidia', 'cloudflare', 'huggingface', 'cohere', 'local']),
   "model": zod.string(),
-  "layer": zod.enum(['L1', 'L2', 'L3', 'L4', 'L5', 'L6']).optional()
+  "layer": zod.enum(['L1', 'L2', 'L3', 'L4', 'L5', 'L6']).optional(),
+  "sources": zod.array(zod.object({
+  "title": zod.string(),
+  "url": zod.string().url()
+})).optional()
 })
 
 
@@ -287,6 +293,7 @@ export const streamAiMessageBodyHistoryItemContentMax = 4000;
 export const streamAiMessageBodyHistoryMax = 12;
 
 export const streamAiMessageBodyKnowledgeModeDefault = `auto`;
+export const streamAiMessageBodyWebSearchDefault = false;
 export const streamAiMessageBodyDatasetOneNameMax = 160;
 
 export const streamAiMessageBodyDatasetOneColumnsItemMax = 160;
@@ -309,6 +316,7 @@ export const StreamAiMessageBody = zod.object({
   "content": zod.string().max(streamAiMessageBodyHistoryItemContentMax)
 })).max(streamAiMessageBodyHistoryMax),
   "knowledgeMode": zod.enum(['auto', 'base']).default(streamAiMessageBodyKnowledgeModeDefault),
+  "webSearch": zod.boolean().default(streamAiMessageBodyWebSearchDefault),
   "dataset": zod.union([zod.object({
   "name": zod.string().max(streamAiMessageBodyDatasetOneNameMax),
   "columns": zod.array(zod.string().max(streamAiMessageBodyDatasetOneColumnsItemMax)).max(streamAiMessageBodyDatasetOneColumnsMax),

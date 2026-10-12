@@ -7,10 +7,12 @@
  */
 import type { AiChatResponseLayer } from './aiChatResponseLayer';
 import type { AiChatResponseProvider } from './aiChatResponseProvider';
+import type { AiGroundingSource } from './aiGroundingSource';
 
 export interface AiChatResponse {
   answer: string;
   provider: AiChatResponseProvider;
   model: string;
   layer?: AiChatResponseLayer;
+  sources?: AiGroundingSource[];
 }

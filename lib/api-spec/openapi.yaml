@@ -732,6 +732,9 @@ components:
           type: string
           enum: [auto, base]
           default: auto
+        webSearch:
+          type: boolean
+          default: false
         dataset:
           oneOf:
             - $ref: "#/components/schemas/DatasetContext"
@@ -754,10 +757,26 @@ components:
         layer:
           type: string
           enum: [L1, L2, L3, L4, L5, L6]
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiGroundingSource"
       required:
         - answer
         - provider
         - model
+    AiGroundingSource:
+      type: object
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+        url:
+          type: string
+          format: uri
+      required:
+        - title
+        - url
     CosmosIssCurrent:
       type: object
       additionalProperties: false

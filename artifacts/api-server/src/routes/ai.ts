@@ -142,6 +142,70 @@ function getGeminiKey() {
   return process.env.gemine || process.env.GEMINI_API_KEY || "";
 }
 
+type GoogleGroundingSource = { title: string; url: string };
+
+function getGoogleGroundingSources(value: unknown): GoogleGroundingSource[] {
+  if (!value || typeof value !== "object") return [];
+  const candidates = (value as {
+    candidates?: Array<{ groundingMetadata?: { groundingChunks?: Array<{ web?: { uri?: string; title?: string } }> } }>;
+  }).candidates;
+  const seen = new Set<string>();
+  return (candidates?.[0]?.groundingMetadata?.groundingChunks ?? [])
+    .flatMap((chunk) => {
+      const uri = chunk.web?.uri?.trim();
+      if (!uri || seen.has(uri)) return [];
+      try {
+        const parsed = new URL(uri);
+        if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return [];
+      } catch {
+        return [];
+      }
+      seen.add(uri);
+      return [{ title: (chunk.web?.title?.trim() || new URL(uri).hostname).slice(0, 160), url: uri }];
+    })
+    .slice(0, 8);
+}
+
+async function requestGeminiGoogleSearch(input: {
+  apiKey: string;
+  systemPrompt: string;
+  history: Array<{ role: "user" | "assistant"; content: string }>;
+  userMessage: string;
+  maxOutputTokens: number;
+}) {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": input.apiKey },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: input.systemPrompt }] },
+        contents: [
+          ...input.history.map((message) => ({
+            role: message.role === "assistant" ? "model" : "user",
+            parts: [{ text: message.content }],
+          })),
+          { role: "user", parts: [{ text: input.userMessage }] },
+        ],
+        tools: [{ google_search: {} }],
+        generationConfig: { maxOutputTokens: input.maxOutputTokens },
+      }),
+      signal: AbortSignal.timeout(60_000),
+    },
+  );
+  if (!response.ok) {
+    const error = new Error(`Gemini Google Search returned HTTP ${response.status}`);
+    Object.assign(error, { statusCode: response.status });
+    throw error;
+  }
+  const data = await response.json() as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+  };
+  const answer = data.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("").trim();
+  if (!answer) throw new Error("Gemini Google Search returned no text");
+  return { answer, sources: getGoogleGroundingSources(data) };
+}
+
 function getOpenAiKey() {
   return process.env.OPENAI_API_KEY || process.env.gpt || "";
 }
@@ -433,6 +497,45 @@ router.post("/ai/chat", async (req, res) => {
 
   if (!userMessage) {
     res.status(400).json({ error: "Escreva uma pergunta antes de enviar." });
+    return;
+  }
+
+  if (input.webSearch) {
+    const apiKey = getGeminiKey();
+    if (!apiKey) {
+      res.status(503).json({ error: "A Pesquisa Google do Gemini não está configurada no ambiente seguro." });
+      return;
+    }
+    try {
+      const grounded = await requestGeminiGoogleSearch({
+        apiKey,
+        systemPrompt: `${systemPrompt}\n\nUse a Pesquisa Google para fatos atuais quando ela ajudar. Responda em português do Brasil, não invente informações recentes e diferencie fatos confirmados de incertezas.`,
+        history: safeHistory,
+        userMessage: safeUserMessage,
+        maxOutputTokens: responseTokenLimit,
+      });
+      const answer = normalizeAnswerText(presenterize(grounded.answer));
+      await cerebro.recordAnswer({
+        question: userMessage,
+        answer,
+        layer: "L6",
+        provider: "gemini",
+        tokensSpent: Math.max(1, Math.ceil((safeUserMessage.length + answer.length) / 4)),
+      });
+      res.json(SendAiMessageResponse.parse({
+        answer,
+        provider: "gemini",
+        model: GEMINI_MODEL,
+        layer: "L6",
+        sources: grounded.sources,
+      }));
+    } catch (error) {
+      const statusCode = error && typeof error === "object" && "statusCode" in error
+        ? Number((error as { statusCode: unknown }).statusCode)
+        : undefined;
+      req.log.error({ provider: "gemini", statusCode }, "Gemini Google Search request failed");
+      res.status(502).json({ error: "A Pesquisa Google do Gemini não conseguiu responder agora. Tente novamente." });
+    }
     return;
   }
 
@@ -954,7 +1057,7 @@ router.post("/ai/chat/stream", async (req, res) => {
     return;
   }
   const input = parsed.data;
-  if (input.provider !== "auto" && !isAutoProviderId(input.provider)) {
+  if (!input.webSearch && input.provider !== "auto" && !isAutoProviderId(input.provider)) {
     res.status(400).json({ error: "A transmissão incremental não oferece este provedor selecionado." });
     return;
   }
@@ -995,6 +1098,48 @@ router.post("/ai/chat/stream", async (req, res) => {
   res.setHeader("Cache-Control", "no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
   res.flushHeaders();
+
+  if (input.webSearch) {
+    const apiKey = getGeminiKey();
+    if (!apiKey) {
+      sendEvent("error", { error: "A Pesquisa Google do Gemini não está configurada no ambiente seguro." });
+      res.end();
+      return;
+    }
+    sendEvent("provider", { provider: "gemini", model: GEMINI_MODEL });
+    try {
+      const grounded = await requestGeminiGoogleSearch({
+        apiKey,
+        systemPrompt: `${systemPrompt}\n\nUse a Pesquisa Google para fatos atuais quando ela ajudar. Responda em português do Brasil, não invente informações recentes e diferencie fatos confirmados de incertezas.`,
+        history: safeHistory,
+        userMessage: safeUserMessage,
+        maxOutputTokens: input.persona === "icaro" ? 1024 : 8192,
+      });
+      const answer = normalizeAnswerText(presenterize(grounded.answer));
+      for (let offset = 0; offset < answer.length; offset += 48) {
+        emotionOutput.feed(answer.slice(offset, offset + 48));
+      }
+      emotionOutput.flush();
+      await cerebro.recordAnswer({
+        question: userMessage,
+        answer,
+        layer: "L6",
+        provider: "gemini",
+        tokensSpent: Math.max(1, Math.ceil((safeUserMessage.length + answer.length) / 4)),
+      });
+      sendEvent("sources", grounded.sources);
+      sendEvent("done", { provider: "gemini", model: GEMINI_MODEL, partial: false, layer: "L6" });
+    } catch (error) {
+      const statusCode = error && typeof error === "object" && "statusCode" in error
+        ? Number((error as { statusCode: unknown }).statusCode)
+        : undefined;
+      req.log.error({ provider: "gemini", statusCode }, "Gemini Google Search stream failed");
+      sendEvent("error", { error: "A Pesquisa Google do Gemini não conseguiu responder agora. Tente novamente." });
+    } finally {
+      if (!res.destroyed && !res.writableEnded) res.end();
+    }
+    return;
+  }
 
   const effectiveUserMessage = await rewriteContextualFollowUp(
     safeUserMessage,
