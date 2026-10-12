@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ExternalLink, Music2, Play, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SpotifyInlinePlayer } from '@/components/spotify-inline-player';
 import { useAuthUser } from '@/components/login/login-gate';
 import { useLang } from '@/lib/i18n';
-import { parseSpotifyLink, spotifyEmbedUrl, type SpotifyTrack } from '@/lib/spotify-links';
+import { parseSpotifyLink, type SpotifyTrack } from '@/lib/spotify-links';
 
 const PREFIX = 'icaro-v5-spotify:';
 function loadTracks(key: string): SpotifyTrack[] {
@@ -28,6 +29,7 @@ export default function Music() {
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [active, setActive] = useState<SpotifyTrack | null>(null);
+  const [autoPlayRequest, setAutoPlayRequest] = useState(0);
   const [error, setError] = useState('');
   useEffect(() => {
     if (previousKey.current !== key) {
@@ -39,10 +41,15 @@ export default function Music() {
   }, [key, tracks]);
 
   useEffect(() => {
-    const play = () => setActive((current) => current ?? tracks[0] ?? null);
+    const play = () => {
+      const selected = active ?? tracks[0] ?? null;
+      if (!selected) return;
+      setActive(selected);
+      setAutoPlayRequest((current) => current + 1);
+    };
     window.addEventListener('icaro:music-play', play);
     return () => window.removeEventListener('icaro:music-play', play);
-  }, [tracks]);
+  }, [active, tracks]);
 
   const add = (event: FormEvent) => {
     event.preventDefault();
@@ -50,7 +57,7 @@ export default function Music() {
     if (!parsed || !title.trim()) { setError('Informe um nome e um link válido de faixa, álbum ou playlist do Spotify.'); return; }
     const next = { ...parsed, title: title.trim() };
     setTracks((current) => [next, ...current.filter((item) => item.id !== next.id)]);
-    setActive(next); setTitle(''); setUrl(''); setError('');
+    setActive(next); setAutoPlayRequest((current) => current + 1); setTitle(''); setUrl(''); setError('');
   };
 
   return (
@@ -65,12 +72,12 @@ export default function Music() {
       <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
         <section className="rounded-2xl border bg-card p-5" aria-label="Músicas salvas">
           <div className="flex items-center justify-between"><h2 className="font-semibold">Músicas do evento</h2><a className="inline-flex items-center gap-1 text-sm text-secondary underline" href={`https://open.spotify.com/search/${encodeURIComponent(title || 'ITCONT')}`} target="_blank" rel="noreferrer">Buscar no Spotify <ExternalLink size={14} /></a></div>
-          <ul className="mt-4 space-y-2">{tracks.map((track) => <li key={track.id} className="flex items-center gap-2 rounded-xl border p-3"><button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={() => setActive(track)}><Play size={16} className="shrink-0 text-secondary" /><span className="truncate">{track.title}</span></button><Button type="button" size="icon" variant="ghost" aria-label={`Excluir ${track.title}`} onClick={() => { setTracks((items) => items.filter((item) => item.id !== track.id)); if (active?.id === track.id) setActive(null); }}><Trash2 size={16} /></Button></li>)}</ul>
+          <ul className="mt-4 space-y-2">{tracks.map((track) => <li key={track.id} className="flex items-center gap-2 rounded-xl border p-3"><button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left" aria-label={`Tocar ${track.title} nesta página`} onClick={() => { setActive(track); setAutoPlayRequest((current) => current + 1); }}><Play size={16} className="shrink-0 text-secondary" /><span className="truncate">{track.title}</span></button><Button type="button" size="icon" variant="ghost" aria-label={`Excluir ${track.title}`} onClick={() => { setTracks((items) => items.filter((item) => item.id !== track.id)); if (active?.id === track.id) setActive(null); }}><Trash2 size={16} /></Button></li>)}</ul>
           {!tracks.length && <p className="mt-4 text-sm text-muted-foreground">Nenhuma faixa salva.</p>}
         </section>
         <section className="rounded-2xl border bg-card p-5" aria-label="Player do Spotify">
           <h2 className="font-semibold">{active?.title ?? 'Player'}</h2>
-          {active ? <><iframe className="mt-4 h-[352px] w-full rounded-xl" src={spotifyEmbedUrl(active)} title={`Spotify: ${active.title}`} allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" /><a href={active.url} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-secondary underline">Abrir no Spotify <ExternalLink size={14} /></a></> : <p className="mt-4 rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">Selecione uma música salva para abrir o player.</p>}
+          {active ? <><SpotifyInlinePlayer track={active} autoPlayRequest={autoPlayRequest} /><a href={active.url} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-secondary underline">Abrir no Spotify <ExternalLink size={14} /></a></> : <p className="mt-4 rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">Selecione uma música salva para tocar nesta página.</p>}
         </section>
       </div>
     </section>

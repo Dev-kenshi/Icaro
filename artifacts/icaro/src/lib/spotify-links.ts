@@ -21,3 +21,10 @@ export function spotifyEmbedUrl(track: SpotifyTrack) {
   const type = new URL(parsed.url).pathname.split('/')[1];
   return `https://open.spotify.com/embed/${type}/${parsed.id}`;
 }
+
+export function spotifyUri(track: SpotifyTrack) {
+  const parsed = parseSpotifyLink(track.url);
+  if (!parsed) return '';
+  const type = new URL(parsed.url).pathname.split('/')[1];
+  return `spotify:${type}:${parsed.id}`;
+}
