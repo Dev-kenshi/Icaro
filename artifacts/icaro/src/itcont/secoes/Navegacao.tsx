@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CalendarDays, CircleHelp, Home, MapPin, Users, UserRoundPlus } from 'lucide-react';
+import { Bot, CalendarDays, CircleHelp, Home, MapPin, Users, UserRoundPlus } from 'lucide-react';
 import { ITCONT } from '../dados';
 
 const links = [
@@ -30,6 +30,9 @@ export default function Navegacao() {
     <>
       <a className="itc-skip" href="#conteudo" data-testid="link-skip-content">Pular para o conteúdo</a>
       <div className="itc-topline" aria-hidden="true" />
+      <a className="itc-icarolink" href="/icaro" data-testid="link-access-icaro">
+        <Bot size={17} aria-hidden="true" /><span>Acessar Ícaro</span>
+      </a>
       <nav className="itc-nav" aria-label="Seções do site">
         {links.map(({ id, label, Icon }) => (
           <a key={id} href={`#${id}`} aria-label={label} aria-current={active === id ? 'true' : undefined} data-testid={`nav-${id}`}>
