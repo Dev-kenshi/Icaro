@@ -1,5 +1,5 @@
 /**
- * 137 validações do site do ITCONT: dados oficiais, regras (contagem, fases, agenda),
+ * 138 validações do site do ITCONT: dados oficiais, regras (contagem, fases, agenda),
  * identidade visual e leis da beleza, heurísticas de Nielsen na interface e integração.
  * Roda sem internet, sem banco e sem navegador.
  * Uso: pnpm --filter @workspace/scripts run validate:itcont-site
@@ -19,7 +19,7 @@ import {
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const RAIZ = resolve(AQUI, '../../../..');
 const ler = (p: string) => (existsSync(p) ? readFileSync(p, 'utf8') : '');
-const TOTAL_VALIDACOES = 137;
+const TOTAL_VALIDACOES = 138;
 
 const resultados: Array<{ n: number; grupo: string; nome: string; erro?: string }> = [];
 let grupo = '';
@@ -457,8 +457,16 @@ check('cartão usa a logo oficial Even3 com CORS e fallback acessível', () => {
   const insc = sec('Inscricao');
   assert.match(insc, /https:\/\/static\.even3\.com\/logos\/ImagemdoCodex21deset\.de202609_39_23\.91a8f584302f4c68b0fa\.png/);
   assert.match(insc, /logo\.crossOrigin = 'anonymous';[\s\S]*logo\.src = LOGO_OFICIAL/);
-  assert.match(insc, /I ITCONT/);
+  assert.match(insc, /I IMERSÃO TECNOLÓGICA CONTÁBIL/);
   assert.match(insc, /IntersectionObserver[\s\S]*promoVisible/);
+});
+check('cartão de foto segue a identidade branca, azul e prata do ITCONT', () => {
+  const insc = sec('Inscricao');
+  assert.match(insc, /const paper = context\.createLinearGradient/);
+  assert.match(insc, /strokeRect\(14, 14, width - 28, height - 28\)/);
+  assert.match(insc, /nameGradient/);
+  assert.match(insc, /context\.roundRect\(cx - 153, nameY \+ 15/);
+  assert.match(insc, /context\.arc\(cx, cy, radius, 0, Math\.PI \* 2\); context\.clip\(\)/);
 });
 check('foto fica local, aceita imagens até 10 MB e não usa upload', () => {
   const insc = sec('Inscricao');
