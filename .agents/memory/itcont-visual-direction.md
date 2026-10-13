@@ -3,8 +3,10 @@ name: ITCONT visual direction
 description: Durable user preference for the public ITCONT event site's visual balance and tone.
 ---
 
-For the current public ITCONT visual direction, use dark charcoal/blue surfaces with restrained cyan accents, inspired by PC game storefronts. Preserve official UEFS/ITCONT identity, event facts, and readable high-contrast content; do not copy Steam branding or exact layouts.
+The public ITCONT site uses one continuous dark navy/cosmic sky across every section, with dark glass cards and readable light text. Use only the frozen palette tokens; preserve official UEFS/ITCONT identity and event facts.
 
-**Why:** The owner explicitly replaced the earlier white/silver direction with a Steam-inspired storefront presentation for the public event site.
+The event's generated Instagram promotional artwork can retain its distinct branded treatment; keep the website surfaces on the shared dark palette.
 
-**How to apply:** Keep the official identity, event facts, registration route, contrast, accessibility, and Earth backdrop intact. Limit ITCONT visual refreshes to the public event experience; do not alter Ícaro's authenticated screens as part of this work.
+**Why:** The owner clarified that every ITCONT website section should share the original dark sky and frozen palette, correcting the unintended pale-blue restyle. They also requested readable text and a wider promotional-card generator.
+
+**How to apply:** Keep all ITCONT sections on the common dark backdrop; use the approved tokens for surfaces, borders, and text, and verify contrast against the effective surface. Do not alter Ícaro's authenticated screens.

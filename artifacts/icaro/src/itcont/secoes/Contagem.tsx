@@ -35,11 +35,11 @@ export default function Contagem() {
       <div className="itc-shell">
         <div className="itc-counter itc-card">
           <div>
-            <div className="itc-eyebrow">O tempo até a próxima sessão</div>
+            <div className="itc-eyebrow">TEMPO ATÉ O INÍCIO DO EVENTO</div>
             <div className="itc-count-grid" aria-label={`${count.dias} dias, ${count.horas} horas, ${count.minutos} minutos`}>
               {values.map(([number, label]) => (
                 <div className="itc-count-cell" key={label} data-testid={`count-${label}`}>
-                  <strong>{String(number).padStart(2, '0')}</strong><span>{label}</span>
+                  <strong><span className="itc-digit" key={`${label}-${number}`} aria-hidden="true">{String(number).padStart(2, '0')}</span></strong><span>{label}</span>
                 </div>
               ))}
             </div>

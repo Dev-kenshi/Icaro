@@ -8,6 +8,7 @@
 .env
 .env.*
 *.env
+/generated-artifacts/
 !.env.example
 !.env.*.example
 !*.example.env

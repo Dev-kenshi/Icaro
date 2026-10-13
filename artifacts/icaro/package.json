@@ -78,6 +78,7 @@
     "zod": "catalog:"
   },
   "dependencies": {
-    "markdown-it": "^15.0.2"
+    "markdown-it": "^15.0.2",
+    "simple-icons": "^16.35.0"
   }
 }

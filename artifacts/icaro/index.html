@@ -2,7 +2,7 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Ícaro Inteligência e Operações</title>
     <meta name="description" content="Ícaro, assistente de inteligência e operações com respostas por texto e voz." />
     <meta name="robots" content="index, follow" />
@@ -12,12 +12,49 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Ícaro Inteligência e Operações" />
     <meta name="twitter:description" content="Ícaro, assistente de inteligência e operações com respostas por texto e voz." />
+    <script>(()=>{const base='%BASE_URL%'.replace(/\/$/,'');const path=location.pathname.replace(base,'').replace(/\/$/,'')||'/';if(path==='/'||path==='/itcont')document.documentElement.dataset.itcont='true'})()</script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preload" as="image" href="%BASE_URL%itcont-earth-small.webp" imagesrcset="%BASE_URL%itcont-earth-small.webp 280w, %BASE_URL%itcont-earth-static.webp 512w" imagesizes="(max-width: 767px) 280px, min(40vw, 540px)" fetchpriority="high" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preload" as="font" type="font/woff2" href="https://fonts.gstatic.com/s/archivo/v25/k3kQo8UDI-1M0wlSfdnoLg.woff2" crossorigin>
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,800;100..125,900&amp;family=DM+Sans:wght@400;500;700&amp;family=Inter:wght@400;500;600;700&amp;family=Michroma&amp;display=swap&amp;subset=latin">
+    <link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,800;100..125,900&amp;family=DM+Sans:wght@400;500;700&amp;family=Inter:wght@400;500;600;700&amp;family=Michroma&amp;display=swap&amp;subset=latin">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,800;100..125,900&amp;family=DM+Sans:wght@400;500;700&amp;family=Inter:wght@400;500;600;700&amp;family=Michroma&amp;display=swap&amp;subset=latin"></noscript>
+    <style>
+      html,body,#root{margin:0;min-height:100%}
+      html[data-itcont] body{background:#081a44}
+      html[data-itcont] #root{position:relative;z-index:1}
+      #itc-page-earth{display:none}
+      html[data-itcont] #itc-page-earth{display:block;position:fixed;z-index:0;top:13vh;right:max(5vw,72px);width:min(40vw,540px);height:auto;aspect-ratio:1;object-fit:cover;border-radius:50%;pointer-events:none;opacity:.84;transition:opacity .9s ease}
+      html[data-itcont] #itc-page-earth[data-live="true"]{opacity:0}
+      .itc,.itc *,.itc *::before,.itc *::after{box-sizing:border-box}
+      .itc{min-height:100dvh;isolation:isolate;position:relative;overflow:clip;background:var(--itc-fundo,#081a44);color:var(--itc-texto,#eef4f7);font-family:system-ui,sans-serif}
+      .itc .itc-main-site{position:relative;z-index:2}
+      .itc .itc-shell{width:min(1180px,calc(100% - 48px));margin-inline:auto}
+      .itc .itc-hero{min-height:100svh;display:grid;align-items:center;position:relative;overflow:hidden;padding:7rem 0 5rem}
+      .itc .itc-hero-grid{display:grid;grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);align-items:center;gap:clamp(2rem,6vw,6rem);position:relative}
+      .itc .itc-title{max-width:950px;margin:0 0 1.5rem;font:900 clamp(2.8rem,4.4vw,5.8rem)/.91 system-ui,sans-serif;letter-spacing:-.065em;text-transform:uppercase}
+      .itc .itc-hero-actions,.itc .itc-hero-facts{display:flex;flex-wrap:wrap;gap:12px}
+      .itc .itc-hero-facts{display:grid;gap:.45rem;margin:1.7rem 0}
+      .itc .itc-primary,.itc .itc-secondary{min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:.82rem 1.15rem;border-radius:10px;font-weight:800}
+      .itc .itc-primary{color:#fff;background:#1679a8;border:1px solid #57b5e3}
+      .itc .itc-secondary{color:#93d7f5;background:#14212b;border:1px solid #57b5e3}
+      .itc .itc-hero>.itc-section{padding:0;border:0;background:transparent}
+      .itc .itc-counter{display:grid;grid-template-columns:1fr auto;gap:1.5rem;align-items:center;padding:.7rem clamp(1rem,2.2vw,2rem);background:var(--itc-superficie-clara)}
+      .itc .itc-count-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.65rem}
+      .itc .itc-count-cell{text-align:center;padding:.7rem .15rem;border:1px solid var(--itc-azul);border-radius:10px;background:color-mix(in srgb,var(--itc-abismo) 45%,transparent)}
+      .itc .itc-count-cell strong{display:block;font:700 1.2rem/1.1 var(--itc-fonte-rotulo);color:var(--itc-branco)}
+      .itc .itc-count-cell span{display:block;color:var(--itc-gelo);font-size:.68rem;text-transform:uppercase;letter-spacing:.1em}
+      .itc .itc-status{max-width:330px;display:flex;flex-wrap:wrap;align-items:baseline;gap:.25rem .45rem;color:var(--itc-neon)}
+      .itc .itc-main-site main>:not(#inicio){content-visibility:auto;contain-intrinsic-size:auto 700px}
+      .itc:not([data-css-ready="true"]) main>:not(#inicio),.itc:not([data-css-ready="true"]) footer{visibility:hidden}
+      @media(max-width:767px){html[data-itcont] #itc-page-earth{top:17vh;right:-42px;width:280px;opacity:.38}.itc .itc-shell{width:min(100% - 32px,620px)}.itc .itc-hero{min-height:auto;padding:6rem 0 2rem}.itc .itc-hero-grid{grid-template-columns:1fr;gap:1.4rem}.itc .itc-title{font-size:clamp(1.7rem,8vw,3rem)}.itc .itc-hero-actions>*{flex:1 1 100%}.itc .itc-counter{grid-template-columns:1fr}}
+      @media(prefers-reduced-motion:reduce){html[data-itcont] #itc-page-earth{transition:none}}
+    </style>
   </head>
   <body>
+    <img id="itc-page-earth" src="%BASE_URL%itcont-earth-small.webp" srcset="%BASE_URL%itcont-earth-small.webp 280w, %BASE_URL%itcont-earth-static.webp 512w" sizes="(max-width: 767px) 280px, min(40vw, 540px)" width="512" height="512" loading="eager" decoding="async" fetchpriority="high" alt="" aria-hidden="true" data-live="false" />
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

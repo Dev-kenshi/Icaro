@@ -55,6 +55,7 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+/generated-artifacts/
 
 # Ícaro voice cache / cloned voice id (runtime data)
 artifacts/api-server/.data

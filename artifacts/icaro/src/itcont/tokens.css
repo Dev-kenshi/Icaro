@@ -1,15 +1,21 @@
 /*
+ * PALETA OFICIAL APROVADA EM 12/10/2026.
+ * Não alterar cores, fundos, halo da Terra ou contraste sem nova aprovação.
+ * Os valores congelados são verificados por validate:itcont-site.
+ *
  * Direção de vitrine de jogo para o site público do ITCONT:
  * superfícies azul-carvão, azul-ciano em ações e prata para a identidade oficial.
  * Todas as cores do site saem daqui; os componentes não usam hex solto.
  * Desenvolvedor do projeto: Emanuel Macêdo Luz
  */
-@import url('https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Michroma&family=DM+Sans:wght@400;500;700&display=swap');
-
 .itc {
   /* Cores (banner oficial) */
   --itc-abismo: #080f16;      /* fundo principal */
   --itc-marinho: #14212b;     /* superfícies e cartões */
+  --itc-ceu-1: #0e2a66;       /* centro luminoso do céu */
+  --itc-ceu-2: #081a44;       /* bordas e fallback do céu */
+  --itc-nevoa: #58a9e8;       /* névoa azul suave */
+  --itc-estrela: #d9efff;     /* estrelas finas */
   --itc-royal: #1679a8;       /* ações principais */
   --itc-azul: #2a5064;        /* bordas, trilhas */
   --itc-eletrico: #57b5e3;    /* acento luminoso */
@@ -17,7 +23,7 @@
   --itc-gelo: #b1c9d6;         /* texto secundário */
   --itc-cromo-1: #f1f5f7;     /* prata clara */
   --itc-cromo-2: #abb9c2;     /* prata média */
-  --itc-cromo-3: #64727c;     /* prata escura */
+  --itc-cromo-3: #a9bac5;     /* prata escura com contraste no céu */
   --itc-branco: #ffffff;
   --itc-alerta: #ffcf5a;      /* "ao vivo agora" */
 
@@ -54,13 +60,14 @@
   /* Pares de contraste conferidos pelo validador (texto ≥ 4,5:1, interface ≥ 3:1) */
   --itc-texto: var(--itc-tinta);
   --itc-texto-2: var(--itc-tinta-2);
-  --itc-fundo: var(--itc-fundo-claro);
+  --itc-fundo: var(--itc-ceu-2);
   --itc-superficie: var(--itc-superficie-clara);
   --itc-foco: var(--itc-royal);
 
   /* Texturas */
   --itc-cromo: linear-gradient(180deg, var(--itc-cromo-1) 0%, var(--itc-cromo-2) 48%, var(--itc-cromo-3) 52%, var(--itc-cromo-1) 100%);
-  --itc-metal-azul: linear-gradient(180deg, #3b7bff 0%, var(--itc-royal) 55%, #01113f 100%);
+  --itc-metal-azul: linear-gradient(180deg, var(--itc-nevoa) 0%, var(--itc-royal) 52%, var(--itc-abismo) 100%);
+  --itc-metal-azul-titulo: linear-gradient(180deg, #90c7ff 0%, #8fcfff 55%, #90c7ff 100%);
   --itc-escovado: repeating-linear-gradient(90deg, rgb(255 255 255 / .035) 0 1px, transparent 1px 3px);
   --itc-grade: linear-gradient(rgb(87 181 227 / .055) 1px, transparent 1px) 0 0 / 56px 56px,
                linear-gradient(90deg, rgb(87 181 227 / .055) 1px, transparent 1px) 0 0 / 56px 56px;
@@ -98,9 +105,14 @@
 }
 
 .itc :focus-visible {
-  outline: 3px solid var(--itc-foco);
+  outline: 3px solid var(--itc-neon);
   outline-offset: 3px;
   border-radius: 6px;
+  box-shadow: 0 0 0 2px var(--itc-abismo), 0 0 16px color-mix(in srgb, var(--itc-neon) 62%, transparent);
+}
+html:has(.itc) { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+  html:has(.itc) { scroll-behavior: auto !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {

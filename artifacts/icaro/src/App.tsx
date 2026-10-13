@@ -5,23 +5,23 @@ import { AppShell } from '@/components/app-shell';
 import { DatasetProvider } from '@/lib/dataset-context';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import NotFound from '@/pages/not-found';
-import Stage from '@/pages/stage';
-import Overview from '@/pages/overview';
-import Analysis from '@/pages/analysis';
-import Assistant from '@/pages/assistant';
-import AdminCerebro from '@/pages/admin-cerebro';
-import FinanceWeather from '@/pages/finance-weather';
-import Agenda from '@/pages/agenda';
-import Music from '@/pages/music';
-import Demos from '@/pages/demos';
-import Documentation from '@/pages/documentation';
 import { LangProvider } from '@/lib/i18n';
 import { LoginGate, useAuthUser } from '@/components/login/login-gate';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 
 const queryClient = new QueryClient();
 const SiteItcont = lazy(() => import('./itcont/SiteItcont'));
+const NotFound = lazy(() => import('@/pages/not-found'));
+const Stage = lazy(() => import('@/pages/stage'));
+const Overview = lazy(() => import('@/pages/overview'));
+const Analysis = lazy(() => import('@/pages/analysis'));
+const Assistant = lazy(() => import('@/pages/assistant'));
+const AdminCerebro = lazy(() => import('@/pages/admin-cerebro'));
+const FinanceWeather = lazy(() => import('@/pages/finance-weather'));
+const Agenda = lazy(() => import('@/pages/agenda'));
+const Music = lazy(() => import('@/pages/music'));
+const Demos = lazy(() => import('@/pages/demos'));
+const Documentation = lazy(() => import('@/pages/documentation'));
 
 function ehRotaItcont() {
   const base = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -33,12 +33,14 @@ function Router() {
   const [location] = useLocation();
   return (
     <ErrorBoundary resetKey={location}>
-      <Switch>
-        <Route path="/icaro" component={Stage} />
-        <Route>
-          <Shelled />
-        </Route>
-      </Switch>
+      <Suspense fallback={<div aria-busy="true" />}>
+        <Switch>
+          <Route path="/icaro" component={Stage} />
+          <Route>
+            <Shelled />
+          </Route>
+        </Switch>
+      </Suspense>
     </ErrorBoundary>
   );
 }
