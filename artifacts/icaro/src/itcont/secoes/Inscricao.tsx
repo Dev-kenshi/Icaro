@@ -27,6 +27,7 @@ export default function Inscricao() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const photoRef = useRef<HTMLImageElement | null>(null);
+  const photoSelectionRef = useRef(0);
   const logoRef = useRef<HTMLImageElement | null>(null);
   const dragRef = useRef<{ x: number; y: number } | null>(null);
   const siteUrl = typeof window !== 'undefined' ? window.location.href : ITCONT.fonteUrl;
@@ -61,7 +62,11 @@ export default function Inscricao() {
     if (!photoUrl) return;
     const photo = new Image();
     photo.onload = () => { photoRef.current = photo; setPhotoReady(true); setPhotoError(''); };
-    photo.onerror = () => { photoRef.current = null; setPhotoReady(false); setPhotoError('Este navegador não conseguiu abrir essa imagem. Tente JPG, PNG ou WebP.'); };
+    photo.onerror = () => {
+      photoRef.current = null;
+      setPhotoReady(false);
+      setPhotoError('Não foi possível decodificar esta foto no navegador. Escolha um JPG, PNG ou WebP válido.');
+    };
     photo.src = photoUrl;
     return () => { photo.onload = null; photo.onerror = null; };
   }, [photoUrl]);
@@ -399,23 +404,52 @@ export default function Inscricao() {
     context.textAlign = 'left';
   }, [cardName, format, phrase, photoPosition, photoReady, photoZoom, logoState, promoVisible]);
 
-  const choosePhoto = (event: ChangeEvent<HTMLInputElement>) => {
+  const choosePhoto = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.currentTarget.files?.[0];
     if (!file) return;
+    const input = event.currentTarget;
+    input.value = '';
+    const selectionId = ++photoSelectionRef.current;
     if (!file.type.startsWith('image/') && !/\.(jpe?g|png|webp|heic|heif)$/i.test(file.name)) {
       setPhotoError('Escolha uma imagem JPG, PNG, WebP ou HEIC.');
-      event.currentTarget.value = '';
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
       setPhotoError('A foto precisa ter até 10 MB.');
-      event.currentTarget.value = '';
       return;
     }
     setPhotoError('');
-    setPhotoPosition({ x: 0, y: 0 });
-    setPhotoUrl(URL.createObjectURL(file));
-    event.currentTarget.value = '';
+    const isHeic = /image\/hei[cf]/i.test(file.type) || /\.(heic|heif)$/i.test(file.name);
+    try {
+      let imageBlob: Blob = file;
+      if (isHeic) {
+        setPhotoError('Convertendo HEIC para JPG neste navegador…');
+        const { default: heic2any } = await import('heic2any');
+        const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: .92 });
+        imageBlob = Array.isArray(converted) ? converted[0] : converted;
+        if (!imageBlob) throw new Error('A conversão não retornou uma imagem.');
+      }
+      const nextUrl = URL.createObjectURL(imageBlob);
+      await new Promise<void>((resolve, reject) => {
+        const probe = new Image();
+        probe.onload = () => resolve();
+        probe.onerror = () => reject(new Error('O navegador não conseguiu decodificar a imagem.'));
+        probe.src = nextUrl;
+      });
+      if (selectionId !== photoSelectionRef.current) {
+        URL.revokeObjectURL(nextUrl);
+        return;
+      }
+      setPhotoPosition({ x: 0, y: 0 });
+      setPhotoError('');
+      setPhotoUrl(nextUrl);
+    } catch (error) {
+      if (selectionId !== photoSelectionRef.current) return;
+      setPhotoError(isHeic
+        ? 'Não foi possível converter este HEIC neste navegador. Exporte a foto como JPG e tente novamente.'
+        : 'Não foi possível abrir esta foto. Tente um JPG, PNG ou WebP válido.');
+      if (error instanceof Error) console.warn('[ITCONT] Falha ao abrir a foto local:', error.message);
+    }
   };
 
   const movePhoto = (event: ReactPointerEvent<HTMLCanvasElement>) => {
