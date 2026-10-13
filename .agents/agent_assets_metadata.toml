@@ -112,3 +112,59 @@ mtime_ms = 1791071143746
 storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:c3e2d7b8-918b-46b2-b84c-6f83c6c77c98/27374f26-077f-4be2-a0cd-c7bb6ea479c3/7a3e7d7d-614e-4927-a7e3-7f001ff5cbed"
 storage_version_token = "1791071242834438"
 content_type = "audio/mpeg"
+
+[[outputs]]
+id = "NV1t9JXnPoso-_SAwBqXk"
+uri = "file://generated-artifacts/card-tests/itcont-feed-1080x1350-foto-neutra.png"
+type = "image"
+title = "ITCONT Feed · foto de exemplo"
+description = "PNG de teste 1080 × 1350 exportado pelo gerador do cartão."
+logical_id = "628061e5-3329-40dc-ad8d-a4bbe31acf61"
+content_hash = "sha256:bffe6c30e4f7d670475c570448911d7b211659cf3a17dde1640fb97753cb984d"
+size = 1160630
+mtime_ms = 1791923740499
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:c3e2d7b8-918b-46b2-b84c-6f83c6c77c98/628061e5-3329-40dc-ad8d-a4bbe31acf61/64451093-66e3-415c-b1b3-6827ab4b1fa3"
+storage_version_token = "1791923835906083"
+content_type = "image/png"
+
+[[outputs]]
+id = "wyPqFExKmUurgTNt-qbRY"
+uri = "file://generated-artifacts/card-tests/itcont-feed-1080x1350-sem-foto.png"
+type = "image"
+title = "ITCONT Feed · sem foto"
+description = "PNG de teste 1080 × 1350 com a silhueta SUA FOTO."
+logical_id = "a7ac5a12-e792-4694-ab1a-ecbedcce47a7"
+content_hash = "sha256:ae9916914bacd57db871378268ed234267b44fe17d26e1ee8d06d05544bfe678"
+size = 1151412
+mtime_ms = 1791923737484
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:c3e2d7b8-918b-46b2-b84c-6f83c6c77c98/a7ac5a12-e792-4694-ab1a-ecbedcce47a7/9843390a-d607-4b2f-9157-b9d5fc7f700a"
+storage_version_token = "1791923836619922"
+content_type = "image/png"
+
+[[outputs]]
+id = "C6_XV5p95D1nNMeMkMrru"
+uri = "file://generated-artifacts/card-tests/itcont-stories-1080x1920-foto-neutra.png"
+type = "image"
+title = "ITCONT Stories · foto de exemplo"
+description = "PNG de teste 1080 × 1920, com área segura superior e inferior de 250 px."
+logical_id = "e39bd455-6a33-4da5-8ef7-a4ceb4cfbd1a"
+content_hash = "sha256:b7e0d8f7546ce623e9b6ff9edf8aa861fd225410a82d39306ae813e51ff341d0"
+size = 1314483
+mtime_ms = 1791923741681
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:c3e2d7b8-918b-46b2-b84c-6f83c6c77c98/e39bd455-6a33-4da5-8ef7-a4ceb4cfbd1a/3b022351-7060-4164-9b7c-a085b67c240f"
+storage_version_token = "1791923837385592"
+content_type = "image/png"
+
+[[outputs]]
+id = "1-gR6eFwooaN1ctyzyv4p"
+uri = "file://generated-artifacts/card-tests/itcont-stories-1080x1920-sem-foto.png"
+type = "image"
+title = "ITCONT Stories · sem foto"
+description = "PNG de teste 1080 × 1920 com a silhueta SUA FOTO e áreas seguras de 250 px."
+logical_id = "67f50e58-1ce1-455f-bd4b-7304394cd0ba"
+content_hash = "sha256:f2f10bf607e4b1b4501f5dea69fadf6767c8f0a103a2d3b0d937cbbeb0890fec"
+size = 1306518
+mtime_ms = 1791923738778
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:c3e2d7b8-918b-46b2-b84c-6f83c6c77c98/67f50e58-1ce1-455f-bd4b-7304394cd0ba/4e0dea63-3b51-4d50-bec2-b96356111f13"
+storage_version_token = "1791923838040459"
+content_type = "image/png"

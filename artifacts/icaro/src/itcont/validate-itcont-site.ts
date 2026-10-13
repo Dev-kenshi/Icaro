@@ -160,9 +160,9 @@ check('inscrição: contraste no fundo real e gerador responsivo em duas colunas
   assert.match(revisao, /@media \(min-width: 768px\) and \(max-width: 1099px\)[\s\S]*?padding-right: 88px/);
   const promocional = ler(join(AQUI, 'secoes/Inscricao.tsx'));
   assert.match(promocional, /itc-promo-controls[\s\S]*?itc-promo-preview/);
-  assert.match(promocional, /const detailsY = Math\.max\(story \? 1430 : 970, nameY \+ 208 \+ 48\)/);
-  assert.match(promocional, /const badgeY = Math\.max\(story \? 1620 : 1145, detailsY \+ 130\)/);
-  assert.match(promocional, /const footerY = height - \(story \? 180 : 65\)/);
+  assert.match(promocional, /const detailsY = nameY \+ 190/);
+  assert.match(promocional, /const badgeY = venueY \+ 84/);
+  assert.match(promocional, /const footerY = height - \(story \? 258 : 56\)/);
 });
 check('tipografia na razão áurea (1,618)', () => {
   const t = (n: string) => Number(TOK.match(new RegExp(`--itc-t-${n}:\\s*([\\d.]+)rem`))?.[1]);
@@ -463,10 +463,16 @@ check('cartão usa a logo oficial Even3 com CORS e fallback acessível', () => {
 check('cartão de foto segue a identidade branca, azul e prata do ITCONT', () => {
   const insc = sec('Inscricao');
   assert.match(insc, /const paper = context\.createLinearGradient/);
-  assert.match(insc, /strokeRect\(14, 14, width - 28, height - 28\)/);
-  assert.match(insc, /nameGradient/);
-  assert.match(insc, /context\.roundRect\(cx - 153, nameY \+ 15/);
+  assert.match(insc, /rgb\(234 242 255\)/);
+  assert.match(insc, /strokeRect\(24, 24, width - 48, height - 48\)/);
+  assert.match(insc, /drawMetalText[\s\S]*Archivo/);
+  assert.match(insc, /, nameY, 120, width \* \.85, true\)/);
+  assert.match(insc, /layer = 8/);
+  assert.match(insc, /context\.roundRect\(cx - 166, phraseTop, 332, 56, 28\)/);
   assert.match(insc, /context\.arc\(cx, cy, radius, 0, Math\.PI \* 2\); context\.clip\(\)/);
+  assert.match(insc, /dateParts = \[dataExtenso\(ITCONT\.inicio\), dataExtenso\(ITCONT\.fim\)\]/);
+  assert.match(insc, /dateLines = context\.measureText\(dateLine\)\.width <= width \* \.88 \? \[dateLine\] : dateParts/);
+  assert.match(insc, /ITCONT\.local\.nome/);
 });
 check('foto fica local, aceita imagens até 10 MB e não usa upload', () => {
   const insc = sec('Inscricao');
@@ -476,12 +482,12 @@ check('foto fica local, aceita imagens até 10 MB e não usa upload', () => {
   assert.match(insc, /accept="image\/\*.*heic/);
   assert.doesNotMatch(insc, /\bfetch\(|FormData/);
 });
-check('cartão exporta Feed 1080×1350 e Stories 1080×1920 com margem segura', () => {
+check('cartão exporta Feed 1080×1350 e Stories 1080×1920 com margem segura de 250px', () => {
   const insc = sec('Inscricao');
   assert.match(insc, /PROMO_WIDTH = 1080/);
   assert.match(insc, /PROMO_HEIGHTS = \{ feed: 1350, stories: 1920 \}/);
-  assert.match(insc, /story \? 290 : 58/);
-  assert.match(insc, /height - \(story \? 180 : 65\)/);
+  assert.match(insc, /story \? 250 : 32/);
+  assert.match(insc, /height - \(story \? 258 : 56\)/);
 });
 check('FAQ e assistente compartilham cartão de vidro', () => {
   assert.match(sec('Faq'), /className="itc-card"/);

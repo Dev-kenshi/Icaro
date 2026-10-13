@@ -77,7 +77,7 @@ export default function Inscricao() {
     const height = PROMO_HEIGHTS[format];
     const ratio = 2;
     const story = format === 'stories';
-    const top = story ? 290 : 58;
+    const top = story ? 250 : 32;
     const canvasPhrase = phrase === 'eu-vou' ? 'Eu vou!' : 'Estarei lá';
     canvas.width = width * ratio;
     canvas.height = height * ratio;
@@ -85,7 +85,7 @@ export default function Inscricao() {
     const paper = context.createLinearGradient(0, 0, width * .82, height);
     paper.addColorStop(0, 'rgb(255 255 255)');
     paper.addColorStop(.56, 'rgb(248 250 253)');
-    paper.addColorStop(1, 'rgb(238 243 249)');
+    paper.addColorStop(1, 'rgb(234 242 255)');
     context.fillStyle = paper;
     context.fillRect(0, 0, width, height);
     const paperGlow = context.createRadialGradient(width * .5, height * .48, 80, width * .5, height * .48, height * .78);
@@ -101,106 +101,181 @@ export default function Inscricao() {
     blueMetal.addColorStop(.68, 'rgb(17 82 180)');
     blueMetal.addColorStop(1, 'rgb(5 39 105)');
     context.strokeStyle = blueMetal;
-    context.lineWidth = 6;
-    context.strokeRect(14, 14, width - 28, height - 28);
-    context.strokeStyle = 'rgb(25 85 164)';
-    context.lineWidth = 2;
-    context.strokeRect(27, 27, width - 54, height - 54);
-    context.strokeStyle = 'rgba(255, 255, 255, .94)';
-    context.lineWidth = 2;
-    context.strokeRect(35, 35, width - 70, height - 70);
+    context.lineWidth = 4;
+    context.strokeRect(24, 24, width - 48, height - 48);
+    context.strokeStyle = 'rgb(132 178 231)';
+    context.lineWidth = 1;
+    context.strokeRect(32, 32, width - 64, height - 64);
 
     context.save();
     context.lineCap = 'round';
     context.lineJoin = 'round';
-    context.strokeStyle = 'rgba(22, 96, 193, .14)';
-    context.lineWidth = 34;
+    context.strokeStyle = 'rgba(16, 94, 214, .2)';
+    context.lineWidth = 104;
     context.beginPath();
-    context.moveTo(28, 236);
-    context.bezierCurveTo(154, 178, 118, 79, 347, 29);
+    context.moveTo(10, 242);
+    context.bezierCurveTo(146, 188, 116, 80, 356, 26);
     context.stroke();
-    context.strokeStyle = 'rgba(177, 195, 216, .55)';
-    context.lineWidth = 12;
+    context.strokeStyle = 'rgba(183, 203, 227, .78)';
+    context.lineWidth = 6;
     context.beginPath();
-    context.moveTo(24, 278);
-    context.bezierCurveTo(160, 205, 150, 111, 366, 31);
+    context.moveTo(14, 274);
+    context.bezierCurveTo(152, 208, 146, 112, 374, 28);
     context.stroke();
     context.strokeStyle = blueMetal;
-    context.lineWidth = 8;
+    context.lineWidth = 66;
     context.beginPath();
-    context.moveTo(28, 226);
-    context.bezierCurveTo(142, 166, 120, 76, 330, 28);
+    context.moveTo(16, 222);
+    context.bezierCurveTo(142, 166, 124, 72, 336, 25);
+    context.stroke();
+    context.strokeStyle = 'rgba(255, 255, 255, .92)';
+    context.lineWidth = 10;
+    context.beginPath();
+    context.moveTo(17, 204);
+    context.bezierCurveTo(133, 148, 120, 66, 325, 22);
     context.stroke();
 
-    context.strokeStyle = 'rgba(22, 96, 193, .14)';
-    context.lineWidth = 34;
+    context.strokeStyle = 'rgba(16, 94, 214, .2)';
+    context.lineWidth = 104;
     context.beginPath();
-    context.moveTo(width - 28, height - 238);
-    context.bezierCurveTo(width - 154, height - 180, width - 118, height - 80, width - 347, height - 29);
+    context.moveTo(width - 10, height - 242);
+    context.bezierCurveTo(width - 146, height - 188, width - 116, height - 80, width - 356, height - 26);
     context.stroke();
-    context.strokeStyle = 'rgba(177, 195, 216, .62)';
-    context.lineWidth = 12;
+    context.strokeStyle = 'rgba(183, 203, 227, .78)';
+    context.lineWidth = 6;
     context.beginPath();
-    context.moveTo(width - 24, height - 280);
-    context.bezierCurveTo(width - 160, height - 205, width - 150, height - 111, width - 366, height - 31);
+    context.moveTo(width - 14, height - 274);
+    context.bezierCurveTo(width - 152, height - 208, width - 146, height - 112, width - 374, height - 28);
     context.stroke();
     context.strokeStyle = blueMetal;
-    context.lineWidth = 8;
+    context.lineWidth = 66;
     context.beginPath();
-    context.moveTo(width - 28, height - 228);
-    context.bezierCurveTo(width - 142, height - 168, width - 120, height - 76, width - 330, height - 28);
+    context.moveTo(width - 16, height - 222);
+    context.bezierCurveTo(width - 142, height - 166, width - 124, height - 72, width - 336, height - 25);
+    context.stroke();
+    context.strokeStyle = 'rgba(255, 255, 255, .92)';
+    context.lineWidth = 10;
+    context.beginPath();
+    context.moveTo(width - 17, height - 204);
+    context.bezierCurveTo(width - 133, height - 148, width - 120, height - 66, width - 325, height - 22);
     context.stroke();
     context.restore();
 
     context.save();
-    context.globalAlpha = .15;
-    context.strokeStyle = 'rgb(135 158 185)';
+    context.globalAlpha = .23;
+    context.strokeStyle = 'rgb(128 177 229)';
     context.lineWidth = 1;
-    for (let x = 48; x < 390; x += 18) {
+    for (let i = 0; i < 4; i += 1) {
       context.beginPath();
-      context.moveTo(x, 36);
-      context.lineTo(x - 185, 262);
+      context.moveTo(34, 82 + i * 16);
+      context.bezierCurveTo(128, 60 + i * 14, 196, 40 + i * 14, 315, 28 + i * 11);
+      context.moveTo(width - 34, height - 82 - i * 16);
+      context.bezierCurveTo(width - 128, height - 60 - i * 14, width - 196, height - 40 - i * 14, width - 315, height - 28 - i * 11);
       context.stroke();
     }
     context.restore();
 
-    let logoHeight = 108;
+    const cx = width / 2;
+    const gap = story ? 32 : 24;
+    const bottomSafe = story ? 250 : 32;
+    const textFont = (weight: number, size: number) => `${weight} ${size}px Archivo, Arial, sans-serif`;
+    const measure = (text: string, weight: number, size: number) => {
+      const font = textFont(weight, size);
+      context.font = font;
+      const metrics = context.measureText(text);
+      const ascent = Math.max(1, metrics.actualBoundingBoxAscent);
+      const descent = Math.max(1, metrics.actualBoundingBoxDescent);
+      return { text, font, width: metrics.width, ascent, descent, height: ascent + descent };
+    };
+    const drawMeasured = (line: ReturnType<typeof measure>, y: number, color: string) => {
+      context.font = line.font;
+      context.fillStyle = color;
+      context.textAlign = 'center';
+      context.textBaseline = 'alphabetic';
+      context.fillText(line.text, cx, y + line.ascent, width - 64);
+    };
+    const wrapName = (text: string) => {
+      const words = text.split(/\s+/).filter(Boolean);
+      const lines: ReturnType<typeof measure>[] = [];
+      let current = '';
+      for (const word of words) {
+        const candidate = current ? `${current} ${word}` : word;
+        if (current && measure(candidate, 900, 110).width > width * .92) {
+          lines.push(measure(current, 900, 110));
+          current = word;
+        } else current = candidate;
+      }
+      if (current) lines.push(measure(current, 900, 110));
+      return lines.length ? lines : [measure('SEU NOME', 900, 110)];
+    };
+    const nameLines = wrapName(cardName ? cardName.toLocaleUpperCase('pt-BR') : 'SEU NOME');
+    const phraseLine = measure(canvasPhrase, 800, 48);
+    const eventLine = measure('IMERSÃO TECNOLÓGICA', 800, 52);
+    const accountingLine = measure('Contábil', 900, 100);
+    const dateParts = [dataExtenso(ITCONT.inicio), dataExtenso(ITCONT.fim)];
+    const combinedDate = `${dateParts[0]} · ${dateParts[1]}`;
+    const dateLines = story
+      ? dateParts.map((line) => measure(line, 700, 34))
+      : (measure(combinedDate, 700, 34).width <= width * .94
+        ? [measure(combinedDate, 700, 34)]
+        : dateParts.map((line) => measure(line, 700, 34)));
+    const venueLines = [
+      measure(ITCONT.local.nome, 500, 32),
+      measure(`${ITCONT.local.cidade}/${ITCONT.local.uf}`, 500, 32),
+    ];
+    const ctaLine = measure('Inscrição gratuita', 800, 42);
+    const footerLine = measure('Cartão de divulgação · não substitui a inscrição oficial', 500, 24);
+    const nameHeight = nameLines.reduce((sum, line) => sum + line.height, 0)
+      + Math.max(0, nameLines.length - 1) * 8 + 8;
+    const dateHeight = dateLines.reduce((sum, line) => sum + line.height, 0)
+      + Math.max(0, dateLines.length - 1) * 8;
+    const venueHeight = venueLines.reduce((sum, line) => sum + line.height, 0) + 8;
+    const phraseHeight = 96;
+    const ctaHeight = 92;
+    const logoWidth = width * (story ? .2 : .62);
+    const logoRatio = logoRef.current && logoState === 'loaded'
+      ? logoRef.current.naturalHeight / logoRef.current.naturalWidth
+      : .5;
+    const logoHeight = logoWidth * logoRatio;
+    const blocksHeight = nameHeight + phraseHeight + eventLine.height + accountingLine.height
+      + dateHeight + venueHeight + ctaHeight + footerLine.height;
+    const photoDiameter = Math.max(0, Math.min(
+      story ? 520 : 380,
+      Math.floor(height - top - bottomSafe - logoHeight - gap * 9 - 52 - blocksHeight),
+    ));
+    const radius = photoDiameter / 2;
     if (logoRef.current && logoState === 'loaded') {
-      const logo = logoRef.current;
-      const logoWidth = (width - 172) * .7;
-      logoHeight = logoWidth * logo.naturalHeight / logo.naturalWidth;
-      context.drawImage(logo, (width - logoWidth) / 2, top, logoWidth, logoHeight);
+      context.drawImage(logoRef.current, (width - logoWidth) / 2, top, logoWidth, logoHeight);
     } else {
       context.textAlign = 'center';
+      context.textBaseline = 'alphabetic';
       context.fillStyle = 'rgb(13 65 143)';
       context.font = '900 46px Arial, sans-serif';
       context.fillText('I IMERSÃO TECNOLÓGICA CONTÁBIL', width / 2, top + 54, width - 120);
       context.font = '800 25px Arial, sans-serif';
       context.fillText('I T C O N T', width / 2, top + 91);
-      context.textAlign = 'left';
     }
 
-    const cx = width / 2;
-    const radius = story ? 205 : 174;
-    const cy = top + logoHeight + 48 + radius;
+    const photoBoxTop = top + logoHeight + gap;
+    const cy = photoBoxTop + radius + 26;
     context.save();
     context.shadowColor = 'rgba(11, 52, 112, .24)';
-    context.shadowBlur = 25;
-    context.shadowOffsetY = 12;
+    context.shadowBlur = 32;
+    context.shadowOffsetY = 8;
     context.fillStyle = 'white';
     context.beginPath();
-    context.arc(cx, cy, radius + 31, 0, Math.PI * 2);
+    context.arc(cx, cy, radius + 24, 0, Math.PI * 2);
     context.fill();
     context.restore();
     context.strokeStyle = blueMetal;
-    context.lineWidth = 12;
+    context.lineWidth = 14;
     context.beginPath();
-    context.arc(cx, cy, radius + 25, 0, Math.PI * 2);
+    context.arc(cx, cy, radius + 17, 0, Math.PI * 2);
     context.stroke();
-    context.strokeStyle = 'rgb(177 192 210)';
-    context.lineWidth = 5;
+    context.strokeStyle = 'rgb(173 207 244)';
+    context.lineWidth = 2;
     context.beginPath();
-    context.arc(cx, cy, radius + 13, 0, Math.PI * 2);
+    context.arc(cx, cy, radius + 26, 0, Math.PI * 2);
     context.stroke();
     context.save();
     context.beginPath(); context.arc(cx, cy, radius, 0, Math.PI * 2); context.clip();
@@ -227,87 +302,100 @@ export default function Inscricao() {
     }
     context.restore();
     context.strokeStyle = 'white';
-    context.lineWidth = 5;
+    context.lineWidth = 10;
     context.beginPath();
-    context.arc(cx, cy, radius + 3, 0, Math.PI * 2);
+    context.arc(cx, cy, radius + 8, 0, Math.PI * 2);
     context.stroke();
 
-    const nameY = Math.max(story ? 1040 : 620, cy + radius + 80);
-    context.textAlign = 'center';
-    context.save();
-    context.shadowColor = 'rgba(12, 53, 117, .25)';
-    context.shadowBlur = 10;
-    context.shadowOffsetY = 5;
-    const nameGradient = context.createLinearGradient(cx - 340, nameY - 70, cx + 340, nameY + 4);
-    nameGradient.addColorStop(0, 'rgb(13 75 167)');
-    nameGradient.addColorStop(.42, 'rgb(37 143 246)');
-    nameGradient.addColorStop(.7, 'rgb(11 78 169)');
-    nameGradient.addColorStop(1, 'rgb(4 47 117)');
-    context.fillStyle = nameGradient;
-    context.font = '900 78px Arial, sans-serif';
-    context.fillText(cardName ? cardName.toLocaleUpperCase('pt-BR') : 'SEU NOME', cx, nameY, 900);
-    context.restore();
+    let cursor = photoBoxTop + photoDiameter + 52 + gap;
+    const drawMetalLine = (line: ReturnType<typeof measure>, y: number, depth: boolean) => {
+      context.font = line.font;
+      const baseline = y + line.ascent;
+      const gradient = context.createLinearGradient(0, baseline - line.ascent, 0, baseline + line.descent + 3);
+      gradient.addColorStop(0, 'rgb(58 112 181)');
+      gradient.addColorStop(.22, 'rgb(30 105 190)');
+      gradient.addColorStop(.56, 'rgb(15 76 170)');
+      gradient.addColorStop(1, 'rgb(5 34 92)');
+      context.textAlign = 'center';
+      if (depth) {
+        for (let layer = 8; layer >= 1; layer -= 1) {
+          context.fillStyle = `rgb(${4 + layer} ${27 + layer * 2} ${72 + layer * 4})`;
+          context.fillText(line.text, cx, baseline + layer, width * .92);
+        }
+      }
+      context.fillStyle = gradient;
+      context.fillText(line.text, cx, baseline, width * .92);
+      context.strokeStyle = 'rgba(255, 255, 255, .72)';
+      context.lineWidth = 1.4;
+      context.strokeText(line.text, cx, baseline - 1, width * .92);
+    };
+    nameLines.forEach((line) => {
+      drawMetalLine(line, cursor, true);
+      cursor += line.height + 8;
+    });
+    cursor += gap - 8;
 
-    const phraseGradient = context.createLinearGradient(cx - 155, nameY + 20, cx + 155, nameY + 78);
+    const phraseTop = cursor;
+    const phraseWidth = Math.min(width * .7, phraseLine.width + 64);
+    const phraseGradient = context.createLinearGradient(cx - phraseWidth / 2, phraseTop, cx + phraseWidth / 2, phraseTop + phraseHeight);
     phraseGradient.addColorStop(0, 'rgb(255 255 255)');
-    phraseGradient.addColorStop(.5, 'rgb(222 231 241)');
+    phraseGradient.addColorStop(.48, 'rgb(211 219 230)');
     phraseGradient.addColorStop(1, 'rgb(255 255 255)');
     context.fillStyle = phraseGradient;
     context.strokeStyle = 'rgb(105 129 156)';
     context.lineWidth = 2;
     context.beginPath();
-    context.roundRect(cx - 153, nameY + 15, 306, 62, 31);
+    context.roundRect(cx - phraseWidth / 2, phraseTop, phraseWidth, phraseHeight, phraseHeight / 2);
     context.fill();
     context.stroke();
-    context.fillStyle = 'rgb(17 73 150)';
-    context.font = '800 39px Arial, sans-serif';
-    context.fillText(canvasPhrase, cx, nameY + 60);
-
-    context.fillStyle = 'rgb(13 62 137)';
-    context.font = '800 38px Arial, sans-serif';
-    context.fillText('IMERSÃO TECNOLÓGICA', cx, nameY + 132);
-    context.save();
-    context.shadowColor = 'rgba(8, 48, 112, .2)';
-    context.shadowBlur = 8;
-    context.shadowOffsetY = 4;
-    const eventGradient = context.createLinearGradient(cx - 190, nameY + 145, cx + 190, nameY + 214);
-    eventGradient.addColorStop(0, 'rgb(6 60 142)');
-    eventGradient.addColorStop(.42, 'rgb(45 143 241)');
-    eventGradient.addColorStop(.72, 'rgb(10 72 158)');
-    eventGradient.addColorStop(1, 'rgb(5 47 116)');
-    context.fillStyle = eventGradient;
-    context.font = '900 72px Arial, sans-serif';
-    context.fillText('Contábil', cx, nameY + 208);
-    context.restore();
-    context.textAlign = 'left';
-    const detailsY = Math.max(story ? 1430 : 970, nameY + 208 + 48);
+    context.font = phraseLine.font;
     context.textAlign = 'center';
-    context.fillStyle = 'rgb(28 53 88)';
-    context.font = '700 25px Arial, sans-serif';
-    context.fillText(`${dataExtenso(ITCONT.inicio)} · ${dataExtenso(ITCONT.fim)}`, cx, detailsY, width - 140);
-    context.font = '500 27px Arial, sans-serif';
-    context.fillText(ITCONT.local.nome, cx, detailsY + 48, width - 140);
-    context.fillText(`${ITCONT.local.cidade}/${ITCONT.local.uf}`, cx, detailsY + 88, width - 140);
-    const badgeY = Math.max(story ? 1620 : 1145, detailsY + 130);
-    const badgeGradient = context.createLinearGradient(cx - 180, badgeY - 40, cx + 180, badgeY + 25);
+    context.textBaseline = 'alphabetic';
+    context.fillStyle = 'rgb(9 43 101)';
+    context.fillText(canvasPhrase, cx, phraseTop + (phraseHeight - phraseLine.height) / 2 + phraseLine.ascent);
+    cursor += phraseHeight + gap;
+
+    drawMeasured(eventLine, cursor, 'rgb(11 65 145)');
+    cursor += eventLine.height + gap;
+    drawMetalLine(accountingLine, cursor, false);
+    cursor += accountingLine.height + gap;
+    dateLines.forEach((line) => {
+      drawMeasured(line, cursor, 'rgb(8 37 86)');
+      cursor += line.height + 8;
+    });
+    cursor += gap - 8;
+    venueLines.forEach((line) => {
+      drawMeasured(line, cursor, 'rgb(8 37 86)');
+      cursor += line.height + 8;
+    });
+    cursor += gap - 8;
+
+    const badgeTop = cursor;
+    const badgeWidth = Math.min(width * .7, ctaLine.width + 72);
+    const badgeGradient = context.createLinearGradient(cx - badgeWidth / 2, badgeTop, cx + badgeWidth / 2, badgeTop + ctaHeight);
     badgeGradient.addColorStop(0, 'rgb(9 58 143)');
-    badgeGradient.addColorStop(.5, 'rgb(31 119 222)');
+    badgeGradient.addColorStop(.5, 'rgb(23 101 193)');
     badgeGradient.addColorStop(1, 'rgb(5 49 122)');
+    context.save();
+    context.shadowColor = 'rgba(27, 111, 225, .42)';
+    context.shadowBlur = 22;
+    context.shadowOffsetY = 4;
     context.fillStyle = badgeGradient;
     context.strokeStyle = 'rgb(163 198 235)';
-    context.lineWidth = 3;
+    context.lineWidth = 2;
     context.beginPath();
-    context.roundRect(cx - 182, badgeY - 40, 364, 62, 31);
+    context.roundRect(cx - badgeWidth / 2, badgeTop, badgeWidth, ctaHeight, ctaHeight / 2);
     context.fill();
     context.stroke();
+    context.restore();
+    const ctaBaseline = badgeTop + (ctaHeight - ctaLine.height) / 2 + ctaLine.ascent;
     context.textAlign = 'center';
+    context.textBaseline = 'alphabetic';
     context.fillStyle = 'white';
-    context.font = '800 31px Arial, sans-serif';
-    context.fillText('Inscrição gratuita', cx, badgeY);
-    context.fillStyle = 'rgb(55 70 90)';
-    context.font = '500 18px Arial, sans-serif';
-    const footerY = height - (story ? 180 : 65);
-    context.fillText('Cartão de divulgação · não substitui a inscrição oficial', cx, footerY);
+    context.font = ctaLine.font;
+    context.fillText(ctaLine.text, cx, ctaBaseline);
+    cursor += ctaHeight + gap;
+    drawMeasured(footerLine, cursor, 'rgb(55 70 90)');
     context.textAlign = 'left';
   }, [cardName, format, phrase, photoPosition, photoReady, photoZoom, logoState, promoVisible]);
 
