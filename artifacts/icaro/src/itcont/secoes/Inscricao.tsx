@@ -27,6 +27,7 @@ export default function Inscricao() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const photoRef = useRef<HTMLImageElement | null>(null);
+  const photoSelectionRef = useRef(0);
   const logoRef = useRef<HTMLImageElement | null>(null);
   const dragRef = useRef<{ x: number; y: number } | null>(null);
   const siteUrl = typeof window !== 'undefined' ? window.location.href : ITCONT.fonteUrl;
@@ -61,7 +62,11 @@ export default function Inscricao() {
     if (!photoUrl) return;
     const photo = new Image();
     photo.onload = () => { photoRef.current = photo; setPhotoReady(true); setPhotoError(''); };
-    photo.onerror = () => { photoRef.current = null; setPhotoReady(false); setPhotoError('Este navegador não conseguiu abrir essa imagem. Tente JPG, PNG ou WebP.'); };
+    photo.onerror = () => {
+      photoRef.current = null;
+      setPhotoReady(false);
+      setPhotoError('Não foi possível decodificar esta foto no navegador. Escolha um JPG, PNG ou WebP válido.');
+    };
     photo.src = photoUrl;
     return () => { photo.onload = null; photo.onerror = null; };
   }, [photoUrl]);
@@ -77,139 +82,406 @@ export default function Inscricao() {
     const height = PROMO_HEIGHTS[format];
     const ratio = 2;
     const story = format === 'stories';
-    const top = story ? 290 : 58;
+    const top = story ? 250 : 32;
     const canvasPhrase = phrase === 'eu-vou' ? 'Eu vou!' : 'Estarei lá';
     canvas.width = width * ratio;
     canvas.height = height * ratio;
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
-    const gradient = context.createLinearGradient(0, 0, width, height);
-    gradient.addColorStop(0, 'rgb(0 61 153)');
-    gradient.addColorStop(.52, 'rgb(0 87 184)');
-    gradient.addColorStop(1, 'rgb(0 107 156)');
-    context.fillStyle = gradient;
+    const paper = context.createLinearGradient(0, 0, width * .82, height);
+    paper.addColorStop(0, 'rgb(255 255 255)');
+    paper.addColorStop(.56, 'rgb(248 250 253)');
+    paper.addColorStop(1, 'rgb(234 242 255)');
+    context.fillStyle = paper;
     context.fillRect(0, 0, width, height);
-    for (const [x, y, radius, alpha] of [[180, height * .18, 390, .20], [900, height * .54, 450, .18], [300, height * .88, 350, .14]] as const) {
-      const glow = context.createRadialGradient(x, y, 0, x, y, radius);
-      glow.addColorStop(0, `rgba(31, 231, 255, ${alpha})`);
-      glow.addColorStop(1, 'rgba(31, 231, 255, 0)');
-      context.fillStyle = glow;
-      context.fillRect(0, 0, width, height);
-    }
+    const paperGlow = context.createRadialGradient(width * .5, height * .48, 80, width * .5, height * .48, height * .78);
+    paperGlow.addColorStop(0, 'rgba(255, 255, 255, .98)');
+    paperGlow.addColorStop(1, 'rgba(219, 229, 241, .28)');
+    context.fillStyle = paperGlow;
+    context.fillRect(0, 0, width, height);
+
+    const blueMetal = context.createLinearGradient(0, 0, width, height);
+    blueMetal.addColorStop(0, 'rgb(8 45 116)');
+    blueMetal.addColorStop(.24, 'rgb(25 121 230)');
+    blueMetal.addColorStop(.48, 'rgb(220 241 255)');
+    blueMetal.addColorStop(.68, 'rgb(17 82 180)');
+    blueMetal.addColorStop(1, 'rgb(5 39 105)');
+    context.strokeStyle = blueMetal;
+    context.lineWidth = 4;
+    context.strokeRect(24, 24, width - 48, height - 48);
+    context.strokeStyle = 'rgb(132 178 231)';
+    context.lineWidth = 1;
+    context.strokeRect(32, 32, width - 64, height - 64);
+
     context.save();
-    context.globalAlpha = .10;
-    context.strokeStyle = 'rgb(167 243 255)';
-    context.lineWidth = 2;
-    for (let x = -height; x < width + height; x += 42) {
-      context.beginPath(); context.moveTo(x, 0); context.lineTo(x + height, height); context.stroke();
+    context.lineCap = 'round';
+    context.lineJoin = 'round';
+    context.strokeStyle = 'rgba(16, 94, 214, .2)';
+    context.lineWidth = 86;
+    context.beginPath();
+    context.moveTo(10, 242);
+    context.bezierCurveTo(78, 188, 84, 80, 150, 26);
+    context.stroke();
+    context.strokeStyle = 'rgba(183, 203, 227, .78)';
+    context.lineWidth = 6;
+    context.beginPath();
+    context.moveTo(14, 274);
+    context.bezierCurveTo(82, 208, 88, 112, 158, 28);
+    context.stroke();
+    context.strokeStyle = blueMetal;
+    context.lineWidth = 66;
+    context.beginPath();
+    context.moveTo(16, 222);
+    context.bezierCurveTo(74, 166, 82, 72, 144, 25);
+    context.stroke();
+    context.strokeStyle = 'rgba(255, 255, 255, .92)';
+    context.lineWidth = 10;
+    context.beginPath();
+    context.moveTo(17, 204);
+    context.bezierCurveTo(70, 148, 78, 66, 138, 22);
+    context.stroke();
+
+    context.strokeStyle = 'rgba(16, 94, 214, .2)';
+    context.lineWidth = 86;
+    context.beginPath();
+    context.moveTo(width - 10, height - 242);
+    context.bezierCurveTo(width - 72, height - 188, width - 82, height - 80, width - 14, height - 26);
+    context.stroke();
+    context.strokeStyle = 'rgba(183, 203, 227, .78)';
+    context.lineWidth = 6;
+    context.beginPath();
+    context.moveTo(width - 14, height - 274);
+    context.bezierCurveTo(width - 80, height - 208, width - 82, height - 112, width - 22, height - 28);
+    context.stroke();
+    context.strokeStyle = blueMetal;
+    context.lineWidth = 66;
+    context.beginPath();
+    context.moveTo(width - 16, height - 222);
+    context.bezierCurveTo(width - 76, height - 166, width - 82, height - 72, width - 26, height - 25);
+    context.stroke();
+    context.strokeStyle = 'rgba(255, 255, 255, .92)';
+    context.lineWidth = 10;
+    context.beginPath();
+    context.moveTo(width - 17, height - 204);
+    context.bezierCurveTo(width - 74, height - 148, width - 82, height - 66, width - 34, height - 22);
+    context.stroke();
+    context.restore();
+
+    context.save();
+    context.globalAlpha = .23;
+    context.strokeStyle = 'rgb(128 177 229)';
+    context.lineWidth = 1;
+    for (let i = 0; i < 4; i += 1) {
+      context.beginPath();
+      context.moveTo(34, 82 + i * 16);
+      context.bezierCurveTo(70, 60 + i * 14, 116, 40 + i * 14, 150, 28 + i * 11);
+      context.moveTo(width - 34, height - 82 - i * 16);
+      context.bezierCurveTo(width - 70, height - 60 - i * 14, width - 116, height - 40 - i * 14, width - 150, height - 28 - i * 11);
+      context.stroke();
     }
     context.restore();
-    const edge = context.createLinearGradient(0, 0, width, height);
-    edge.addColorStop(0, 'rgb(154 244 255)');
-    edge.addColorStop(.48, 'rgb(230 239 255)');
-    edge.addColorStop(1, 'rgb(71 223 255)');
-    context.strokeStyle = edge;
-    context.lineWidth = 8;
-    context.strokeRect(22, 22, width - 44, height - 44);
-
-    let logoHeight = 72;
-    if (logoRef.current && logoState === 'loaded') {
-      const logo = logoRef.current;
-      const logoWidth = (width - 172) * .7;
-      logoHeight = logoWidth * logo.naturalHeight / logo.naturalWidth;
-      context.drawImage(logo, (width - logoWidth) / 2, top, logoWidth, logoHeight);
-    } else {
-      context.textAlign = 'center';
-      context.fillStyle = 'white';
-      context.font = '800 44px Arial, sans-serif';
-      context.fillText('I ITCONT', width / 2, top + 62);
-      context.textAlign = 'left';
-    }
 
     const cx = width / 2;
-    const radius = story ? 205 : 174;
-    const cy = top + logoHeight + 48 + radius;
+    const gap = story ? 32 : 24;
+    const bottomSafe = story ? 250 : 32;
+    const textFont = (weight: number, size: number) => `${weight} ${size}px Archivo, Arial, sans-serif`;
+    const measure = (text: string, weight: number, size: number) => {
+      const font = textFont(weight, size);
+      context.font = font;
+      const metrics = context.measureText(text);
+      const ascent = Math.max(1, metrics.actualBoundingBoxAscent);
+      const descent = Math.max(1, metrics.actualBoundingBoxDescent);
+      return { text, font, width: metrics.width, ascent, descent, height: ascent + descent };
+    };
+    const drawMeasured = (line: ReturnType<typeof measure>, y: number, color: string) => {
+      context.font = line.font;
+      context.fillStyle = color;
+      context.textAlign = 'center';
+      context.textBaseline = 'alphabetic';
+      context.fillText(line.text, cx, y + line.ascent, width - 64);
+    };
+    const nameMaxWidth = story ? width * .92 : width * .51;
+    const wrapName = (text: string, maxWidth: number) => {
+      const words = text.split(/\s+/).filter(Boolean);
+      const lines: ReturnType<typeof measure>[] = [];
+      let current = '';
+      for (const word of words) {
+        const candidate = current ? `${current} ${word}` : word;
+        if (current && measure(candidate, 900, 110).width > maxWidth) {
+          lines.push(measure(current, 900, 110));
+          current = word;
+        } else current = candidate;
+      }
+      if (current) lines.push(measure(current, 900, 110));
+      return lines.length ? lines : [measure('SEU NOME', 900, 110)];
+    };
+    const nameLines = wrapName(cardName ? cardName.toLocaleUpperCase('pt-BR') : 'SEU NOME', nameMaxWidth);
+    const phraseLine = measure(canvasPhrase, 800, 48);
+    const eventLine = measure('IMERSÃO TECNOLÓGICA', 800, 52);
+    const accountingLine = measure('Contábil', 900, 100);
+    const dateParts = [dataExtenso(ITCONT.inicio), dataExtenso(ITCONT.fim)];
+    const combinedDate = `${dateParts[0]} · ${dateParts[1]}`;
+    const dateLines = story
+      ? dateParts.map((line) => measure(line, 700, 34))
+      : (measure(combinedDate, 700, 34).width <= width * .94
+        ? [measure(combinedDate, 700, 34)]
+        : dateParts.map((line) => measure(line, 700, 34)));
+    const venueLines = [
+      measure(ITCONT.local.nome, 500, 32),
+      measure(`${ITCONT.local.cidade}/${ITCONT.local.uf}`, 500, 32),
+    ];
+    const ctaLine = measure('Inscrição gratuita', 800, 42);
+    const footerLine = measure('Cartão de divulgação · não substitui a inscrição oficial', 500, 24);
+    const nameHeight = nameLines.reduce((sum, line) => sum + line.height, 0)
+      + Math.max(0, nameLines.length - 1) * 8 + 8;
+    const dateHeight = dateLines.reduce((sum, line) => sum + line.height, 0)
+      + Math.max(0, dateLines.length - 1) * 8;
+    const venueHeight = venueLines.reduce((sum, line) => sum + line.height, 0) + 8;
+    const phraseHeight = 96;
+    const ctaHeight = 92;
+    const logoWidth = width * (story ? .2 : .62);
+    const logoRatio = logoRef.current && logoState === 'loaded'
+      ? logoRef.current.naturalHeight / logoRef.current.naturalWidth
+      : .5;
+    const logoHeight = logoWidth * logoRatio;
+    const storyBlocksHeight = nameHeight + phraseHeight + eventLine.height + accountingLine.height
+      + dateHeight + venueHeight + ctaHeight + footerLine.height;
+    const storyPhotoDiameter = Math.max(0, Math.min(
+      story ? 520 : 380,
+      Math.floor(height - top - bottomSafe - logoHeight - gap * 9 - 52 - storyBlocksHeight),
+    ));
+    const feedDetailsHeight = eventLine.height + accountingLine.height + dateHeight + venueHeight
+      + ctaHeight + footerLine.height + gap * 5;
+    const feedTextHeight = nameHeight + gap + phraseHeight;
+    const feedRowAvailableHeight = height - top - bottomSafe - logoHeight - gap * 2 - feedDetailsHeight;
+    const feedPhotoDiameter = Math.max(0, Math.min(380, Math.floor(feedRowAvailableHeight - 52)));
+    const photoDiameter = story ? storyPhotoDiameter : feedPhotoDiameter;
+    const radius = photoDiameter / 2;
+    if (logoRef.current && logoState === 'loaded') {
+      context.drawImage(logoRef.current, (width - logoWidth) / 2, top, logoWidth, logoHeight);
+    } else {
+      context.textAlign = 'center';
+      context.textBaseline = 'alphabetic';
+      context.fillStyle = 'rgb(13 65 143)';
+      context.font = '900 46px Arial, sans-serif';
+      context.fillText('I IMERSÃO TECNOLÓGICA CONTÁBIL', width / 2, top + 54, width - 120);
+      context.font = '800 25px Arial, sans-serif';
+      context.fillText('I T C O N T', width / 2, top + 91);
+    }
+
+    const photoBoxTop = top + logoHeight + gap;
+    const feedRowHeight = Math.max(photoDiameter + 52, feedTextHeight);
+    const photoX = story ? cx : width * .255;
+    const cy = story ? photoBoxTop + radius + 26 : photoBoxTop + feedRowHeight / 2;
     context.save();
-    context.beginPath(); context.arc(cx, cy, radius, 0, Math.PI * 2); context.clip();
+    context.shadowColor = 'rgba(11, 52, 112, .24)';
+    context.shadowBlur = 32;
+    context.shadowOffsetY = 8;
+    context.fillStyle = 'white';
+    context.beginPath();
+    context.arc(photoX, cy, radius + 24, 0, Math.PI * 2);
+    context.fill();
+    context.restore();
+    context.strokeStyle = blueMetal;
+    context.lineWidth = 14;
+    context.beginPath();
+    context.arc(photoX, cy, radius + 17, 0, Math.PI * 2);
+    context.stroke();
+    context.strokeStyle = 'rgb(173 207 244)';
+    context.lineWidth = 2;
+    context.beginPath();
+    context.arc(photoX, cy, radius + 26, 0, Math.PI * 2);
+    context.stroke();
+    context.save();
+    context.beginPath(); context.arc(photoX, cy, radius, 0, Math.PI * 2); context.clip();
     if (photoRef.current && photoReady) {
       const photo = photoRef.current;
       const scale = Math.max(radius * 2 / photo.naturalWidth, radius * 2 / photo.naturalHeight) * photoZoom;
       const drawnWidth = photo.naturalWidth * scale;
       const drawnHeight = photo.naturalHeight * scale;
-      context.drawImage(photo, cx - drawnWidth / 2 + photoPosition.x, cy - drawnHeight / 2 + photoPosition.y, drawnWidth, drawnHeight);
+      context.drawImage(photo, photoX - drawnWidth / 2 + photoPosition.x, cy - drawnHeight / 2 + photoPosition.y, drawnWidth, drawnHeight);
     } else {
-      const portrait = context.createLinearGradient(cx - radius, cy - radius, cx + radius, cy + radius);
-      portrait.addColorStop(0, 'rgb(231 238 247)');
-      portrait.addColorStop(1, 'rgb(132 152 179)');
+      const portrait = context.createLinearGradient(photoX - radius, cy - radius, photoX + radius, cy + radius);
+      portrait.addColorStop(0, 'rgb(240 245 250)');
+      portrait.addColorStop(1, 'rgb(184 199 216)');
       context.fillStyle = portrait;
-      context.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
-      context.fillStyle = 'rgb(33 55 80)';
-      context.beginPath(); context.arc(cx, cy - 46, 60, 0, Math.PI * 2); context.fill();
-      context.beginPath(); context.ellipse(cx, cy + 112, 116, 98, 0, Math.PI, 0); context.fill();
+      context.fillRect(photoX - radius, cy - radius, radius * 2, radius * 2);
+      context.fillStyle = 'rgb(39 65 99)';
+      const avatarScale = Math.max(.58, Math.min(1, radius / 150));
+      context.beginPath(); context.arc(photoX, cy - radius * .34, radius * .28, 0, Math.PI * 2); context.fill();
+      context.beginPath(); context.ellipse(photoX, cy + radius * .56, radius * .58, radius * .48, 0, Math.PI, 0); context.fill();
       context.textAlign = 'center';
-      context.font = '700 22px Arial, sans-serif';
-      context.fillStyle = 'rgb(23 55 85)';
-      context.fillText('SUA FOTO', cx, cy + radius - 18);
+      context.font = `700 ${Math.max(12, 22 * avatarScale)}px Arial, sans-serif`;
+      context.fillStyle = 'white';
+      context.fillText('SUA FOTO', photoX, cy + radius * .76);
       context.textAlign = 'left';
     }
     context.restore();
-    context.strokeStyle = edge;
-    context.lineWidth = 18;
-    context.beginPath(); context.arc(cx, cy, radius + 5, 0, Math.PI * 2); context.stroke();
-    context.strokeStyle = 'rgb(48 231 255)';
-    context.lineWidth = 3;
-    context.beginPath(); context.arc(cx, cy, radius + 18, 0, Math.PI * 2); context.stroke();
+    context.strokeStyle = 'white';
+    context.lineWidth = 10;
+    context.beginPath();
+    context.arc(photoX, cy, radius + 8, 0, Math.PI * 2);
+    context.stroke();
 
-    const nameY = Math.max(story ? 1040 : 620, cy + radius + 48);
+    const drawMetalLine = (
+      line: ReturnType<typeof measure>,
+      y: number,
+      depth: boolean,
+      centerX = cx,
+      maxWidth = width * .92,
+    ) => {
+      context.font = line.font;
+      const baseline = y + line.ascent;
+      const gradient = context.createLinearGradient(0, baseline - line.ascent, 0, baseline + line.descent + 3);
+      gradient.addColorStop(0, 'rgb(58 112 181)');
+      gradient.addColorStop(.22, 'rgb(30 105 190)');
+      gradient.addColorStop(.56, 'rgb(15 76 170)');
+      gradient.addColorStop(1, 'rgb(5 34 92)');
+      context.textAlign = 'center';
+      if (depth) {
+        for (let layer = 8; layer >= 1; layer -= 1) {
+          context.fillStyle = `rgb(${4 + layer} ${27 + layer * 2} ${72 + layer * 4})`;
+          context.fillText(line.text, centerX, baseline + layer, maxWidth);
+        }
+      }
+      context.fillStyle = gradient;
+      context.fillText(line.text, centerX, baseline, maxWidth);
+      context.strokeStyle = 'rgba(255, 255, 255, .72)';
+      context.lineWidth = 1.4;
+      context.strokeText(line.text, centerX, baseline - 1, maxWidth);
+    };
+    let cursor: number;
+    const drawPhrase = (phraseTop: number, centerX: number, maxWidth: number) => {
+    const phraseWidth = Math.min(maxWidth, phraseLine.width + 64);
+    const phraseGradient = context.createLinearGradient(centerX - phraseWidth / 2, phraseTop, centerX + phraseWidth / 2, phraseTop + phraseHeight);
+    phraseGradient.addColorStop(0, 'rgb(255 255 255)');
+    phraseGradient.addColorStop(.48, 'rgb(211 219 230)');
+    phraseGradient.addColorStop(1, 'rgb(255 255 255)');
+    context.fillStyle = phraseGradient;
+    context.strokeStyle = 'rgb(105 129 156)';
+    context.lineWidth = 2;
+    context.beginPath();
+    context.roundRect(centerX - phraseWidth / 2, phraseTop, phraseWidth, phraseHeight, phraseHeight / 2);
+    context.fill();
+    context.stroke();
+    context.font = phraseLine.font;
     context.textAlign = 'center';
-    context.fillStyle = 'white';
-    context.font = '800 70px Arial, sans-serif';
-    context.fillText(cardName || 'Seu nome', cx, nameY, 900);
-    context.fillStyle = 'rgb(182 245 255)';
-    context.font = '700 36px Arial, sans-serif';
-    context.fillText(canvasPhrase, cx, nameY + 60);
-    context.fillStyle = 'white';
-    context.font = '700 38px Arial, sans-serif';
-    context.fillText('IMERSÃO TECNOLÓGICA', cx, nameY + 132);
-    context.fillStyle = 'rgb(231 237 245)';
-    context.font = '800 72px Arial, sans-serif';
-    context.fillText('Contábil', cx, nameY + 208);
-    context.textAlign = 'left';
-    const detailsY = Math.max(story ? 1430 : 970, nameY + 208 + 48);
-    context.fillStyle = 'white';
-    context.font = '700 30px Arial, sans-serif';
-    context.fillText(`${dataExtenso(ITCONT.inicio)} · ${dataExtenso(ITCONT.fim)}`, 86, detailsY, width - 172);
-    context.font = '500 27px Arial, sans-serif';
-    context.fillText(`${ITCONT.local.nome}`, 86, detailsY + 52, width - 172);
-    context.fillText(`${ITCONT.local.cidade}/${ITCONT.local.uf}`, 86, detailsY + 94);
-    const badgeY = Math.max(story ? 1620 : 1145, detailsY + 130);
+    context.textBaseline = 'alphabetic';
+    context.fillStyle = 'rgb(9 43 101)';
+    context.fillText(canvasPhrase, centerX, phraseTop + (phraseHeight - phraseLine.height) / 2 + phraseLine.ascent);
+    };
+    if (story) {
+      cursor = photoBoxTop + photoDiameter + 52 + gap;
+      nameLines.forEach((line) => {
+        drawMetalLine(line, cursor, true);
+        cursor += line.height + 8;
+      });
+      cursor += gap - 8;
+      drawPhrase(cursor, cx, width * .7);
+      cursor += phraseHeight + gap;
+    } else {
+      const textCenterX = width * .745;
+      const textMaxWidth = width * .51;
+      const textBlockTop = photoBoxTop + (feedRowHeight - feedTextHeight) / 2;
+      let nameCursor = textBlockTop;
+      nameLines.forEach((line, index) => {
+        drawMetalLine(line, nameCursor, true, textCenterX, textMaxWidth);
+        nameCursor += line.height + (index < nameLines.length - 1 ? 8 : 0);
+      });
+      drawPhrase(nameCursor + gap, textCenterX, textMaxWidth);
+      cursor = photoBoxTop + feedRowHeight + gap;
+    }
+
+    drawMeasured(eventLine, cursor, 'rgb(11 65 145)');
+    cursor += eventLine.height + gap;
+    drawMetalLine(accountingLine, cursor, false);
+    cursor += accountingLine.height + gap;
+    dateLines.forEach((line) => {
+      drawMeasured(line, cursor, 'rgb(8 37 86)');
+      cursor += line.height + 8;
+    });
+    cursor += gap - 8;
+    venueLines.forEach((line) => {
+      drawMeasured(line, cursor, 'rgb(8 37 86)');
+      cursor += line.height + 8;
+    });
+    cursor += gap - 8;
+
+    const badgeTop = cursor;
+    const badgeWidth = Math.min(width * .7, ctaLine.width + 72);
+    const badgeGradient = context.createLinearGradient(cx - badgeWidth / 2, badgeTop, cx + badgeWidth / 2, badgeTop + ctaHeight);
+    badgeGradient.addColorStop(0, 'rgb(9 58 143)');
+    badgeGradient.addColorStop(.5, 'rgb(23 101 193)');
+    badgeGradient.addColorStop(1, 'rgb(5 49 122)');
+    context.save();
+    context.shadowColor = 'rgba(27, 111, 225, .42)';
+    context.shadowBlur = 22;
+    context.shadowOffsetY = 4;
+    context.fillStyle = badgeGradient;
+    context.strokeStyle = 'rgb(163 198 235)';
+    context.lineWidth = 2;
+    context.beginPath();
+    context.roundRect(cx - badgeWidth / 2, badgeTop, badgeWidth, ctaHeight, ctaHeight / 2);
+    context.fill();
+    context.stroke();
+    context.restore();
+    const ctaBaseline = badgeTop + (ctaHeight - ctaLine.height) / 2 + ctaLine.ascent;
     context.textAlign = 'center';
+    context.textBaseline = 'alphabetic';
     context.fillStyle = 'white';
-    context.font = '800 31px Arial, sans-serif';
-    context.fillText('Inscrição gratuita', cx, badgeY);
-    context.fillStyle = 'rgb(229 250 255)';
-    context.font = '500 18px Arial, sans-serif';
-    const footerY = height - (story ? 180 : 65);
-    context.fillText('Cartão de divulgação · não substitui a inscrição oficial', cx, footerY);
+    context.font = ctaLine.font;
+    context.fillText(ctaLine.text, cx, ctaBaseline);
+    cursor += ctaHeight + gap;
+    drawMeasured(footerLine, cursor, 'rgb(55 70 90)');
     context.textAlign = 'left';
   }, [cardName, format, phrase, photoPosition, photoReady, photoZoom, logoState, promoVisible]);
 
-  const choosePhoto = (event: ChangeEvent<HTMLInputElement>) => {
+  const choosePhoto = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.currentTarget.files?.[0];
     if (!file) return;
+    const input = event.currentTarget;
+    input.value = '';
+    const selectionId = ++photoSelectionRef.current;
     if (!file.type.startsWith('image/') && !/\.(jpe?g|png|webp|heic|heif)$/i.test(file.name)) {
       setPhotoError('Escolha uma imagem JPG, PNG, WebP ou HEIC.');
-      event.currentTarget.value = '';
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
       setPhotoError('A foto precisa ter até 10 MB.');
-      event.currentTarget.value = '';
       return;
     }
     setPhotoError('');
-    setPhotoPosition({ x: 0, y: 0 });
-    setPhotoUrl(URL.createObjectURL(file));
-    event.currentTarget.value = '';
+    const isHeic = /image\/hei[cf]/i.test(file.type) || /\.(heic|heif)$/i.test(file.name);
+    try {
+      let imageBlob: Blob = file;
+      if (isHeic) {
+        setPhotoError('Convertendo HEIC para JPG neste navegador…');
+        const { default: heic2any } = await import('heic2any');
+        const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: .92 });
+        const convertedBlob = Array.isArray(converted) ? converted[0] : converted;
+        if (!convertedBlob) throw new Error('A conversão não retornou uma imagem.');
+        imageBlob = convertedBlob;
+      }
+      const nextUrl = URL.createObjectURL(imageBlob);
+      await new Promise<void>((resolve, reject) => {
+        const probe = new Image();
+        probe.onload = () => resolve();
+        probe.onerror = () => reject(new Error('O navegador não conseguiu decodificar a imagem.'));
+        probe.src = nextUrl;
+      });
+      if (selectionId !== photoSelectionRef.current) {
+        URL.revokeObjectURL(nextUrl);
+        return;
+      }
+      setPhotoPosition({ x: 0, y: 0 });
+      setPhotoError('');
+      setPhotoUrl(nextUrl);
+    } catch (error) {
+      if (selectionId !== photoSelectionRef.current) return;
+      setPhotoError(isHeic
+        ? 'Não foi possível converter este HEIC neste navegador. Exporte a foto como JPG e tente novamente.'
+        : 'Não foi possível abrir esta foto. Tente um JPG, PNG ou WebP válido.');
+      if (error instanceof Error) console.warn('[ITCONT] Falha ao abrir a foto local:', error.message);
+    }
   };
 
   const movePhoto = (event: ReactPointerEvent<HTMLCanvasElement>) => {

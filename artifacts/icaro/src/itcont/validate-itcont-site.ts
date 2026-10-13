@@ -1,5 +1,5 @@
 /**
- * 137 validações do site do ITCONT: dados oficiais, regras (contagem, fases, agenda),
+ * 138 validações do site do ITCONT: dados oficiais, regras (contagem, fases, agenda),
  * identidade visual e leis da beleza, heurísticas de Nielsen na interface e integração.
  * Roda sem internet, sem banco e sem navegador.
  * Uso: pnpm --filter @workspace/scripts run validate:itcont-site
@@ -7,7 +7,7 @@
  */
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FONTE_OFICIAL, ITCONT } from './dados';
 import {
@@ -19,7 +19,7 @@ import {
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const RAIZ = resolve(AQUI, '../../../..');
 const ler = (p: string) => (existsSync(p) ? readFileSync(p, 'utf8') : '');
-const TOTAL_VALIDACOES = 137;
+const TOTAL_VALIDACOES = 139;
 
 const resultados: Array<{ n: number; grupo: string; nome: string; erro?: string }> = [];
 let grupo = '';
@@ -160,9 +160,9 @@ check('inscrição: contraste no fundo real e gerador responsivo em duas colunas
   assert.match(revisao, /@media \(min-width: 768px\) and \(max-width: 1099px\)[\s\S]*?padding-right: 88px/);
   const promocional = ler(join(AQUI, 'secoes/Inscricao.tsx'));
   assert.match(promocional, /itc-promo-controls[\s\S]*?itc-promo-preview/);
-  assert.match(promocional, /const detailsY = Math\.max\(story \? 1430 : 970, nameY \+ 208 \+ 48\)/);
-  assert.match(promocional, /const badgeY = Math\.max\(story \? 1620 : 1145, detailsY \+ 130\)/);
-  assert.match(promocional, /const footerY = height - \(story \? 180 : 65\)/);
+  assert.match(promocional, /const gap = story \? 32 : 24/);
+  assert.match(promocional, /const bottomSafe = story \? 250 : 32/);
+  assert.match(promocional, /height - top - bottomSafe/);
 });
 check('tipografia na razão áurea (1,618)', () => {
   const t = (n: string) => Number(TOK.match(new RegExp(`--itc-t-${n}:\\s*([\\d.]+)rem`))?.[1]);
@@ -457,23 +457,45 @@ check('cartão usa a logo oficial Even3 com CORS e fallback acessível', () => {
   const insc = sec('Inscricao');
   assert.match(insc, /https:\/\/static\.even3\.com\/logos\/ImagemdoCodex21deset\.de202609_39_23\.91a8f584302f4c68b0fa\.png/);
   assert.match(insc, /logo\.crossOrigin = 'anonymous';[\s\S]*logo\.src = LOGO_OFICIAL/);
-  assert.match(insc, /I ITCONT/);
+  assert.match(insc, /I IMERSÃO TECNOLÓGICA CONTÁBIL/);
   assert.match(insc, /IntersectionObserver[\s\S]*promoVisible/);
+});
+check('cartão de foto segue a identidade branca, azul e prata do ITCONT', () => {
+  const insc = sec('Inscricao');
+  assert.match(insc, /const paper = context\.createLinearGradient/);
+  assert.match(insc, /rgb\(234 242 255\)/);
+  assert.match(insc, /strokeRect\(24, 24, width - 48, height - 48\)/);
+  assert.match(insc, /const textFont = \(weight: number, size: number\) => `\$\{weight\} \$\{size\}px Archivo/);
+  assert.match(insc, /wrapName[\s\S]*measure\(candidate, 900, 110\)/);
+  assert.match(insc, /photoX = story \? cx : width \* \.255/);
+  assert.match(insc, /textCenterX = width \* \.745/);
+  assert.match(insc, /feedPhotoDiameter = Math\.max\(0, Math\.min\(380/);
+  assert.match(insc, /const logoWidth = width \* \(story \? \.2 : \.62\)/);
+  assert.match(insc, /layer = 8/);
+  assert.match(insc, /context\.roundRect\(centerX - phraseWidth \/ 2, phraseTop, phraseWidth, phraseHeight, phraseHeight \/ 2\)/);
+  assert.match(insc, /context\.arc\(photoX, cy, radius, 0, Math\.PI \* 2\); context\.clip\(\)/);
+  assert.match(insc, /dateParts = \[dataExtenso\(ITCONT\.inicio\), dataExtenso\(ITCONT\.fim\)\]/);
+  assert.match(insc, /dateLines = story[\s\S]*dateParts\.map/);
+  assert.match(insc, /ITCONT\.local\.nome/);
 });
 check('foto fica local, aceita imagens até 10 MB e não usa upload', () => {
   const insc = sec('Inscricao');
-  assert.match(insc, /URL\.createObjectURL\(file\)/);
+  assert.match(insc, /URL\.createObjectURL\(imageBlob\)/);
   assert.match(insc, /URL\.revokeObjectURL\(photoUrl\)/);
   assert.match(insc, /10 \* 1024 \* 1024/);
+  assert.match(insc, /await import\('heic2any'\)/);
+  assert.match(insc, /photoSelectionRef/);
   assert.match(insc, /accept="image\/\*.*heic/);
   assert.doesNotMatch(insc, /\bfetch\(|FormData/);
 });
-check('cartão exporta Feed 1080×1350 e Stories 1080×1920 com margem segura', () => {
+check('cartão exporta Feed 1080×1350 e Stories 1080×1920 com margem segura de 250px', () => {
   const insc = sec('Inscricao');
   assert.match(insc, /PROMO_WIDTH = 1080/);
   assert.match(insc, /PROMO_HEIGHTS = \{ feed: 1350, stories: 1920 \}/);
-  assert.match(insc, /story \? 290 : 58/);
-  assert.match(insc, /height - \(story \? 180 : 65\)/);
+  assert.match(insc, /const bottomSafe = story \? 250 : 32/);
+  assert.match(insc, /height - top - bottomSafe/);
+  assert.match(insc, /const logoWidth = width \* \(story \? \.2 : \.62\)/);
+  assert.match(insc, /story \? 520 : 380/);
 });
 check('FAQ e assistente compartilham cartão de vidro', () => {
   assert.match(sec('Faq'), /className="itc-card"/);
@@ -567,7 +589,9 @@ check('rodapé cita a fonte oficial', () => assert.match(sec('Rodape'), /ITCONT\
 // ───────────── E. Integração ─────────────
 grupo = 'E. Integração';
 check('nenhuma imagem do evento copiada para public/ (só links do Even3)', () => {
-  const pub = arquivos(join(RAIZ, 'artifacts/icaro/public')).filter((p) => /itcont|even3/i.test(p) && /\.(png|jpe?g|webp|gif|avif)$/i.test(p));
+  const publicDir = resolve(RAIZ, 'artifacts/icaro/public');
+  const pub = arquivos(publicDir).map((p) => relative(publicDir, p))
+    .filter((p) => /itcont|even3/i.test(p) && /\.(png|jpe?g|webp|gif|avif)$/i.test(p));
   assert.deepEqual(pub.filter((p) => !/itcont-earth-(?:static|small)\.webp$/.test(p)), []);
   const earth = join(RAIZ, 'artifacts/icaro/public/itcont-earth-static.webp');
   const earthSmall = join(RAIZ, 'artifacts/icaro/public/itcont-earth-small.webp');
@@ -575,6 +599,13 @@ check('nenhuma imagem do evento copiada para public/ (só links do Even3)', () =
   assert.ok(existsSync(earthSmall));
   assert.ok(statSync(earth).size <= 60 * 1024);
   assert.ok(statSync(earthSmall).size <= 10 * 1024);
+});
+check('raiz itcont-qualquer-coisa não faz imagens comuns parecerem assets do evento', () => {
+  const publicDir = resolve('/tmp/itcont-qualquer-coisa', 'artifacts/icaro/public');
+  const ordinaryImage = join(publicDir, 'brand-logo.png');
+  const eventImages = [ordinaryImage].map((p) => relative(publicDir, p))
+    .filter((p) => /itcont|even3/i.test(p) && /\.(png|jpe?g|webp|gif|avif)$/i.test(p));
+  assert.deepEqual(eventImages, []);
 });
 check('script validate:itcont-site registrado', () => assert.match(ler(join(RAIZ, 'scripts/package.json')), /"validate:itcont-site"/));
 check('nenhuma dependência nova pesada', () => assert.doesNotMatch(ler(join(RAIZ, 'artifacts/icaro/package.json')), /"(gsap|jquery|bootstrap|@mui\/material|antd|moment)"/));
