@@ -56,3 +56,9 @@ HTTPS push works by injecting a workspace secret through an inline credential he
 **Why:** The remote has no stored credential helper and each secret has different scope/validity; trying them in order avoids false "auth impossible" conclusions.
 
 **How to apply:** Never echo token values. Loop the candidate secrets through the inline helper, stop at the first non-auth failure string, and re-check permissions when GitHub rotates tokens.
+
+An `added` GitHub source-control connection still may not authenticate this repository's HTTPS remote: `addIntegration` can report it active while `git push` rejects the credential. Treat the CLI push as a separate auth path and use the configured `GIT_Classic` helper only after the user has authorized the push.
+
+**Why:** In this workspace, attaching the existing GitHub OAuth connection did not change the remote's HTTPS authentication result.
+
+**How to apply:** After a failed push, do not repeatedly retry OAuth or ask for a token in chat. Use the existing secret through the non-echoing Git credential helper, then verify the pushed ref.
