@@ -116,53 +116,53 @@ export default function Inscricao() {
     context.lineCap = 'round';
     context.lineJoin = 'round';
     context.strokeStyle = 'rgba(16, 94, 214, .2)';
-    context.lineWidth = 104;
+    context.lineWidth = 86;
     context.beginPath();
     context.moveTo(10, 242);
-    context.bezierCurveTo(146, 188, 116, 80, 356, 26);
+    context.bezierCurveTo(78, 188, 84, 80, 150, 26);
     context.stroke();
     context.strokeStyle = 'rgba(183, 203, 227, .78)';
     context.lineWidth = 6;
     context.beginPath();
     context.moveTo(14, 274);
-    context.bezierCurveTo(152, 208, 146, 112, 374, 28);
+    context.bezierCurveTo(82, 208, 88, 112, 158, 28);
     context.stroke();
     context.strokeStyle = blueMetal;
     context.lineWidth = 66;
     context.beginPath();
     context.moveTo(16, 222);
-    context.bezierCurveTo(142, 166, 124, 72, 336, 25);
+    context.bezierCurveTo(74, 166, 82, 72, 144, 25);
     context.stroke();
     context.strokeStyle = 'rgba(255, 255, 255, .92)';
     context.lineWidth = 10;
     context.beginPath();
     context.moveTo(17, 204);
-    context.bezierCurveTo(133, 148, 120, 66, 325, 22);
+    context.bezierCurveTo(70, 148, 78, 66, 138, 22);
     context.stroke();
 
     context.strokeStyle = 'rgba(16, 94, 214, .2)';
-    context.lineWidth = 104;
+    context.lineWidth = 86;
     context.beginPath();
     context.moveTo(width - 10, height - 242);
-    context.bezierCurveTo(width - 146, height - 188, width - 116, height - 80, width - 356, height - 26);
+    context.bezierCurveTo(width - 72, height - 188, width - 82, height - 80, width - 14, height - 26);
     context.stroke();
     context.strokeStyle = 'rgba(183, 203, 227, .78)';
     context.lineWidth = 6;
     context.beginPath();
     context.moveTo(width - 14, height - 274);
-    context.bezierCurveTo(width - 152, height - 208, width - 146, height - 112, width - 374, height - 28);
+    context.bezierCurveTo(width - 80, height - 208, width - 82, height - 112, width - 22, height - 28);
     context.stroke();
     context.strokeStyle = blueMetal;
     context.lineWidth = 66;
     context.beginPath();
     context.moveTo(width - 16, height - 222);
-    context.bezierCurveTo(width - 142, height - 166, width - 124, height - 72, width - 336, height - 25);
+    context.bezierCurveTo(width - 76, height - 166, width - 82, height - 72, width - 26, height - 25);
     context.stroke();
     context.strokeStyle = 'rgba(255, 255, 255, .92)';
     context.lineWidth = 10;
     context.beginPath();
     context.moveTo(width - 17, height - 204);
-    context.bezierCurveTo(width - 133, height - 148, width - 120, height - 66, width - 325, height - 22);
+    context.bezierCurveTo(width - 74, height - 148, width - 82, height - 66, width - 34, height - 22);
     context.stroke();
     context.restore();
 
@@ -173,9 +173,9 @@ export default function Inscricao() {
     for (let i = 0; i < 4; i += 1) {
       context.beginPath();
       context.moveTo(34, 82 + i * 16);
-      context.bezierCurveTo(128, 60 + i * 14, 196, 40 + i * 14, 315, 28 + i * 11);
+      context.bezierCurveTo(70, 60 + i * 14, 116, 40 + i * 14, 150, 28 + i * 11);
       context.moveTo(width - 34, height - 82 - i * 16);
-      context.bezierCurveTo(width - 128, height - 60 - i * 14, width - 196, height - 40 - i * 14, width - 315, height - 28 - i * 11);
+      context.bezierCurveTo(width - 70, height - 60 - i * 14, width - 116, height - 40 - i * 14, width - 150, height - 28 - i * 11);
       context.stroke();
     }
     context.restore();
@@ -199,13 +199,14 @@ export default function Inscricao() {
       context.textBaseline = 'alphabetic';
       context.fillText(line.text, cx, y + line.ascent, width - 64);
     };
-    const wrapName = (text: string) => {
+    const nameMaxWidth = story ? width * .92 : width * .51;
+    const wrapName = (text: string, maxWidth: number) => {
       const words = text.split(/\s+/).filter(Boolean);
       const lines: ReturnType<typeof measure>[] = [];
       let current = '';
       for (const word of words) {
         const candidate = current ? `${current} ${word}` : word;
-        if (current && measure(candidate, 900, 110).width > width * .92) {
+        if (current && measure(candidate, 900, 110).width > maxWidth) {
           lines.push(measure(current, 900, 110));
           current = word;
         } else current = candidate;
@@ -213,7 +214,7 @@ export default function Inscricao() {
       if (current) lines.push(measure(current, 900, 110));
       return lines.length ? lines : [measure('SEU NOME', 900, 110)];
     };
-    const nameLines = wrapName(cardName ? cardName.toLocaleUpperCase('pt-BR') : 'SEU NOME');
+    const nameLines = wrapName(cardName ? cardName.toLocaleUpperCase('pt-BR') : 'SEU NOME', nameMaxWidth);
     const phraseLine = measure(canvasPhrase, 800, 48);
     const eventLine = measure('IMERSÃO TECNOLÓGICA', 800, 52);
     const accountingLine = measure('Contábil', 900, 100);
@@ -242,12 +243,18 @@ export default function Inscricao() {
       ? logoRef.current.naturalHeight / logoRef.current.naturalWidth
       : .5;
     const logoHeight = logoWidth * logoRatio;
-    const blocksHeight = nameHeight + phraseHeight + eventLine.height + accountingLine.height
+    const storyBlocksHeight = nameHeight + phraseHeight + eventLine.height + accountingLine.height
       + dateHeight + venueHeight + ctaHeight + footerLine.height;
-    const photoDiameter = Math.max(0, Math.min(
+    const storyPhotoDiameter = Math.max(0, Math.min(
       story ? 520 : 380,
-      Math.floor(height - top - bottomSafe - logoHeight - gap * 9 - 52 - blocksHeight),
+      Math.floor(height - top - bottomSafe - logoHeight - gap * 9 - 52 - storyBlocksHeight),
     ));
+    const feedDetailsHeight = eventLine.height + accountingLine.height + dateHeight + venueHeight
+      + ctaHeight + footerLine.height + gap * 5;
+    const feedTextHeight = nameHeight + gap + phraseHeight;
+    const feedRowAvailableHeight = height - top - bottomSafe - logoHeight - gap * 2 - feedDetailsHeight;
+    const feedPhotoDiameter = Math.max(0, Math.min(380, Math.floor(feedRowAvailableHeight - 52)));
+    const photoDiameter = story ? storyPhotoDiameter : feedPhotoDiameter;
     const radius = photoDiameter / 2;
     if (logoRef.current && logoState === 'loaded') {
       context.drawImage(logoRef.current, (width - logoWidth) / 2, top, logoWidth, logoHeight);
@@ -262,58 +269,66 @@ export default function Inscricao() {
     }
 
     const photoBoxTop = top + logoHeight + gap;
-    const cy = photoBoxTop + radius + 26;
+    const feedRowHeight = Math.max(photoDiameter + 52, feedTextHeight);
+    const photoX = story ? cx : width * .255;
+    const cy = story ? photoBoxTop + radius + 26 : photoBoxTop + feedRowHeight / 2;
     context.save();
     context.shadowColor = 'rgba(11, 52, 112, .24)';
     context.shadowBlur = 32;
     context.shadowOffsetY = 8;
     context.fillStyle = 'white';
     context.beginPath();
-    context.arc(cx, cy, radius + 24, 0, Math.PI * 2);
+    context.arc(photoX, cy, radius + 24, 0, Math.PI * 2);
     context.fill();
     context.restore();
     context.strokeStyle = blueMetal;
     context.lineWidth = 14;
     context.beginPath();
-    context.arc(cx, cy, radius + 17, 0, Math.PI * 2);
+    context.arc(photoX, cy, radius + 17, 0, Math.PI * 2);
     context.stroke();
     context.strokeStyle = 'rgb(173 207 244)';
     context.lineWidth = 2;
     context.beginPath();
-    context.arc(cx, cy, radius + 26, 0, Math.PI * 2);
+    context.arc(photoX, cy, radius + 26, 0, Math.PI * 2);
     context.stroke();
     context.save();
-    context.beginPath(); context.arc(cx, cy, radius, 0, Math.PI * 2); context.clip();
+    context.beginPath(); context.arc(photoX, cy, radius, 0, Math.PI * 2); context.clip();
     if (photoRef.current && photoReady) {
       const photo = photoRef.current;
       const scale = Math.max(radius * 2 / photo.naturalWidth, radius * 2 / photo.naturalHeight) * photoZoom;
       const drawnWidth = photo.naturalWidth * scale;
       const drawnHeight = photo.naturalHeight * scale;
-      context.drawImage(photo, cx - drawnWidth / 2 + photoPosition.x, cy - drawnHeight / 2 + photoPosition.y, drawnWidth, drawnHeight);
+      context.drawImage(photo, photoX - drawnWidth / 2 + photoPosition.x, cy - drawnHeight / 2 + photoPosition.y, drawnWidth, drawnHeight);
     } else {
-      const portrait = context.createLinearGradient(cx - radius, cy - radius, cx + radius, cy + radius);
+      const portrait = context.createLinearGradient(photoX - radius, cy - radius, photoX + radius, cy + radius);
       portrait.addColorStop(0, 'rgb(240 245 250)');
       portrait.addColorStop(1, 'rgb(184 199 216)');
       context.fillStyle = portrait;
-      context.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+      context.fillRect(photoX - radius, cy - radius, radius * 2, radius * 2);
       context.fillStyle = 'rgb(39 65 99)';
-      context.beginPath(); context.arc(cx, cy - 46, 60, 0, Math.PI * 2); context.fill();
-      context.beginPath(); context.ellipse(cx, cy + 112, 116, 98, 0, Math.PI, 0); context.fill();
+      const avatarScale = Math.max(.58, Math.min(1, radius / 150));
+      context.beginPath(); context.arc(photoX, cy - radius * .34, radius * .28, 0, Math.PI * 2); context.fill();
+      context.beginPath(); context.ellipse(photoX, cy + radius * .56, radius * .58, radius * .48, 0, Math.PI, 0); context.fill();
       context.textAlign = 'center';
-      context.font = '700 22px Arial, sans-serif';
+      context.font = `700 ${Math.max(12, 22 * avatarScale)}px Arial, sans-serif`;
       context.fillStyle = 'white';
-      context.fillText('SUA FOTO', cx, cy + radius - 18);
+      context.fillText('SUA FOTO', photoX, cy + radius * .76);
       context.textAlign = 'left';
     }
     context.restore();
     context.strokeStyle = 'white';
     context.lineWidth = 10;
     context.beginPath();
-    context.arc(cx, cy, radius + 8, 0, Math.PI * 2);
+    context.arc(photoX, cy, radius + 8, 0, Math.PI * 2);
     context.stroke();
 
-    let cursor = photoBoxTop + photoDiameter + 52 + gap;
-    const drawMetalLine = (line: ReturnType<typeof measure>, y: number, depth: boolean) => {
+    const drawMetalLine = (
+      line: ReturnType<typeof measure>,
+      y: number,
+      depth: boolean,
+      centerX = cx,
+      maxWidth = width * .92,
+    ) => {
       context.font = line.font;
       const baseline = y + line.ascent;
       const gradient = context.createLinearGradient(0, baseline - line.ascent, 0, baseline + line.descent + 3);
@@ -325,24 +340,19 @@ export default function Inscricao() {
       if (depth) {
         for (let layer = 8; layer >= 1; layer -= 1) {
           context.fillStyle = `rgb(${4 + layer} ${27 + layer * 2} ${72 + layer * 4})`;
-          context.fillText(line.text, cx, baseline + layer, width * .92);
+          context.fillText(line.text, centerX, baseline + layer, maxWidth);
         }
       }
       context.fillStyle = gradient;
-      context.fillText(line.text, cx, baseline, width * .92);
+      context.fillText(line.text, centerX, baseline, maxWidth);
       context.strokeStyle = 'rgba(255, 255, 255, .72)';
       context.lineWidth = 1.4;
-      context.strokeText(line.text, cx, baseline - 1, width * .92);
+      context.strokeText(line.text, centerX, baseline - 1, maxWidth);
     };
-    nameLines.forEach((line) => {
-      drawMetalLine(line, cursor, true);
-      cursor += line.height + 8;
-    });
-    cursor += gap - 8;
-
-    const phraseTop = cursor;
-    const phraseWidth = Math.min(width * .7, phraseLine.width + 64);
-    const phraseGradient = context.createLinearGradient(cx - phraseWidth / 2, phraseTop, cx + phraseWidth / 2, phraseTop + phraseHeight);
+    let cursor: number;
+    const drawPhrase = (phraseTop: number, centerX: number, maxWidth: number) => {
+    const phraseWidth = Math.min(maxWidth, phraseLine.width + 64);
+    const phraseGradient = context.createLinearGradient(centerX - phraseWidth / 2, phraseTop, centerX + phraseWidth / 2, phraseTop + phraseHeight);
     phraseGradient.addColorStop(0, 'rgb(255 255 255)');
     phraseGradient.addColorStop(.48, 'rgb(211 219 230)');
     phraseGradient.addColorStop(1, 'rgb(255 255 255)');
@@ -350,15 +360,36 @@ export default function Inscricao() {
     context.strokeStyle = 'rgb(105 129 156)';
     context.lineWidth = 2;
     context.beginPath();
-    context.roundRect(cx - phraseWidth / 2, phraseTop, phraseWidth, phraseHeight, phraseHeight / 2);
+    context.roundRect(centerX - phraseWidth / 2, phraseTop, phraseWidth, phraseHeight, phraseHeight / 2);
     context.fill();
     context.stroke();
     context.font = phraseLine.font;
     context.textAlign = 'center';
     context.textBaseline = 'alphabetic';
     context.fillStyle = 'rgb(9 43 101)';
-    context.fillText(canvasPhrase, cx, phraseTop + (phraseHeight - phraseLine.height) / 2 + phraseLine.ascent);
-    cursor += phraseHeight + gap;
+    context.fillText(canvasPhrase, centerX, phraseTop + (phraseHeight - phraseLine.height) / 2 + phraseLine.ascent);
+    };
+    if (story) {
+      cursor = photoBoxTop + photoDiameter + 52 + gap;
+      nameLines.forEach((line) => {
+        drawMetalLine(line, cursor, true);
+        cursor += line.height + 8;
+      });
+      cursor += gap - 8;
+      drawPhrase(cursor, cx, width * .7);
+      cursor += phraseHeight + gap;
+    } else {
+      const textCenterX = width * .745;
+      const textMaxWidth = width * .51;
+      const textBlockTop = photoBoxTop + (feedRowHeight - feedTextHeight) / 2;
+      let nameCursor = textBlockTop;
+      nameLines.forEach((line, index) => {
+        drawMetalLine(line, nameCursor, true, textCenterX, textMaxWidth);
+        nameCursor += line.height + (index < nameLines.length - 1 ? 8 : 0);
+      });
+      drawPhrase(nameCursor + gap, textCenterX, textMaxWidth);
+      cursor = photoBoxTop + feedRowHeight + gap;
+    }
 
     drawMeasured(eventLine, cursor, 'rgb(11 65 145)');
     cursor += eventLine.height + gap;
@@ -426,8 +457,9 @@ export default function Inscricao() {
         setPhotoError('Convertendo HEIC para JPG neste navegador…');
         const { default: heic2any } = await import('heic2any');
         const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: .92 });
-        imageBlob = Array.isArray(converted) ? converted[0] : converted;
-        if (!imageBlob) throw new Error('A conversão não retornou uma imagem.');
+        const convertedBlob = Array.isArray(converted) ? converted[0] : converted;
+        if (!convertedBlob) throw new Error('A conversão não retornou uma imagem.');
+        imageBlob = convertedBlob;
       }
       const nextUrl = URL.createObjectURL(imageBlob);
       await new Promise<void>((resolve, reject) => {
