@@ -11,6 +11,14 @@ When HTTPS `git push` fails but the Replit GitHub connection can make authentica
 
 Only sync committed project files by default. Do not add newly uploaded, untracked attachments to Git unless the user explicitly asks; they may be context or private material rather than project assets.
 
+## Published artifact commits and reference uploads
+
+Artifact publishing can create local commits that include newly uploaded files from `attached_assets/`, even when those files are only conversation references. Inspect every unpublished commit before syncing. If a reference image must stay workspace-only, rebuild the unpushed change without it rather than pushing and following with a deletion commit.
+
+**Why:** A follow-up deletion would remove the image from the branch tip but leave the user's reference image in Git history.
+
+**How to apply:** Preserve the uploaded file locally, exclude it from the replacement commit, and verify it is absent from the remote tree after syncing.
+
 When comparing Git trees through CodeExecution, do not parse raw tab-delimited `git ls-tree` output after it passes through `shellExec`. Convert the fields to a visible delimiter in the shell first.
 
 **Why:** The returned shell output can strip literal tabs, which can make a complete tree comparison appear to contain hundreds of unrelated additions and deletions.

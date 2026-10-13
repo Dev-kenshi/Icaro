@@ -6,9 +6,8 @@ export default function Rodape() {
     <footer className="itc-footer">
       <div className="itc-shell itc-footer-grid">
         <div>
-          <span className="itc-eyebrow">{ITCONT.sigla} · UEFS</span>
-          <p><strong>{ITCONT.realizacao}</strong></p>
-          <p>{ITCONT.vinculo.join(' · ')}</p>
+          <span className="itc-eyebrow">{ITCONT.sigla}</span>
+          <p><strong>{ITCONT.realizacao} · UEFS · DCIS</strong></p>
           <p>{ITCONT.local.instituicao}</p>
         </div>
         <div>

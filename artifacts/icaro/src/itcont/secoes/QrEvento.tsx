@@ -108,7 +108,7 @@ export default function QrEvento() {
         <rect width={size + 8} height={size + 8} fill="var(--itc-branco)" />
         {matrix.flatMap((row, y) => row.map((cell, x) => cell ? <rect key={`${x}-${y}`} x={x + 4} y={y + 4} width="1" height="1" fill="var(--itc-abismo)" /> : null))}
       </svg>
-      <figcaption>Aponte a câmera para abrir o site</figcaption>
+      <figcaption>Aponte a câmera</figcaption>
     </figure>
   );
 }

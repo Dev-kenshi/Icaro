@@ -131,7 +131,7 @@ export function googleAgendaUrl(s: Sessao): string {
 }
 
 export const mapaUrl = () =>
-  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`UEFS Módulo IV, ${ITCONT.local.cidade} - ${ITCONT.local.uf}`)}`;
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`UEFS Módulo IV, Auditório III, Av. Transnordestina, ${ITCONT.local.cidade} - ${ITCONT.local.uf}`)}`;
 
 export function whatsappUrl(urlDoSite: string): string {
   const texto = `${ITCONT.titulo} (${ITCONT.sigla}) · 21 e 22/10, 19h, UEFS. Inscrição gratuita: ${urlDoSite}`;

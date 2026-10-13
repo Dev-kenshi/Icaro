@@ -192,6 +192,9 @@ export function createCloudMaskTexture(THREE: ThreeModule, image: HTMLImageEleme
   return texture;
 }
 
+/** Shared angular rate for the Ícaro globe and solar-system scene, in radians per second. */
+export const CENA_VELOCIDADE = 0.028;
+
 export function subsolarDirection(date: Date): [number, number, number] {
   const yearStart = Date.UTC(date.getUTCFullYear(), 0, 1);
   const dayOfYear = (Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) - yearStart) / 86_400_000 + 1;

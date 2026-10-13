@@ -131,3 +131,16 @@ Direção: vitrine digital inspirada em páginas de jogos para PC — superfíci
 98. Carregar fotos dos convidados de forma tardia e assíncrona.
 99. Não introduzir dependências pesadas para efeitos decorativos.
 100. Conferir o banner, o mapa e o cartão promocional com contraste legível no tema escuro.
+
+## Paleta oficial congelada
+
+**Paleta aprovada em 12/10/2026.** Os valores abaixo são a fonte oficial em `tokens.css`. A Etapa 6 e ajustes futuros podem refinar espaçamento, alinhamento, microinterações e conteúdo do rodapé, mas não podem mudar cores, fundos, halo da Terra ou o contraste geral. `validate:itcont-site` compara os tokens com os valores aprovados.
+
+| Grupo | Tokens aprovados |
+| --- | --- |
+| Identidade | `abismo #080f16` · `marinho #14212b` · `ceu-1 #0e2a66` · `ceu-2 #081a44` · `nevoa #58a9e8` · `estrela #d9efff` |
+| Ações e texto | `royal #1679a8` · `azul #2a5064` · `eletrico #57b5e3` · `neon #93d7f5` · `gelo #b1c9d6` · `branco #ffffff` · `alerta #ffcf5a` |
+| Prata | `cromo-1 #f1f5f7` · `cromo-2 #abb9c2` · `cromo-3 #a9bac5` · `silver-mid #bbc9d0` · `silver-shadow #71808a` |
+| Superfícies | `fundo-claro #0b131b` · `superficie-clara #14212b` · `superficie-prata #1a2a35` · `borda-clara #304b5b` · `tinta #eef4f7` · `tinta-2 #b0c2cc` · `planeta-terra #719a73` |
+| Ações/superfícies auxiliares | `action-top #218dbc` · `action-bottom #176b93` · `action-hover-top #32a2d0` · `action-hover-bottom #1b7eaa` · `action-border #55b9e8` · `control-top #203341` · `control-bottom #182733` · `control-hover #263e4d` |
+| Outros tokens cromáticos | `ribbon-top #174e69` · `ribbon-bottom #1c759d` · `ticket-top #1b2a35` · `ticket-bottom #111d26` · `inset #0e1821` · `input-surface #0b151d` · `footer-top #101c25` · `footer-bottom #0a1118` · `fallback-top #22617c` · `category-surface #172a36` |

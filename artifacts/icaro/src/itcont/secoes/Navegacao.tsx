@@ -3,17 +3,18 @@ import { Bot, CalendarDays, CircleHelp, Home, MapPin, Users, UserRoundPlus } fro
 import { ITCONT } from '../dados';
 
 const links = [
-  { id: 'inicio', label: 'Início', Icon: Home },
-  { id: 'programacao', label: 'Programação', Icon: CalendarDays },
-  { id: 'convidados', label: 'Convidados', Icon: Users },
-  { id: 'local', label: 'Local', Icon: MapPin },
-  { id: 'inscricao', label: 'Inscrever', Icon: UserRoundPlus },
-  { id: 'faq', label: 'Dúvidas', Icon: CircleHelp },
+  { id: 'inicio', label: 'Início', mobileLabel: 'Início', Icon: Home },
+  { id: 'programacao', label: 'Programação', mobileLabel: 'Agenda', Icon: CalendarDays },
+  { id: 'convidados', label: 'Convidados', mobileLabel: 'Pessoas', Icon: Users },
+  { id: 'local', label: 'Local', mobileLabel: 'Local', Icon: MapPin },
+  { id: 'inscricao', label: 'Inscrever', mobileLabel: 'Inscrever', Icon: UserRoundPlus },
+  { id: 'faq', label: 'Dúvidas', mobileLabel: 'Dúvidas', Icon: CircleHelp },
 ];
 
 export default function Navegacao() {
   const [active, setActive] = useState('inicio');
   const [heroPassed, setHeroPassed] = useState(false);
+  const [inscricaoVisivel, setInscricaoVisivel] = useState(false);
   useEffect(() => {
     const targets = links.map(({ id }) => document.getElementById(id)).filter((el): el is HTMLElement => !!el);
     const observer = new IntersectionObserver((entries) => {
@@ -22,32 +23,42 @@ export default function Navegacao() {
     }, { rootMargin: '-25% 0px -55% 0px', threshold: [0, .15, .4] });
     targets.forEach((target) => observer.observe(target));
     const hero = document.getElementById('inicio');
-    const stickyObserver = new IntersectionObserver(([entry]) => setHeroPassed(!entry.isIntersecting), { threshold: 0 });
+    const inscricao = document.getElementById('inscricao');
+    const stickyObserver = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.target.id === 'inicio') setHeroPassed(!entry.isIntersecting);
+        if (entry.target.id === 'inscricao') setInscricaoVisivel(entry.isIntersecting);
+      }
+    }, { threshold: 0 });
     if (hero) stickyObserver.observe(hero);
+    if (inscricao) stickyObserver.observe(inscricao);
     return () => { observer.disconnect(); stickyObserver.disconnect(); };
   }, []);
   return (
     <>
       <a className="itc-skip" href="#conteudo" data-testid="link-skip-content">Pular para o conteúdo</a>
       <div className="itc-topline" role="progressbar" aria-label="Progresso de leitura" aria-valuemin={0} aria-valuemax={100} aria-valuenow={0} aria-valuetext="0% da página percorrida" />
-      <a className="itc-icarolink" href="/icaro" data-testid="link-access-icaro">
-        <Bot size={17} aria-hidden="true" /><span>Acessar Ícaro</span>
-      </a>
       <nav className="itc-nav" aria-label="Seções do site">
         {links.map(({ id, label, Icon }) => (
             <a key={id} href={`#${id}`} aria-label={label} aria-current={active === id ? 'location' : undefined} data-testid={`nav-${id}`}>
             <Icon size={17} aria-hidden="true" /><span>{label}</span>
           </a>
         ))}
+        <a href="/icaro" aria-label="Acessar Ícaro" data-testid="link-access-icaro">
+          <Bot size={17} aria-hidden="true" /><span>Acessar Ícaro</span>
+        </a>
       </nav>
       <nav className="itc-bottom-nav" aria-label="Navegação principal">
-        {links.filter(({ id }) => id !== 'faq').map(({ id, label, Icon }) => (
+        {links.filter(({ id }) => id !== 'faq').map(({ id, mobileLabel, Icon }) => (
           <a key={id} href={`#${id}`} aria-current={active === id ? 'location' : undefined} data-testid={`mobile-nav-${id}`}>
-            <Icon size={18} aria-hidden="true" /><span>{label}</span>
+            <Icon size={18} aria-hidden="true" /><span>{mobileLabel}</span>
           </a>
         ))}
+        <a href="/icaro" data-testid="mobile-nav-icaro" aria-label="Acessar Ícaro">
+          <Bot size={18} aria-hidden="true" /><span>Ícaro</span>
+        </a>
       </nav>
-      <a className="itc-sticky-register itc-primary" data-visible={heroPassed} href={ITCONT.inscricaoUrl} target="_blank" rel="noopener noreferrer" data-testid="link-sticky-register">
+      <a className="itc-sticky-register itc-primary" data-visible={heroPassed && !inscricaoVisivel} href={ITCONT.inscricaoUrl} target="_blank" rel="noopener noreferrer" data-testid="link-sticky-register">
         Garantir minha vaga
       </a>
     </>

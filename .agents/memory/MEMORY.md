@@ -28,3 +28,5 @@
 - [Ícaro v5 web port](icaro-v5-web-port.md) — adapt the supplied Windows desktop project into the existing React/API app; do not run host-OS commands from the web server.
 - [Stage voice testing](stage-voice-testing.md) — captions vanish 2s after speech; verify answers in the Painel→Conversa log or /api/tts-ts logs, and guard geolocation in headless browsers.
 - [maplibre package firewall](maplibre-package-firewall.md) — firewall 403s every maplibre-gl tarball (breaks publish builds); durable fix is the vendored tarball + file: dependency.
+- [Shared Ícaro globe](itcont-shared-globe.md) — reuse the stage MapLibre globe on ITCONT; site-only motion and decor mode must not change stage defaults.
+- [ITCONT assistant scope](itcont-assistant-scope.md) — preserve the current free/local assistant path; don't add paid providers or keys without explicit approval.

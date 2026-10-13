@@ -9,6 +9,7 @@ import {
   EarthImages,
   NASA_EARTH_MAPS,
   SOLAR_SYSTEM_SCOPE_TEXTURES,
+  CENA_VELOCIDADE,
   subsolarDirection,
 } from './scene-assets';
 
@@ -45,12 +46,15 @@ type Props = {
   visible: boolean;
   isOverview?: boolean;
   transparentBackground?: boolean;
+  /** Decorative background: no pointer interaction, keyboard controls, or navigation UI. */
+  decorativo?: boolean;
   feeds?: CosmosFeedsResponse;
   targetCity?: boolean;
   targetGeo?: { latitude: number; longitude: number; label: string } | null;
   state: string;
   getAudioLevel: () => number;
   onFps?: (fps: number) => void;
+  onRenderMode?: (mode: 'pending' | 'webgl' | 'static') => void;
   onAssetsStatus?: (status: string) => void;
   navigationLabel?: string;
   /** Automatic motion preference. `system` follows prefers-reduced-motion; touch/mouse navigation always works. */
@@ -85,7 +89,6 @@ function readSpinSpeed(): number {
   } catch { return 1; }
 }
 const GALAXY_SPIN_RAD_PER_SECOND = .035;
-const EARTH_SPIN_RAD_PER_SECOND = .06;
 const EARTH_RESUME_DELAY_MS = 5000;
 const SYSTEM_CAMERA_ELEVATION = .42;
 const GALAXY_CAMERA_ELEVATION = .62;
@@ -389,12 +392,14 @@ export function CosmosRenderer({
   visible,
   isOverview = false,
   transparentBackground = false,
+  decorativo = false,
   feeds,
   targetCity = false,
   targetGeo = null,
   state,
   getAudioLevel,
   onFps,
+  onRenderMode,
   onAssetsStatus,
   navigationLabel,
   motion = 'system',
@@ -410,7 +415,7 @@ export function CosmosRenderer({
   const [hintSeen, setHintSeen] = useState(readHintSeen);
   const [focusLabel, setFocusLabel] = useState<string | null>(null);
   const [texturesLoading, setTexturesLoading] = useState(false);
-  const [spinSpeed, setSpinSpeed] = useState(readSpinSpeed);
+  const [spinSpeed, setSpinSpeed] = useState(() => decorativo ? .5 : readSpinSpeed());
   const spinSpeedRef = useRef(spinSpeed);
   spinSpeedRef.current = spinSpeed;
   const cycleSpinSpeed = () => setSpinSpeed((current) => {
@@ -424,7 +429,7 @@ export function CosmosRenderer({
   const interactRef = useRef(onInteract);
   interactRef.current = onInteract;
   const keyboardRef = useRef(keyboardShortcuts);
-  keyboardRef.current = keyboardShortcuts;
+  keyboardRef.current = keyboardShortcuts && !decorativo;
   const restartStaticMotionRef = useRef<(() => void) | null>(null);
   const markHintSeen = useRef(() => {
     setHintSeen((seen) => {
@@ -441,6 +446,7 @@ export function CosmosRenderer({
   const stateRef = useRef(state);
   const audioLevelRef = useRef(getAudioLevel);
   const fpsCallbackRef = useRef(onFps);
+  const renderModeCallbackRef = useRef(onRenderMode);
   const assetsCallbackRef = useRef(onAssetsStatus);
   const staticDrawRef = useRef<(() => void) | null>(null);
   const staticEarthImagesRef = useRef<EarthImages>({ day: null, night: null, clouds: null });
@@ -455,7 +461,11 @@ export function CosmosRenderer({
   stateRef.current = state;
   audioLevelRef.current = getAudioLevel;
   fpsCallbackRef.current = onFps;
+  renderModeCallbackRef.current = onRenderMode;
   assetsCallbackRef.current = onAssetsStatus;
+  useEffect(() => {
+    renderModeCallbackRef.current?.(renderMode);
+  }, [renderMode]);
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 767px)');
@@ -509,7 +519,7 @@ export function CosmosRenderer({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [visible, isOverview, markHintSeen]);
+  }, [visible, isOverview, markHintSeen, keyboardShortcuts, decorativo]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -804,7 +814,7 @@ export function CosmosRenderer({
           context.beginPath();
           context.arc(px, py, 2 + index * .38, 0, Math.PI * 2);
           context.fill();
-          if (index === 5) {
+           if (index === 5 && !decorativo) {
             context.strokeStyle = 'rgba(216,196,157,.62)';
             context.beginPath();
             context.ellipse(px, py, 7, 3.4, -.35, 0, Math.PI * 2);
@@ -1152,6 +1162,10 @@ export function CosmosRenderer({
         const galaxyDisk = new THREE.Group();
         groupGalaxy.add(galaxyDisk);
         const groupSystem = new THREE.Group();
+        if (decorativo) {
+          groupSystem.position.x = -6.8;
+          groupSystem.scale.setScalar(.72);
+        }
         const groupEarth = new THREE.Group();
         world.add(groupGalaxy, groupSystem, groupEarth);
         const backgroundStars = createStarfield(THREE);
@@ -1271,14 +1285,16 @@ export function CosmosRenderer({
             new THREE.RingGeometry(orbitRadius - .006, orbitRadius + .006, 112),
             new THREE.MeshBasicMaterial({ color: 0xa7c4d6, transparent: true, opacity: .13, side: THREE.DoubleSide, depthWrite: false }),
           );
+          orbit.visible = !decorativo || index < 4;
           orbit.rotation.x = Math.PI * .5;
           groupSystem.add(orbit);
           const fallback = createPlanetFallbackTexture(THREE, index);
           const material = new THREE.MeshStandardMaterial({ map: fallback, roughness: index > 3 ? .62 : .84, metalness: .02 });
           const mesh = new THREE.Mesh(new THREE.SphereGeometry(planetRadii[index], 28, 20), material);
+          mesh.visible = !decorativo || index < 4;
           groupSystem.add(mesh);
           let ring: InstanceType<typeof THREE.Mesh> | null = null;
-          if (index === 5) {
+           if (index === 5 && !decorativo) {
             ring = new THREE.Mesh(
               new THREE.RingGeometry(planetRadii[index] * 1.35, planetRadii[index] * 2.45, 72),
               new THREE.MeshBasicMaterial({ color: 0xdac69d, transparent: true, opacity: .58, side: THREE.DoubleSide, depthWrite: false }),
@@ -1444,6 +1460,10 @@ export function CosmosRenderer({
         const loadSolarTextures = () => {
           if (solarTexturesStarted) return;
           solarTexturesStarted = true;
+          if (decorativo) {
+            reportAsset('solar', 'texturas procedurais locais');
+            return;
+          }
           let completed = 0, loaded = 0;
           reportAsset('solar', 'texturas públicas carregando');
           planets.forEach((planet, index) => {
@@ -1720,14 +1740,14 @@ export function CosmosRenderer({
           groupSystem.rotation.x += (pointerParallax.y * .028 - groupSystem.rotation.x) * .025;
           groupSystem.rotation.z += (pointerParallax.x * .035 - groupSystem.rotation.z) * .025;
           if (moving && activeScene === 'earth' && !cityViewActive && time > earthPausedUntil) {
-            groupEarth.rotation.y += EARTH_SPIN_RAD_PER_SECOND * seconds * spin;
+            groupEarth.rotation.y += CENA_VELOCIDADE * seconds * spin;
           }
           groupEarth.rotation.x += (pointerParallax.y * .028 - groupEarth.rotation.x) * .025;
           groupEarth.rotation.z += (pointerParallax.x * .035 - groupEarth.rotation.z) * .025;
           if (moving) {
             backgroundStars.rotation.y += .000006 * delta * spin;
             if (activeScene === 'system') {
-              orbitClock += seconds * spin;
+              orbitClock += CENA_VELOCIDADE * seconds * spin;
               placePlanets();
             }
             planets.forEach(({ mesh }, index) => {
@@ -1888,8 +1908,8 @@ export function CosmosRenderer({
 
   return (
     <>
-      <div ref={hostRef} className="cosmos-viewport" data-scene={scene} data-render-mode={renderMode} aria-hidden="true" />
-      {visible && (
+      <div ref={hostRef} className="cosmos-viewport" data-scene={scene} data-render-mode={renderMode} aria-hidden="true" style={decorativo ? { pointerEvents: 'none' } : undefined} />
+      {visible && !decorativo && (
         <div className="cosmos-navigation" role="group" aria-label={navigationLabel ?? 'Navegação das cenas'} data-testid={`cosmos-navigation-${scene}`}>
           <div className="cosmos-navigation__status">
             {!hintSeen && <span className="cosmos-navigation__hint" data-testid={`text-cosmos-hint-${scene}`}>{hint}</span>}
