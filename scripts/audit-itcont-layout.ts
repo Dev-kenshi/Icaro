@@ -43,7 +43,7 @@ async function waitForPreview() {
 }
 
 type Finding = { check: string; detail: string };
-type CaseResult = { width: number; height: number; reducedMotion: boolean; findings: Finding[] };
+type CaseResult = { width: number; height: number; reducedMotion: boolean; location?: string; findings: Finding[] };
 
 const inspectPage = () => {
   const issues: Finding[] = [];
@@ -186,14 +186,17 @@ const inspectPage = () => {
   if (solarFallback && getComputedStyle(solarFallback).display !== 'none') {
     add('solar-fallback-hidden', 'loose decorative orbit fallback is still visible');
   }
-  const earth = hero?.querySelector<HTMLElement>(':scope > [data-testid="background-earth"]');
-  if (hero && earth && getComputedStyle(earth).display !== 'none') {
-    const h = hero.getBoundingClientRect();
-    const e = earth.getBoundingClientRect();
-    const radialFade = getComputedStyle(earth).maskImage.includes('radial-gradient') || getComputedStyle(earth).webkitMaskImage.includes('radial-gradient');
-    if ((e.left < h.left - 1 || e.right > h.right + 1 || e.top < h.top - 1 || e.bottom > h.bottom + 1) && !radialFade) {
-      add('earth-clipped-by-hero', `earth bounds ${e.left.toFixed(1)},${e.top.toFixed(1)}–${e.right.toFixed(1)},${e.bottom.toFixed(1)} exceed hero`);
-    }
+  const earthLayers = Array.from(document.querySelectorAll<HTMLElement>('#itc-page-earth, [data-testid="background-earth"]'));
+  for (const earthLayer of earthLayers) {
+    if (!hero?.contains(earthLayer)) add('earth-layer-outside-hero', `${earthLayer.id || earthLayer.className || 'Earth layer'} is not inside #inicio`);
+    const style = getComputedStyle(earthLayer);
+    if (style.position !== 'absolute') add('earth-layer-not-contained', `${earthLayer.id || earthLayer.className || 'Earth layer'} uses ${style.position} positioning`);
+    const mask = `${style.maskImage} ${style.webkitMaskImage}`;
+    if (!mask.includes('radial-gradient')) add('earth-radial-fade', `${earthLayer.id || earthLayer.className || 'Earth layer'} lacks a radial edge mask`);
+  }
+  const globeCanvases = Array.from(document.querySelectorAll<HTMLElement>('.itc-earth-globo .globo-terra canvas'));
+  for (const canvas of globeCanvases) {
+    if (!hero?.contains(canvas)) add('globe-canvas-outside-hero', 'a globe canvas is not inside #inicio');
   }
   if (document.querySelector('.itc-earth-lightning')) add('earth-lightning', 'lightning strokes remain over the Earth');
   const sideNav = document.querySelector<HTMLElement>('.itc-nav');
@@ -247,6 +250,46 @@ const inspectPage = () => {
   return issues;
 };
 
+const inspectEarthOutsideSection = (sectionId: string) => {
+  const findings: Finding[] = [];
+  const hero = document.querySelector<HTMLElement>('#inicio');
+  const earthLayers = Array.from(document.querySelectorAll<HTMLElement>('#itc-page-earth, [data-testid="background-earth"]'));
+  const globeCanvases = Array.from(document.querySelectorAll<HTMLElement>('.itc-earth-globo .globo-terra canvas'));
+  const section = document.querySelector<HTMLElement>(sectionId);
+  const visuallyInViewport = (element: HTMLElement) => {
+    if (!element.isConnected) return false;
+    let opacity = 1;
+    for (let node: HTMLElement | null = element; node; node = node.parentElement) {
+      const style = getComputedStyle(node);
+      if (style.display === 'none' || style.visibility === 'hidden' || style.contentVisibility === 'hidden') return false;
+      opacity *= Number.parseFloat(style.opacity || '1');
+    }
+    const rect = element.getBoundingClientRect();
+    return opacity > .03 && rect.width > 0 && rect.height > 0
+      && rect.right > 0 && rect.left < window.innerWidth
+      && rect.bottom > 0 && rect.top < window.innerHeight;
+  };
+  if (!section) findings.push({ check: 'earth-scope-target-missing', detail: `${sectionId} was not found` });
+  if (earthLayers.some((layer) => !hero?.contains(layer))) {
+    findings.push({ check: 'earth-layer-outside-hero', detail: `an Earth layer is outside #inicio while viewing ${sectionId}` });
+  }
+  const visibleEarth = earthLayers.filter(visuallyInViewport);
+  if (visibleEarth.length) {
+    findings.push({
+      check: 'earth-straight-cut-outside-hero',
+      detail: `${visibleEarth.length} Earth layer(s) remain visible in the ${sectionId} viewport`,
+    });
+  }
+  const visibleCanvases = globeCanvases.filter(visuallyInViewport);
+  if (visibleCanvases.length) {
+    findings.push({
+      check: 'globe-canvas-outside-hero',
+      detail: `${visibleCanvases.length} globe canvas/canvases remain visible in the ${sectionId} viewport`,
+    });
+  }
+  return findings;
+};
+
 async function main() {
   await mkdir(outputDir, { recursive: true });
   await waitForPreview();
@@ -258,6 +301,7 @@ async function main() {
   const cases: CaseResult[] = [];
   const screenshots: string[] = [];
   const transitionScreenshots: string[] = [];
+  const sectionScreenshots: string[] = [];
   try {
     for (const width of selectedWidths) {
       for (const reducedMotion of [false, true]) {
@@ -282,6 +326,31 @@ async function main() {
           await page.screenshot({ path: resolve(outputDir, filename), fullPage: false, animations: 'disabled' });
           screenshots.push(filename);
         }
+        await context.close();
+      }
+    }
+    for (const [width, height] of [[1568, 736], [390, 844]] as const) {
+      for (const section of ['#programacao', '#inscricao']) {
+        const context = await browser.newContext({
+          viewport: { width, height },
+          isMobile: width <= 414,
+          hasTouch: width <= 414,
+          reducedMotion: 'reduce',
+        });
+        const page = await context.newPage();
+        await page.addInitScript('window.__name = (fn) => fn;');
+        await page.goto(`${baseUrl}/itcont`, { waitUntil: 'domcontentloaded', timeout: 45_000 });
+        await page.locator('#inicio').waitFor({ state: 'visible', timeout: 20_000 });
+        await page.waitForFunction(() => document.querySelector('.itc')?.getAttribute('data-css-ready') === 'true', undefined, { timeout: 20_000 });
+        await page.waitForFunction(() => document.getElementById('itc-page-earth')?.parentElement?.id === 'inicio', undefined, { timeout: 20_000 });
+        await page.evaluate(() => document.fonts.ready);
+        await page.locator(section).scrollIntoViewIfNeeded();
+        await page.waitForTimeout(350);
+        const findings = await page.evaluate(inspectEarthOutsideSection, section);
+        cases.push({ width, height, reducedMotion: true, location: section, findings });
+        const filename = `itcont-earth-scope-${section.slice(1)}-${width}px.png`;
+        await page.screenshot({ path: resolve(outputDir, filename), fullPage: false, animations: 'disabled' });
+        sectionScreenshots.push(filename);
         await context.close();
       }
     }
@@ -312,7 +381,13 @@ async function main() {
     await browser.close();
     stopPreview();
   }
-  const failures = cases.flatMap((entry) => entry.findings.map((finding) => ({ width: entry.width, height: entry.height, reducedMotion: entry.reducedMotion, ...finding })));
+  const failures = cases.flatMap((entry) => entry.findings.map((finding) => ({
+    width: entry.width,
+    height: entry.height,
+    reducedMotion: entry.reducedMotion,
+    location: entry.location,
+    ...finding,
+  })));
   const report = {
     schemaVersion: 1,
     artifact: 'ITCONT',
@@ -324,6 +399,7 @@ async function main() {
     cases,
     screenshots,
     transitionScreenshots,
+    sectionScreenshots,
     failureCount: failures.length,
     failures,
   };

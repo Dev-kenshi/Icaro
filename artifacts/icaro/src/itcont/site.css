@@ -695,6 +695,25 @@
 .itc[data-layout="celular-deitado"] .itc-main-site main > .itc-section:nth-of-type(2) .itc-counter { background: var(--itc-superficie-clara); }
 .itc[data-layout="desktop"] .itc-night { border-color: var(--itc-borda-clara); }
 .itc[data-layout="desktop"] .itc-timeline::before { background: var(--itc-borda-clara); }
+.itc #inicio > #itc-page-earth {
+  position: absolute;
+  z-index: 0;
+  top: 50%;
+  right: clamp(20px, 4vw, 72px);
+  left: auto;
+  width: clamp(300px, 36vw, 520px);
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: var(--itc-earth-opacity, .84);
+  transform: translateY(calc(-50% + var(--itc-earth-parallax, 0px))) scale(var(--itc-earth-scale, 1));
+  -webkit-mask-image: radial-gradient(circle, var(--itc-abismo) 58%, transparent 82%);
+  mask-image: radial-gradient(circle, var(--itc-abismo) 58%, transparent 82%);
+  transition: opacity .5s ease, transform .35s ease-out;
+}
+.itc #inicio > #itc-page-earth[data-live="true"] { opacity: 0; }
 
 @media print {
   .itc { background: var(--itc-branco); color: var(--itc-abismo); overflow: visible; }

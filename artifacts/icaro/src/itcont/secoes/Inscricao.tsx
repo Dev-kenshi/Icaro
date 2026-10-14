@@ -14,7 +14,15 @@ import {
 const LOGO_OFICIAL = 'https://static.even3.com/logos/ImagemdoCodex21deset.de202609_39_23.91a8f584302f4c68b0fa.png';
 const PROMO_WIDTH = 1080;
 const PROMO_HEIGHTS = { feed: 1350, stories: 1920 } as const;
-const PROMO_CONTENT_INSET = 32;
+const PROMO_FRAME_INSET = 32;
+const PROMO_TEXT_MARGIN = 56;
+const PROMO_CONTENT_INSET = PROMO_FRAME_INSET + PROMO_TEXT_MARGIN;
+const PROMO_LOGO_PHOTO_CLEARANCE = 32;
+const PROMO_PHOTO_RING_OUTSET = 27;
+const PROMO_PHOTO_SHADOW_BREATHING = 13;
+const PROMO_LOGO_PHOTO_GAP = PROMO_LOGO_PHOTO_CLEARANCE + PROMO_PHOTO_RING_OUTSET + PROMO_PHOTO_SHADOW_BREATHING;
+const PROMO_CORNER_RIBBON_WIDTH = 76;
+const PROMO_CORNER_RIBBON_INNER_WIDTH = 60;
 type PromoFormat = keyof typeof PROMO_HEIGHTS;
 type LogoState = 'loading' | 'loaded' | 'failed';
 type LogoCrop = { x: number; y: number; width: number; height: number };
@@ -181,13 +189,13 @@ export default function Inscricao() {
 
     const drawCornerRibbon = (mirror: boolean) => {
       const point = (x: number, y: number) => mirror ? { x: width - x, y: height - y } : { x, y };
-      const p0 = point(56, 150);
-      const p1 = point(46, 120);
-      const p2 = point(55, 90);
-      const p3 = point(88, 75);
-      const p4 = point(108, 59);
-      const p5 = point(130, 56);
-      const p6 = point(148, 70);
+      const p0 = point(88, 450);
+      const p1 = point(75, 365);
+      const p2 = point(66, 270);
+      const p3 = point(66, 205);
+      const p4 = point(66, 145);
+      const p5 = point(86, 83);
+      const p6 = point(130, 72);
       const gradient = context.createLinearGradient(p0.x, p0.y, p6.x, p6.y);
       gradient.addColorStop(0, 'rgb(7 43 119)');
       gradient.addColorStop(.38, 'rgb(20 88 214)');
@@ -201,10 +209,10 @@ export default function Inscricao() {
       context.bezierCurveTo(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
       context.bezierCurveTo(p4.x, p4.y, p5.x, p5.y, p6.x, p6.y);
       context.strokeStyle = 'rgba(194, 211, 233, .98)';
-      context.lineWidth = 40;
+      context.lineWidth = PROMO_CORNER_RIBBON_WIDTH;
       context.stroke();
       context.strokeStyle = gradient;
-      context.lineWidth = 28;
+      context.lineWidth = PROMO_CORNER_RIBBON_INNER_WIDTH;
       context.stroke();
       context.strokeStyle = 'rgba(255, 255, 255, .94)';
       context.lineWidth = 4;
@@ -230,7 +238,7 @@ export default function Inscricao() {
 
     const centerX = width / 2;
     const usableWidth = width - PROMO_CONTENT_INSET * 2;
-    const gapCount = 9;
+    const contentGapCount = 8;
     const minGap = story ? 8 : 10;
     const bottomSafe = story ? 250 : 32;
     const textFont = (weight: number, size: number) => `${weight} ${size}px Archivo, Arial, sans-serif`;
@@ -273,7 +281,7 @@ export default function Inscricao() {
     const combinedDate = `${dateParts[0]} · ${dateParts[1]}`;
     const dateSize = story ? 27 : 28;
     const oneLineDate = measure(combinedDate, 700, dateSize);
-    const dateLines = oneLineDate.width <= usableWidth * .98
+    const dateLines = oneLineDate.width <= usableWidth
       ? [oneLineDate]
       : dateParts.map((line) => measure(line, 700, dateSize));
     const venueSize = story ? 26 : 28;
@@ -295,7 +303,7 @@ export default function Inscricao() {
       + Math.max(0, dateLines.length - 1) * 8;
     const venueHeight = venueLines.reduce((sum, line) => sum + line.height, 0)
       + Math.max(0, venueLines.length - 1) * 8;
-    const logoWidth = usableWidth * (story ? .70 : .62);
+    const logoWidth = (width - PROMO_FRAME_INSET * 2) * (story ? .70 : .62);
     const logoCrop = logoRef.current && logoState === 'loaded'
       ? (logoCropRef.current ?? { x: 0, y: 0, width: logoRef.current.naturalWidth, height: logoRef.current.naturalHeight })
       : null;
@@ -308,14 +316,20 @@ export default function Inscricao() {
     const safeHeight = height - top - bottomSafe;
     const desiredPhotoDiameter = story ? 520 : 320;
     const minPhotoDiameter = story ? 340 : 180;
-    const availablePhotoHeight = Math.floor(safeHeight - fixedContentHeight - minGap * gapCount);
+    const availablePhotoHeight = Math.floor(
+      safeHeight - fixedContentHeight - PROMO_LOGO_PHOTO_GAP
+        - PROMO_PHOTO_RING_OUTSET - minGap * contentGapCount,
+    );
     const photoDiameter = Math.max(
       minPhotoDiameter,
       Math.min(desiredPhotoDiameter, availablePhotoHeight),
     );
     const gap = Math.max(
       minGap,
-      Math.floor((safeHeight - fixedContentHeight - photoDiameter) / gapCount),
+      Math.floor(
+        (safeHeight - fixedContentHeight - PROMO_LOGO_PHOTO_GAP
+          - PROMO_PHOTO_RING_OUTSET - photoDiameter) / contentGapCount,
+      ),
     );
     const radius = photoDiameter / 2;
     if (logoRef.current && logoState === 'loaded') {
@@ -341,7 +355,7 @@ export default function Inscricao() {
     }
 
     const photoX = centerX;
-    const photoTop = top + logoHeight + gap;
+    const photoTop = top + logoHeight + PROMO_LOGO_PHOTO_GAP;
     const cy = photoTop + radius;
     context.save();
     context.shadowColor = 'rgba(11, 52, 112, .24)';
@@ -440,7 +454,7 @@ export default function Inscricao() {
       context.fillText(canvasPhrase, centerX, phraseTop + (phraseHeight - phraseLine.height) / 2 + phraseLine.ascent);
     };
 
-    let cursor = photoTop + photoDiameter + gap;
+    let cursor = photoTop + photoDiameter + PROMO_PHOTO_RING_OUTSET + gap;
     nameLines.forEach((line, index) => {
       drawMetalLine(line, cursor, true, centerX, usableWidth * .92);
       cursor += line.height + (index < nameLines.length - 1 ? nameLineGap : 0);

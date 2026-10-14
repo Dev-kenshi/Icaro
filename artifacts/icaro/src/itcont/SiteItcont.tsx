@@ -120,9 +120,12 @@ export default function SiteItcont() {
   }, [sceneIdle]);
   useEffect(() => {
     const earth = document.getElementById('itc-page-earth');
-    if (earth && siteRef.current && earth.parentElement !== siteRef.current) {
+    const hero = siteRef.current?.querySelector<HTMLElement>('#inicio');
+    if (earth && hero && earth.parentElement !== hero) {
       earth.classList.add('itc-earth-still');
-      siteRef.current.insertBefore(earth, siteRef.current.firstChild);
+      const content = hero.querySelector('.itc-intro-content');
+      if (content) hero.insertBefore(earth, content);
+      else hero.prepend(earth);
     }
     earth?.setAttribute('data-live', modoCosmos === 'webgl' && !falhaGlobo ? 'true' : 'false');
   }, [modoCosmos, falhaGlobo]);
@@ -249,15 +252,19 @@ export default function SiteItcont() {
       raf = requestAnimationFrame(() => {
         const full = document.documentElement.scrollHeight - window.innerHeight;
         const progress = full > 0 ? Math.round(window.scrollY / full * 100) : 0;
-        const earth = siteRef.current?.querySelector<HTMLElement>('.itc-earth-backdrop');
+        const earthLayers = siteRef.current?.querySelectorAll<HTMLElement>(
+          '#inicio > .itc-earth-backdrop, #inicio > #itc-page-earth',
+        );
         const hero = siteRef.current?.querySelector<HTMLElement>('#inicio');
         const away = hero ? Math.max(0, -hero.getBoundingClientRect().top) : 0;
         const fade = Math.max(0, Math.min(1, away / Math.max(1, window.innerHeight * .82)));
         document.documentElement.style.setProperty('--itc-scroll', `${progress}%`);
         document.documentElement.style.setProperty('--itc-cosmos-parallax', reduzMovimento && !movimentoAtivado ? '0px' : `${Math.min(window.scrollY * .055, 110)}px`);
         document.documentElement.style.setProperty('--itc-earth-parallax', reduzMovimento && !movimentoAtivado ? '0px' : `${Math.min(window.scrollY * .085, 150)}px`);
-        earth?.style.setProperty('--itc-earth-opacity', String(1 - fade));
-        earth?.style.setProperty('--itc-earth-scale', String(1 - fade * .16));
+        earthLayers?.forEach((earth) => {
+          earth.style.setProperty('--itc-earth-opacity', String(1 - fade));
+          earth.style.setProperty('--itc-earth-scale', String(1 - fade * .16));
+        });
         const indicator = document.querySelector<HTMLElement>('.itc-topline');
         indicator?.setAttribute('aria-valuenow', String(progress));
         indicator?.setAttribute('aria-valuetext', `${progress}% da página percorrida`);
