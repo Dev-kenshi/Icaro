@@ -168,3 +168,59 @@ mtime_ms = 1791930187204
 storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:c3e2d7b8-918b-46b2-b84c-6f83c6c77c98/67f50e58-1ce1-455f-bd4b-7304394cd0ba/ca286df9-2983-47ed-bc36-fe68b50b2ac8"
 storage_version_token = "1791930213696469"
 content_type = "image/png"
+
+[[outputs]]
+id = "m8oyN60TnHe4JG6g34MSM"
+uri = "file://generated-artifacts/itcont-cards/itcont-feed-jpg.png"
+type = "image"
+title = "ITCONT · Feed · entrada JPG"
+description = "Cartão Feed 1080×1350, foto JPG de origem, arquivo exportado como PNG."
+logical_id = "834e920f-29e1-4925-97f4-c153945f6543"
+content_hash = "sha256:a366613ccb7510776a1304188fa74fe5c6b874f674cea28818a2f79a97580ce1"
+size = 1251975
+mtime_ms = 1792005329153
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:c3e2d7b8-918b-46b2-b84c-6f83c6c77c98/834e920f-29e1-4925-97f4-c153945f6543/90d27e04-05cb-4a66-b8f2-9025c332ce54"
+storage_version_token = "1792005928093141"
+content_type = "image/png"
+
+[[outputs]]
+id = "2zxNUITeHITOFrn5ImxdC"
+uri = "file://generated-artifacts/itcont-cards/itcont-stories-png.png"
+type = "image"
+title = "ITCONT · Stories · entrada PNG"
+description = "Cartão Stories 1080×1920, foto PNG de origem, arquivo exportado como PNG."
+logical_id = "a779a37a-7636-4184-bfad-beb458d2013c"
+content_hash = "sha256:1b73ed3ad16c4f6f103cf875befeb5fbae8e5203b07d132ec09ff58c82c6574c"
+size = 1617583
+mtime_ms = 1792005330633
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:c3e2d7b8-918b-46b2-b84c-6f83c6c77c98/a779a37a-7636-4184-bfad-beb458d2013c/9a278573-c6a3-4654-8d6b-d84d5ed0a540"
+storage_version_token = "1792005928954555"
+content_type = "image/png"
+
+[[outputs]]
+id = "H5OXzSY6hkFXKe5smDEUo"
+uri = "file://generated-artifacts/itcont-cards/itcont-feed-webp.png"
+type = "image"
+title = "ITCONT · Feed · entrada WebP"
+description = "Cartão Feed 1080×1350 com a frase “Estarei lá”, foto WebP de origem, exportado como PNG."
+logical_id = "54545dc5-859d-4464-87b4-9e8b62a69539"
+content_hash = "sha256:b4ba28e58e9d8b3cc13924c6328fc28ecb142b760cf4080d7dfbe146081ee595"
+size = 1255596
+mtime_ms = 1792005332001
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:c3e2d7b8-918b-46b2-b84c-6f83c6c77c98/54545dc5-859d-4464-87b4-9e8b62a69539/66d0d975-c1f2-4258-880e-168e1dd64fdd"
+storage_version_token = "1792005929744792"
+content_type = "image/png"
+
+[[outputs]]
+id = "g9lKF1hsUz4ceEoPt3iyA"
+uri = "file://generated-artifacts/itcont-cards/itcont-stories-heic.png"
+type = "image"
+title = "ITCONT · Stories · entrada HEIC"
+description = "Cartão Stories 1080×1920 com a frase “Estarei lá”, foto HEIC de origem, exportado como PNG."
+logical_id = "7c3de3b1-b085-47a5-8535-07ed73a38fb9"
+content_hash = "sha256:4b47f66e9a1a16eeec77a814b6598b4278cefc57b364ef1c5d53553d86804019"
+size = 1606767
+mtime_ms = 1792005516053
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:c3e2d7b8-918b-46b2-b84c-6f83c6c77c98/7c3de3b1-b085-47a5-8535-07ed73a38fb9/07046f32-05a2-4574-b1da-919bf0e823d3"
+storage_version_token = "1792005930815502"
+content_type = "image/png"
