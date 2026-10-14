@@ -1,5 +1,5 @@
 /**
- * 138 validações do site do ITCONT: dados oficiais, regras (contagem, fases, agenda),
+ * 142 validações do site do ITCONT: dados oficiais, regras (contagem, fases, agenda),
  * identidade visual e leis da beleza, heurísticas de Nielsen na interface e integração.
  * Roda sem internet, sem banco e sem navegador.
  * Uso: pnpm --filter @workspace/scripts run validate:itcont-site
@@ -25,7 +25,7 @@ import {
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const RAIZ = resolve(AQUI, '../../../..');
 const ler = (p: string) => (existsSync(p) ? readFileSync(p, 'utf8') : '');
-const TOTAL_VALIDACOES = 141;
+const TOTAL_VALIDACOES = 142;
 
 const resultados: Array<{ n: number; grupo: string; nome: string; erro?: string }> = [];
 let grupo = '';
@@ -293,11 +293,20 @@ check('QR code fica na inscrição e representa o endereço público', () => {
   assert.doesNotMatch(sec('Hero'), /QrEvento|intro-speakers/);
   assert.match(sec('QrEvento'), /window\.location\.origin.*window\.location\.pathname/);
 });
-check('slogan e selo oficiais aparecem no hero', () => {
-  assert.match(sec('Hero'), /I T C O N T/);
+check('logo e slogan oficiais aparecem no hero', () => {
+  assert.match(sec('Hero'), /className="itc-ribbon-logo"/);
+  assert.match(sec('Hero'), /alt="Logo do ITCONT"/);
+  assert.match(sec('Hero'), /itcont-logo\.png/);
   assert.match(sec('Hero'), /INOVAÇÃO/);
   assert.match(sec('Hero'), /PRÁTICA/);
   assert.match(sec('Hero'), /CONEXÕES/);
+});
+check('favicon do ITCONT usa a logo sem alterar o favicon do Ícaro', () => {
+  const indexHtml = ler(join(RAIZ, 'artifacts/icaro/index.html'));
+  assert.match(indexHtml, /href="\/favicon\.svg"/);
+  assert.match(indexHtml, /path==='\/'\|\|path==='\/itcont'/);
+  assert.match(indexHtml, /icon\.href=`\$\{base\}\/itcont-logo\.png`/);
+  assert.ok(existsSync(join(RAIZ, 'artifacts/icaro/public/itcont-logo.png')));
 });
 check('contagem tem quatro unidades, números tabulares e segundos em todas as larguras', () => {
   assert.match(sec('Contagem'), /TEMPO ATÉ O INÍCIO DO EVENTO/);
@@ -305,11 +314,11 @@ check('contagem tem quatro unidades, números tabulares e segundos em todas as l
   assert.doesNotMatch(sec('Contagem'), /matchMedia\('\(min-width: 768px\)'\)/);
   assert.match(CSS, /font-variant-numeric:\s*tabular-nums/);
 });
-check('relatório mais recente do audit responsivo tem 24 casos sem falhas e capturas-chave', () => {
+check('relatório mais recente do audit responsivo tem 28 casos sem falhas e capturas-chave', () => {
   const path = resolve(RAIZ, 'generated-artifacts/audit/itcont-layout-report.json');
   const report = JSON.parse(ler(path)) as { generatedAt: string; widths: number[]; caseCount: number; failureCount: number; screenshots: string[]; transitionScreenshots: string[] };
   assert.deepEqual(report.widths, [320, 360, 390, 414, 768, 840, 1024, 1280, 1366, 1440, 1568, 1920]);
-  assert.equal(report.caseCount, 24);
+  assert.equal(report.caseCount, 28);
   assert.equal(report.failureCount, 0);
   assert.ok(Date.now() - Date.parse(report.generatedAt) < 24 * 60 * 60 * 1000, 'relatório tem mais de 24 horas');
   for (const width of [390, 840, 1024, 1440]) assert.ok(report.screenshots.includes(`itcont-${width}px.png`), `captura de ${width}px ausente`);
@@ -655,11 +664,11 @@ check('rodapé cita a fonte oficial', () => assert.match(sec('Rodape'), /ITCONT\
 
 // ───────────── E. Integração ─────────────
 grupo = 'E. Integração';
-check('nenhuma imagem do evento copiada para public/ (só links do Even3)', () => {
+check('fotos do evento ficam como links; a logo institucional enviada é a exceção autorizada', () => {
   const publicDir = resolve(RAIZ, 'artifacts/icaro/public');
   const pub = arquivos(publicDir).map((p) => relative(publicDir, p))
     .filter((p) => /itcont|even3/i.test(p) && /\.(png|jpe?g|webp|gif|avif)$/i.test(p));
-  assert.deepEqual(pub.filter((p) => !/itcont-earth-(?:static|small)\.webp$/.test(p)), []);
+  assert.deepEqual(pub.filter((p) => !/itcont-earth-(?:static|small)\.webp$/.test(p) && p !== 'itcont-logo.png'), []);
   const earth = join(RAIZ, 'artifacts/icaro/public/itcont-earth-static.webp');
   const earthSmall = join(RAIZ, 'artifacts/icaro/public/itcont-earth-small.webp');
   assert.ok(existsSync(earth));

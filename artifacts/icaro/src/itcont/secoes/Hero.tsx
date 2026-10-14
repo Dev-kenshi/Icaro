@@ -14,7 +14,14 @@ export default function Hero({ motionPrompt = false, onEnableMotion, earthBackdr
       {earthBackdrop}
       <div className="itc-shell itc-intro-content">
         <span className="itc-eyebrow itc-hero-kicker">{ITCONT.local.instituicao} <i aria-hidden="true" /> {ITCONT.sigla}</span>
-        <span className="itc-ribbon" aria-label="Sigla do evento">I T C O N T</span>
+        <img
+          className="itc-ribbon-logo"
+          src={`${import.meta.env.BASE_URL}itcont-logo.png`}
+          width={74}
+          height={47}
+          alt="Logo do ITCONT"
+          decoding="async"
+        />
         <h1 className="itc-title" id="itc-title">
           <span className="itc-title-first"><i aria-hidden="true">I</i> Imersão</span>
           <span className="itc-title-second">Tecnológica</span>
