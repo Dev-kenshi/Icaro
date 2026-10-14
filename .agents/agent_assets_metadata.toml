@@ -224,3 +224,59 @@ mtime_ms = 1792005516053
 storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:c3e2d7b8-918b-46b2-b84c-6f83c6c77c98/7c3de3b1-b085-47a5-8535-07ed73a38fb9/07046f32-05a2-4574-b1da-919bf0e823d3"
 storage_version_token = "1792005930815502"
 content_type = "image/png"
+
+[[outputs]]
+id = "1b9UV5hB-ljtXqpywjR8L"
+uri = "file://generated-artifacts/itcont-cards/desktop-feed-4x5.png"
+type = "image"
+title = "ITCONT · Feed 4:5 · desktop"
+description = "PNG 1080×1350 export from the card generator. Uses the built-in name/photo placeholders."
+logical_id = "ccf99427-307a-4baa-be77-7f69991a9309"
+content_hash = "sha256:689fc62daf1a4a0ac27969aedd9785898b822d01601699b8e0a680ef2b46433a"
+size = 1154883
+mtime_ms = 1792009251821
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:c3e2d7b8-918b-46b2-b84c-6f83c6c77c98/ccf99427-307a-4baa-be77-7f69991a9309/471c7843-c4df-4f82-b7d0-d0f3373d2246"
+storage_version_token = "1792009437572183"
+content_type = "image/png"
+
+[[outputs]]
+id = "_CQXOfovZEqlDiw1QTXMr"
+uri = "file://generated-artifacts/itcont-cards/desktop-stories-9x16.png"
+type = "image"
+title = "ITCONT · Stories 9:16 · desktop"
+description = "PNG 1080×1920 export from the card generator. Uses the built-in name/photo placeholders."
+logical_id = "5da656ab-0736-43ec-8078-e726710e5408"
+content_hash = "sha256:cfba5858a6e2c964c1df8510525b9f64dd4e6205b6b9356a535d0f49a3b82815"
+size = 1382697
+mtime_ms = 1792009252704
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:c3e2d7b8-918b-46b2-b84c-6f83c6c77c98/5da656ab-0736-43ec-8078-e726710e5408/da7116a3-769f-416b-a8b9-7620bcaf2acf"
+storage_version_token = "1792009438298766"
+content_type = "image/png"
+
+[[outputs]]
+id = "p-joxs3tgRcPlBDaacapt"
+uri = "file://generated-artifacts/itcont-cards/android-feed-4x5.png"
+type = "image"
+title = "ITCONT · Feed 4:5 · Android"
+description = "PNG 1080×1350 export checked in a 390px Android-sized viewport. Uses the built-in name/photo placeholders."
+logical_id = "1707ff4b-b337-4a81-92ef-8576948b26d2"
+content_hash = "sha256:09f666e76040ec40675076b9088ba8922c38648f7cf4415c141123cf0702d943"
+size = 1154954
+mtime_ms = 1792009255103
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:c3e2d7b8-918b-46b2-b84c-6f83c6c77c98/1707ff4b-b337-4a81-92ef-8576948b26d2/7edfd848-6ef4-4e1b-aade-d0466b9137d0"
+storage_version_token = "1792009438979405"
+content_type = "image/png"
+
+[[outputs]]
+id = "GP_tp104WjhyTLoudBgrS"
+uri = "file://generated-artifacts/itcont-cards/android-stories-9x16.png"
+type = "image"
+title = "ITCONT · Stories 9:16 · Android"
+description = "PNG 1080×1920 export checked in a 390px Android-sized viewport. Uses the built-in name/photo placeholders."
+logical_id = "3d735c61-8b3a-4fb2-946f-7bcd42d2c51c"
+content_hash = "sha256:353729d6e797326f7f9a0c81ac725a391f0ec80f19b7dcc18bd8ec6cdc31fba2"
+size = 1382590
+mtime_ms = 1792009256204
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:c3e2d7b8-918b-46b2-b84c-6f83c6c77c98/3d735c61-8b3a-4fb2-946f-7bcd42d2c51c/3a59cbc8-1085-4280-a371-df8047d1956b"
+storage_version_token = "1792009439773521"
+content_type = "image/png"
