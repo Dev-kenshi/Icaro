@@ -15,11 +15,17 @@ import {
   gerarICS, googleAgendaUrl, horaCurta, iniciais, instante, layoutPara, mapaUrl, proximaSessao,
   sessoesOrdenadas, sessoesPorDia, whatsappUrl,
 } from './logica';
+import {
+  detectPromoPhotoFormat,
+  fitPromoPhotoDimensions,
+  PROMO_PHOTO_MAX_BYTES,
+  PROMO_PHOTO_MAX_SIDE,
+} from './secoes/promo-photo';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const RAIZ = resolve(AQUI, '../../../..');
 const ler = (p: string) => (existsSync(p) ? readFileSync(p, 'utf8') : '');
-const TOTAL_VALIDACOES = 139;
+const TOTAL_VALIDACOES = 141;
 
 const resultados: Array<{ n: number; grupo: string; nome: string; erro?: string }> = [];
 let grupo = '';
@@ -160,7 +166,7 @@ check('inscrição: contraste no fundo real e gerador responsivo em duas colunas
   assert.match(revisao, /@media \(min-width: 768px\) and \(max-width: 1099px\)[\s\S]*?padding-right: 88px/);
   const promocional = ler(join(AQUI, 'secoes/Inscricao.tsx'));
   assert.match(promocional, /itc-promo-controls[\s\S]*?itc-promo-preview/);
-  assert.match(promocional, /const gap = story \? 32 : 24/);
+  assert.match(promocional, /const gap = Math\.max\([\s\S]*?gapCount/);
   assert.match(promocional, /const bottomSafe = story \? 250 : 32/);
   assert.match(promocional, /height - top - bottomSafe/);
 });
@@ -460,33 +466,73 @@ check('cartão usa a logo oficial Even3 com CORS e fallback acessível', () => {
   assert.match(insc, /I IMERSÃO TECNOLÓGICA CONTÁBIL/);
   assert.match(insc, /IntersectionObserver[\s\S]*promoVisible/);
 });
-check('cartão de foto segue a identidade branca, azul e prata do ITCONT', () => {
+check('cartão do ITCONT usa logo ampliada, faixas metálicas e eixo central', () => {
   const insc = sec('Inscricao');
   assert.match(insc, /const paper = context\.createLinearGradient/);
   assert.match(insc, /rgb\(234 242 255\)/);
   assert.match(insc, /strokeRect\(24, 24, width - 48, height - 48\)/);
   assert.match(insc, /const textFont = \(weight: number, size: number\) => `\$\{weight\} \$\{size\}px Archivo/);
-  assert.match(insc, /wrapName[\s\S]*measure\(candidate, 900, 110\)/);
-  assert.match(insc, /photoX = story \? cx : width \* \.255/);
-  assert.match(insc, /textCenterX = width \* \.745/);
-  assert.match(insc, /feedPhotoDiameter = Math\.max\(0, Math\.min\(380/);
-  assert.match(insc, /const logoWidth = width \* \(story \? \.2 : \.62\)/);
+  assert.match(insc, /wrapName[\s\S]*measure\(candidate, 900, nameFontSize\)/);
+  assert.match(insc, /const centerX = width \/ 2/);
+  assert.match(insc, /const photoX = centerX/);
+  assert.match(insc, /drawMetalLine\(line, cursor, true, centerX/);
+  assert.match(insc, /const logoWidth = usableWidth \* \(story \? \.70 : \.62\)/);
+  assert.match(insc, /findLogoContentBounds\(logo\)/);
+  assert.match(insc, /context\.lineWidth = 40/);
+  assert.ok(.62 * (1080 - 2 * 32) >= .60 * (1080 - 2 * 32));
+  assert.ok(.70 * (1080 - 2 * 32) >= .60 * (1080 - 2 * 32));
   assert.match(insc, /layer = 8/);
   assert.match(insc, /context\.roundRect\(centerX - phraseWidth \/ 2, phraseTop, phraseWidth, phraseHeight, phraseHeight \/ 2\)/);
   assert.match(insc, /context\.arc\(photoX, cy, radius, 0, Math\.PI \* 2\); context\.clip\(\)/);
   assert.match(insc, /dateParts = \[dataExtenso\(ITCONT\.inicio\), dataExtenso\(ITCONT\.fim\)\]/);
-  assert.match(insc, /dateLines = story[\s\S]*dateParts\.map/);
+  assert.match(insc, /const gapCount = 9/);
+  assert.match(insc, /height - top - bottomSafe/);
   assert.match(insc, /ITCONT\.local\.nome/);
 });
-check('foto fica local, aceita imagens até 10 MB e não usa upload', () => {
+check('foto fica local, aceita JPG de 5–15 MB e não usa upload', () => {
   const insc = sec('Inscricao');
-  assert.match(insc, /URL\.createObjectURL\(imageBlob\)/);
+  const photo = ler(join(AQUI, 'secoes/promo-photo.ts'));
+  assert.match(insc, /URL\.createObjectURL\(prepared\.blob\)/);
   assert.match(insc, /URL\.revokeObjectURL\(photoUrl\)/);
-  assert.match(insc, /10 \* 1024 \* 1024/);
+  assert.equal(PROMO_PHOTO_MAX_BYTES, 20 * 1024 * 1024);
+  assert.match(photo, /await createImageBitmap\(blob, \{ imageOrientation: 'from-image' \}\)/);
+  assert.match(photo, /await image\.decode\(\)/);
+  assert.match(photo, /imageSmoothingQuality = 'high'/);
+  assert.match(insc, /decodeAndResizePromoPhoto\(file\)/);
+  assert.match(insc, /console\.warn\('\[ITCONT\] Falha ao preparar a foto local no navegador\./);
   assert.match(insc, /await import\('heic2any'\)/);
   assert.match(insc, /photoSelectionRef/);
   assert.match(insc, /accept="image\/\*.*heic/);
   assert.doesNotMatch(insc, /\bfetch\(|FormData/);
+});
+check('JPG, PNG, WebP e HEIC são reconhecidos pela assinatura sem depender do MIME', () => {
+  const ascii = (value: string) => Array.from(new TextEncoder().encode(value));
+  const isoBmff = (brand: string) => {
+    const bytes = new Uint8Array(32);
+    bytes.set(ascii('ftyp'), 4);
+    bytes.set(ascii(brand), 8);
+    return bytes;
+  };
+  const webp = new Uint8Array(12);
+  webp.set(ascii('RIFF'), 0);
+  webp.set(ascii('WEBP'), 8);
+  assert.equal(detectPromoPhotoFormat(Uint8Array.from([0xff, 0xd8, 0xff, 0xe0])), 'jpeg');
+  assert.equal(detectPromoPhotoFormat(Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])), 'png');
+  assert.equal(detectPromoPhotoFormat(webp), 'webp');
+  assert.equal(detectPromoPhotoFormat(isoBmff('heic')), 'heic');
+  assert.equal(detectPromoPhotoFormat(isoBmff('heix')), 'heic');
+  assert.equal(detectPromoPhotoFormat(isoBmff('mif1')), 'heic');
+  assert.equal(detectPromoPhotoFormat(Uint8Array.from([0, 1, 2, 3])), null);
+  const photo = ler(join(AQUI, 'secoes/promo-photo.ts'));
+  assert.match(photo, /file\.slice\(0, 64\)\.arrayBuffer\(\)/);
+  assert.match(photo, /if \(signatureFormat\) return signatureFormat/);
+});
+check('JPG/PNG grandes são reduzidos a 2048 px sem ampliar fotos menores', () => {
+  assert.equal(PROMO_PHOTO_MAX_SIDE, 2048);
+  assert.deepEqual(fitPromoPhotoDimensions(4000, 3000), { width: 2048, height: 1536 });
+  assert.deepEqual(fitPromoPhotoDimensions(3000, 5000), { width: 1228, height: 2048 });
+  assert.deepEqual(fitPromoPhotoDimensions(800, 600), { width: 800, height: 600 });
+  assert.deepEqual(fitPromoPhotoDimensions(12000, 5000), { width: 2048, height: 853 });
 });
 check('cartão exporta Feed 1080×1350 e Stories 1080×1920 com margem segura de 250px', () => {
   const insc = sec('Inscricao');
@@ -494,8 +540,9 @@ check('cartão exporta Feed 1080×1350 e Stories 1080×1920 com margem segura de
   assert.match(insc, /PROMO_HEIGHTS = \{ feed: 1350, stories: 1920 \}/);
   assert.match(insc, /const bottomSafe = story \? 250 : 32/);
   assert.match(insc, /height - top - bottomSafe/);
-  assert.match(insc, /const logoWidth = width \* \(story \? \.2 : \.62\)/);
-  assert.match(insc, /story \? 520 : 380/);
+  assert.match(insc, /const logoWidth = usableWidth \* \(story \? \.70 : \.62\)/);
+  assert.match(insc, /story \? 520 : 320/);
+  assert.match(insc, /data-photo-width=\{photoSize\?\.width \?\? ''\}/);
 });
 check('FAQ e assistente compartilham cartão de vidro', () => {
   assert.match(sec('Faq'), /className="itc-card"/);
