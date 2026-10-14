@@ -4,12 +4,53 @@ import { ITCONT } from '../dados';
 import { dataExtenso, whatsappUrl } from '../logica';
 import QrEvento from './QrEvento';
 import { MarcaIcone } from './MarcaIcone';
+import {
+  decodeAndResizePromoPhoto,
+  identifyPromoPhoto,
+  PROMO_PHOTO_MAX_BYTES,
+  type PromoPhotoFormat,
+} from './promo-photo';
 
 const LOGO_OFICIAL = 'https://static.even3.com/logos/ImagemdoCodex21deset.de202609_39_23.91a8f584302f4c68b0fa.png';
 const PROMO_WIDTH = 1080;
 const PROMO_HEIGHTS = { feed: 1350, stories: 1920 } as const;
+const PROMO_CONTENT_INSET = 32;
 type PromoFormat = keyof typeof PROMO_HEIGHTS;
 type LogoState = 'loading' | 'loaded' | 'failed';
+type LogoCrop = { x: number; y: number; width: number; height: number };
+
+function findLogoContentBounds(image: HTMLImageElement): LogoCrop {
+  const width = image.naturalWidth;
+  const height = image.naturalHeight;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (!context || !width || !height) throw new Error('Não foi possível inspecionar a logo oficial.');
+  try {
+    context.drawImage(image, 0, 0);
+    const pixels = context.getImageData(0, 0, width, height).data;
+    let left = width;
+    let top = height;
+    let right = -1;
+    let bottom = -1;
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        if (pixels[(y * width + x) * 4 + 3] <= 8) continue;
+        left = Math.min(left, x);
+        top = Math.min(top, y);
+        right = Math.max(right, x);
+        bottom = Math.max(bottom, y);
+      }
+    }
+    return right >= left && bottom >= top
+      ? { x: left, y: top, width: right - left + 1, height: bottom - top + 1 }
+      : { x: 0, y: 0, width, height };
+  } finally {
+    canvas.width = 0;
+    canvas.height = 0;
+  }
+}
 
 export default function Inscricao() {
   const [copied, setCopied] = useState('');
@@ -20,6 +61,8 @@ export default function Inscricao() {
   const [photoZoom, setPhotoZoom] = useState(1);
   const [photoPosition, setPhotoPosition] = useState({ x: 0, y: 0 });
   const [photoReady, setPhotoReady] = useState(false);
+  const [photoProcessing, setPhotoProcessing] = useState(false);
+  const [photoSize, setPhotoSize] = useState<{ width: number; height: number } | null>(null);
   const [photoError, setPhotoError] = useState('');
   const [logoState, setLogoState] = useState<LogoState>('loading');
   const [promoVisible, setPromoVisible] = useState(false);
@@ -29,6 +72,7 @@ export default function Inscricao() {
   const photoRef = useRef<HTMLImageElement | null>(null);
   const photoSelectionRef = useRef(0);
   const logoRef = useRef<HTMLImageElement | null>(null);
+  const logoCropRef = useRef<LogoCrop | null>(null);
   const dragRef = useRef<{ x: number; y: number } | null>(null);
   const siteUrl = typeof window !== 'undefined' ? window.location.href : ITCONT.fonteUrl;
   const cardName = name.trim().slice(0, 24);
@@ -50,8 +94,21 @@ export default function Inscricao() {
     if (!promoVisible) return;
     const logo = new Image();
     logo.crossOrigin = 'anonymous';
-    logo.onload = () => { logoRef.current = logo; setLogoState('loaded'); };
-    logo.onerror = () => { logoRef.current = null; setLogoState('failed'); };
+    logo.onload = () => {
+      logoRef.current = logo;
+      try {
+        logoCropRef.current = findLogoContentBounds(logo);
+      } catch (error) {
+        logoCropRef.current = { x: 0, y: 0, width: logo.naturalWidth, height: logo.naturalHeight };
+        console.warn('[ITCONT] Não foi possível recortar as bordas transparentes da logo:', error);
+      }
+      setLogoState('loaded');
+    };
+    logo.onerror = () => {
+      logoRef.current = null;
+      logoCropRef.current = null;
+      setLogoState('failed');
+    };
     logo.src = LOGO_OFICIAL;
     return () => { logo.onload = null; logo.onerror = null; };
   }, [promoVisible]);
@@ -61,14 +118,22 @@ export default function Inscricao() {
     setPhotoReady(false);
     if (!photoUrl) return;
     const photo = new Image();
-    photo.onload = () => { photoRef.current = photo; setPhotoReady(true); setPhotoError(''); };
-    photo.onerror = () => {
+    let active = true;
+    photo.decoding = 'async';
+    photo.src = photoUrl;
+    photo.decode().then(() => {
+      if (!active) return;
+      photoRef.current = photo;
+      setPhotoReady(true);
+      setPhotoError('');
+    }).catch((error) => {
+      if (!active) return;
       photoRef.current = null;
       setPhotoReady(false);
-      setPhotoError('Não foi possível decodificar esta foto no navegador. Escolha um JPG, PNG ou WebP válido.');
-    };
-    photo.src = photoUrl;
-    return () => { photo.onload = null; photo.onerror = null; };
+      setPhotoError('A foto preparada não abriu neste navegador. Escolha outra imagem.');
+      console.warn('[ITCONT] Falha ao exibir a foto local preparada:', error);
+    });
+    return () => { active = false; };
   }, [photoUrl]);
 
   useEffect(() => () => { if (photoUrl) URL.revokeObjectURL(photoUrl); }, [photoUrl]);
@@ -87,6 +152,8 @@ export default function Inscricao() {
     canvas.width = width * ratio;
     canvas.height = height * ratio;
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
     const paper = context.createLinearGradient(0, 0, width * .82, height);
     paper.addColorStop(0, 'rgb(255 255 255)');
     paper.addColorStop(.56, 'rgb(248 250 253)');
@@ -112,59 +179,40 @@ export default function Inscricao() {
     context.lineWidth = 1;
     context.strokeRect(32, 32, width - 64, height - 64);
 
-    context.save();
-    context.lineCap = 'round';
-    context.lineJoin = 'round';
-    context.strokeStyle = 'rgba(16, 94, 214, .2)';
-    context.lineWidth = 86;
-    context.beginPath();
-    context.moveTo(10, 242);
-    context.bezierCurveTo(78, 188, 84, 80, 150, 26);
-    context.stroke();
-    context.strokeStyle = 'rgba(183, 203, 227, .78)';
-    context.lineWidth = 6;
-    context.beginPath();
-    context.moveTo(14, 274);
-    context.bezierCurveTo(82, 208, 88, 112, 158, 28);
-    context.stroke();
-    context.strokeStyle = blueMetal;
-    context.lineWidth = 66;
-    context.beginPath();
-    context.moveTo(16, 222);
-    context.bezierCurveTo(74, 166, 82, 72, 144, 25);
-    context.stroke();
-    context.strokeStyle = 'rgba(255, 255, 255, .92)';
-    context.lineWidth = 10;
-    context.beginPath();
-    context.moveTo(17, 204);
-    context.bezierCurveTo(70, 148, 78, 66, 138, 22);
-    context.stroke();
-
-    context.strokeStyle = 'rgba(16, 94, 214, .2)';
-    context.lineWidth = 86;
-    context.beginPath();
-    context.moveTo(width - 10, height - 242);
-    context.bezierCurveTo(width - 72, height - 188, width - 82, height - 80, width - 14, height - 26);
-    context.stroke();
-    context.strokeStyle = 'rgba(183, 203, 227, .78)';
-    context.lineWidth = 6;
-    context.beginPath();
-    context.moveTo(width - 14, height - 274);
-    context.bezierCurveTo(width - 80, height - 208, width - 82, height - 112, width - 22, height - 28);
-    context.stroke();
-    context.strokeStyle = blueMetal;
-    context.lineWidth = 66;
-    context.beginPath();
-    context.moveTo(width - 16, height - 222);
-    context.bezierCurveTo(width - 76, height - 166, width - 82, height - 72, width - 26, height - 25);
-    context.stroke();
-    context.strokeStyle = 'rgba(255, 255, 255, .92)';
-    context.lineWidth = 10;
-    context.beginPath();
-    context.moveTo(width - 17, height - 204);
-    context.bezierCurveTo(width - 74, height - 148, width - 82, height - 66, width - 34, height - 22);
-    context.stroke();
-    context.restore();
+    const drawCornerRibbon = (mirror: boolean) => {
+      const point = (x: number, y: number) => mirror ? { x: width - x, y: height - y } : { x, y };
+      const p0 = point(56, 150);
+      const p1 = point(46, 120);
+      const p2 = point(55, 90);
+      const p3 = point(88, 75);
+      const p4 = point(108, 59);
+      const p5 = point(130, 56);
+      const p6 = point(148, 70);
+      const gradient = context.createLinearGradient(p0.x, p0.y, p6.x, p6.y);
+      gradient.addColorStop(0, 'rgb(7 43 119)');
+      gradient.addColorStop(.38, 'rgb(20 88 214)');
+      gradient.addColorStop(.7, 'rgb(21 139 255)');
+      gradient.addColorStop(1, 'rgb(8 67 171)');
+      context.save();
+      context.lineCap = 'round';
+      context.lineJoin = 'round';
+      context.beginPath();
+      context.moveTo(p0.x, p0.y);
+      context.bezierCurveTo(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+      context.bezierCurveTo(p4.x, p4.y, p5.x, p5.y, p6.x, p6.y);
+      context.strokeStyle = 'rgba(194, 211, 233, .98)';
+      context.lineWidth = 40;
+      context.stroke();
+      context.strokeStyle = gradient;
+      context.lineWidth = 28;
+      context.stroke();
+      context.strokeStyle = 'rgba(255, 255, 255, .94)';
+      context.lineWidth = 4;
+      context.stroke();
+      context.restore();
+    };
+    drawCornerRibbon(false);
+    drawCornerRibbon(true);
 
     context.save();
     context.globalAlpha = .23;
@@ -180,8 +228,10 @@ export default function Inscricao() {
     }
     context.restore();
 
-    const cx = width / 2;
-    const gap = story ? 32 : 24;
+    const centerX = width / 2;
+    const usableWidth = width - PROMO_CONTENT_INSET * 2;
+    const gapCount = 9;
+    const minGap = story ? 8 : 10;
     const bottomSafe = story ? 250 : 32;
     const textFont = (weight: number, size: number) => `${weight} ${size}px Archivo, Arial, sans-serif`;
     const measure = (text: string, weight: number, size: number) => {
@@ -197,81 +247,102 @@ export default function Inscricao() {
       context.fillStyle = color;
       context.textAlign = 'center';
       context.textBaseline = 'alphabetic';
-      context.fillText(line.text, cx, y + line.ascent, width - 64);
+      context.fillText(line.text, centerX, y + line.ascent, usableWidth);
     };
-    const nameMaxWidth = story ? width * .92 : width * .51;
+    const nameFontSize = story ? 100 : 110;
+    const nameMaxWidth = usableWidth * .92;
     const wrapName = (text: string, maxWidth: number) => {
       const words = text.split(/\s+/).filter(Boolean);
       const lines: ReturnType<typeof measure>[] = [];
       let current = '';
       for (const word of words) {
         const candidate = current ? `${current} ${word}` : word;
-        if (current && measure(candidate, 900, 110).width > maxWidth) {
-          lines.push(measure(current, 900, 110));
+        if (current && measure(candidate, 900, nameFontSize).width > maxWidth) {
+          lines.push(measure(current, 900, nameFontSize));
           current = word;
         } else current = candidate;
       }
-      if (current) lines.push(measure(current, 900, 110));
-      return lines.length ? lines : [measure('SEU NOME', 900, 110)];
+      if (current) lines.push(measure(current, 900, nameFontSize));
+      return lines.length ? lines : [measure('SEU NOME', 900, nameFontSize)];
     };
     const nameLines = wrapName(cardName ? cardName.toLocaleUpperCase('pt-BR') : 'SEU NOME', nameMaxWidth);
-    const phraseLine = measure(canvasPhrase, 800, 48);
-    const eventLine = measure('IMERSÃO TECNOLÓGICA', 800, 52);
-    const accountingLine = measure('Contábil', 900, 100);
+    const phraseLine = measure(canvasPhrase, 800, story ? 44 : 48);
+    const eventLine = measure('IMERSÃO TECNOLÓGICA', 800, story ? 46 : 52);
+    const accountingLine = measure('Contábil', 900, story ? 90 : 100);
     const dateParts = [dataExtenso(ITCONT.inicio), dataExtenso(ITCONT.fim)];
     const combinedDate = `${dateParts[0]} · ${dateParts[1]}`;
-    const dateLines = story
-      ? dateParts.map((line) => measure(line, 700, 34))
-      : (measure(combinedDate, 700, 34).width <= width * .94
-        ? [measure(combinedDate, 700, 34)]
-        : dateParts.map((line) => measure(line, 700, 34)));
-    const venueLines = [
-      measure(ITCONT.local.nome, 500, 32),
-      measure(`${ITCONT.local.cidade}/${ITCONT.local.uf}`, 500, 32),
-    ];
-    const ctaLine = measure('Inscrição gratuita', 800, 42);
-    const footerLine = measure('Cartão de divulgação · não substitui a inscrição oficial', 500, 24);
+    const dateSize = story ? 27 : 28;
+    const oneLineDate = measure(combinedDate, 700, dateSize);
+    const dateLines = oneLineDate.width <= usableWidth * .98
+      ? [oneLineDate]
+      : dateParts.map((line) => measure(line, 700, dateSize));
+    const venueSize = story ? 26 : 28;
+    const oneLineVenue = measure(`${ITCONT.local.nome} · ${ITCONT.local.cidade}/${ITCONT.local.uf}`, 500, venueSize);
+    const venueLines = oneLineVenue.width <= usableWidth * .98
+      ? [oneLineVenue]
+      : [
+        measure(ITCONT.local.nome, 500, venueSize),
+        measure(`${ITCONT.local.cidade}/${ITCONT.local.uf}`, 500, venueSize),
+      ];
+    const ctaLine = measure('Inscrição gratuita', 800, story ? 40 : 42);
+    const footerLine = measure('Cartão de divulgação · não substitui a inscrição oficial', 500, story ? 20 : 24);
+    const phraseHeight = story ? 80 : 96;
+    const ctaHeight = story ? 80 : 92;
+    const nameLineGap = story ? 7 : 8;
     const nameHeight = nameLines.reduce((sum, line) => sum + line.height, 0)
-      + Math.max(0, nameLines.length - 1) * 8 + 8;
+      + Math.max(0, nameLines.length - 1) * nameLineGap;
     const dateHeight = dateLines.reduce((sum, line) => sum + line.height, 0)
       + Math.max(0, dateLines.length - 1) * 8;
-    const venueHeight = venueLines.reduce((sum, line) => sum + line.height, 0) + 8;
-    const phraseHeight = 96;
-    const ctaHeight = 92;
-    const logoWidth = width * (story ? .2 : .62);
-    const logoRatio = logoRef.current && logoState === 'loaded'
-      ? logoRef.current.naturalHeight / logoRef.current.naturalWidth
-      : .5;
+    const venueHeight = venueLines.reduce((sum, line) => sum + line.height, 0)
+      + Math.max(0, venueLines.length - 1) * 8;
+    const logoWidth = usableWidth * (story ? .70 : .62);
+    const logoCrop = logoRef.current && logoState === 'loaded'
+      ? (logoCropRef.current ?? { x: 0, y: 0, width: logoRef.current.naturalWidth, height: logoRef.current.naturalHeight })
+      : null;
+    const logoRatio = logoCrop
+      ? logoCrop.height / logoCrop.width
+      : .55;
     const logoHeight = logoWidth * logoRatio;
-    const storyBlocksHeight = nameHeight + phraseHeight + eventLine.height + accountingLine.height
-      + dateHeight + venueHeight + ctaHeight + footerLine.height;
-    const storyPhotoDiameter = Math.max(0, Math.min(
-      story ? 520 : 380,
-      Math.floor(height - top - bottomSafe - logoHeight - gap * 9 - 52 - storyBlocksHeight),
-    ));
-    const feedDetailsHeight = eventLine.height + accountingLine.height + dateHeight + venueHeight
-      + ctaHeight + footerLine.height + gap * 5;
-    const feedTextHeight = nameHeight + gap + phraseHeight;
-    const feedRowAvailableHeight = height - top - bottomSafe - logoHeight - gap * 2 - feedDetailsHeight;
-    const feedPhotoDiameter = Math.max(0, Math.min(380, Math.floor(feedRowAvailableHeight - 52)));
-    const photoDiameter = story ? storyPhotoDiameter : feedPhotoDiameter;
+    const fixedContentHeight = logoHeight + nameHeight + phraseHeight + eventLine.height
+      + accountingLine.height + dateHeight + venueHeight + ctaHeight + footerLine.height;
+    const safeHeight = height - top - bottomSafe;
+    const desiredPhotoDiameter = story ? 520 : 320;
+    const minPhotoDiameter = story ? 340 : 180;
+    const availablePhotoHeight = Math.floor(safeHeight - fixedContentHeight - minGap * gapCount);
+    const photoDiameter = Math.max(
+      minPhotoDiameter,
+      Math.min(desiredPhotoDiameter, availablePhotoHeight),
+    );
+    const gap = Math.max(
+      minGap,
+      Math.floor((safeHeight - fixedContentHeight - photoDiameter) / gapCount),
+    );
     const radius = photoDiameter / 2;
     if (logoRef.current && logoState === 'loaded') {
-      context.drawImage(logoRef.current, (width - logoWidth) / 2, top, logoWidth, logoHeight);
+      context.drawImage(
+        logoRef.current,
+        logoCrop!.x,
+        logoCrop!.y,
+        logoCrop!.width,
+        logoCrop!.height,
+        centerX - logoWidth / 2,
+        top,
+        logoWidth,
+        logoHeight,
+      );
     } else {
       context.textAlign = 'center';
       context.textBaseline = 'alphabetic';
       context.fillStyle = 'rgb(13 65 143)';
       context.font = '900 46px Arial, sans-serif';
-      context.fillText('I IMERSÃO TECNOLÓGICA CONTÁBIL', width / 2, top + 54, width - 120);
+      context.fillText('I IMERSÃO TECNOLÓGICA CONTÁBIL', centerX, top + 54, usableWidth);
       context.font = '800 25px Arial, sans-serif';
-      context.fillText('I T C O N T', width / 2, top + 91);
+      context.fillText('I T C O N T', centerX, top + 91);
     }
 
-    const photoBoxTop = top + logoHeight + gap;
-    const feedRowHeight = Math.max(photoDiameter + 52, feedTextHeight);
-    const photoX = story ? cx : width * .255;
-    const cy = story ? photoBoxTop + radius + 26 : photoBoxTop + feedRowHeight / 2;
+    const photoX = centerX;
+    const photoTop = top + logoHeight + gap;
+    const cy = photoTop + radius;
     context.save();
     context.shadowColor = 'rgba(11, 52, 112, .24)';
     context.shadowBlur = 32;
@@ -326,8 +397,8 @@ export default function Inscricao() {
       line: ReturnType<typeof measure>,
       y: number,
       depth: boolean,
-      centerX = cx,
-      maxWidth = width * .92,
+      anchorX = centerX,
+      maxWidth = usableWidth * .92,
     ) => {
       context.font = line.font;
       const baseline = y + line.ascent;
@@ -340,75 +411,61 @@ export default function Inscricao() {
       if (depth) {
         for (let layer = 8; layer >= 1; layer -= 1) {
           context.fillStyle = `rgb(${4 + layer} ${27 + layer * 2} ${72 + layer * 4})`;
-          context.fillText(line.text, centerX, baseline + layer, maxWidth);
+          context.fillText(line.text, anchorX, baseline + layer, maxWidth);
         }
       }
       context.fillStyle = gradient;
-      context.fillText(line.text, centerX, baseline, maxWidth);
+      context.fillText(line.text, anchorX, baseline, maxWidth);
       context.strokeStyle = 'rgba(255, 255, 255, .72)';
       context.lineWidth = 1.4;
-      context.strokeText(line.text, centerX, baseline - 1, maxWidth);
+      context.strokeText(line.text, anchorX, baseline - 1, maxWidth);
     };
-    let cursor: number;
-    const drawPhrase = (phraseTop: number, centerX: number, maxWidth: number) => {
-    const phraseWidth = Math.min(maxWidth, phraseLine.width + 64);
-    const phraseGradient = context.createLinearGradient(centerX - phraseWidth / 2, phraseTop, centerX + phraseWidth / 2, phraseTop + phraseHeight);
-    phraseGradient.addColorStop(0, 'rgb(255 255 255)');
-    phraseGradient.addColorStop(.48, 'rgb(211 219 230)');
-    phraseGradient.addColorStop(1, 'rgb(255 255 255)');
-    context.fillStyle = phraseGradient;
-    context.strokeStyle = 'rgb(105 129 156)';
-    context.lineWidth = 2;
-    context.beginPath();
-    context.roundRect(centerX - phraseWidth / 2, phraseTop, phraseWidth, phraseHeight, phraseHeight / 2);
-    context.fill();
-    context.stroke();
-    context.font = phraseLine.font;
-    context.textAlign = 'center';
-    context.textBaseline = 'alphabetic';
-    context.fillStyle = 'rgb(9 43 101)';
-    context.fillText(canvasPhrase, centerX, phraseTop + (phraseHeight - phraseLine.height) / 2 + phraseLine.ascent);
+    const drawPhrase = (phraseTop: number, maxWidth: number) => {
+      const phraseWidth = Math.min(maxWidth, phraseLine.width + 64);
+      const phraseGradient = context.createLinearGradient(centerX - phraseWidth / 2, phraseTop, centerX + phraseWidth / 2, phraseTop + phraseHeight);
+      phraseGradient.addColorStop(0, 'rgb(255 255 255)');
+      phraseGradient.addColorStop(.48, 'rgb(211 219 230)');
+      phraseGradient.addColorStop(1, 'rgb(255 255 255)');
+      context.fillStyle = phraseGradient;
+      context.strokeStyle = 'rgb(105 129 156)';
+      context.lineWidth = 2;
+      context.beginPath();
+      context.roundRect(centerX - phraseWidth / 2, phraseTop, phraseWidth, phraseHeight, phraseHeight / 2);
+      context.fill();
+      context.stroke();
+      context.font = phraseLine.font;
+      context.textAlign = 'center';
+      context.textBaseline = 'alphabetic';
+      context.fillStyle = 'rgb(9 43 101)';
+      context.fillText(canvasPhrase, centerX, phraseTop + (phraseHeight - phraseLine.height) / 2 + phraseLine.ascent);
     };
-    if (story) {
-      cursor = photoBoxTop + photoDiameter + 52 + gap;
-      nameLines.forEach((line) => {
-        drawMetalLine(line, cursor, true);
-        cursor += line.height + 8;
-      });
-      cursor += gap - 8;
-      drawPhrase(cursor, cx, width * .7);
-      cursor += phraseHeight + gap;
-    } else {
-      const textCenterX = width * .745;
-      const textMaxWidth = width * .51;
-      const textBlockTop = photoBoxTop + (feedRowHeight - feedTextHeight) / 2;
-      let nameCursor = textBlockTop;
-      nameLines.forEach((line, index) => {
-        drawMetalLine(line, nameCursor, true, textCenterX, textMaxWidth);
-        nameCursor += line.height + (index < nameLines.length - 1 ? 8 : 0);
-      });
-      drawPhrase(nameCursor + gap, textCenterX, textMaxWidth);
-      cursor = photoBoxTop + feedRowHeight + gap;
-    }
 
+    let cursor = photoTop + photoDiameter + gap;
+    nameLines.forEach((line, index) => {
+      drawMetalLine(line, cursor, true, centerX, usableWidth * .92);
+      cursor += line.height + (index < nameLines.length - 1 ? nameLineGap : 0);
+    });
+    cursor += gap;
+    drawPhrase(cursor, usableWidth * .72);
+    cursor += phraseHeight + gap;
     drawMeasured(eventLine, cursor, 'rgb(11 65 145)');
     cursor += eventLine.height + gap;
-    drawMetalLine(accountingLine, cursor, false);
+    drawMetalLine(accountingLine, cursor, false, centerX, usableWidth * .92);
     cursor += accountingLine.height + gap;
-    dateLines.forEach((line) => {
+    dateLines.forEach((line, index) => {
       drawMeasured(line, cursor, 'rgb(8 37 86)');
-      cursor += line.height + 8;
+      cursor += line.height + (index < dateLines.length - 1 ? 8 : 0);
     });
-    cursor += gap - 8;
-    venueLines.forEach((line) => {
+    cursor += gap;
+    venueLines.forEach((line, index) => {
       drawMeasured(line, cursor, 'rgb(8 37 86)');
-      cursor += line.height + 8;
+      cursor += line.height + (index < venueLines.length - 1 ? 8 : 0);
     });
-    cursor += gap - 8;
+    cursor += gap;
 
     const badgeTop = cursor;
-    const badgeWidth = Math.min(width * .7, ctaLine.width + 72);
-    const badgeGradient = context.createLinearGradient(cx - badgeWidth / 2, badgeTop, cx + badgeWidth / 2, badgeTop + ctaHeight);
+    const badgeWidth = Math.min(usableWidth * .7, ctaLine.width + 72);
+    const badgeGradient = context.createLinearGradient(centerX - badgeWidth / 2, badgeTop, centerX + badgeWidth / 2, badgeTop + ctaHeight);
     badgeGradient.addColorStop(0, 'rgb(9 58 143)');
     badgeGradient.addColorStop(.5, 'rgb(23 101 193)');
     badgeGradient.addColorStop(1, 'rgb(5 49 122)');
@@ -420,7 +477,7 @@ export default function Inscricao() {
     context.strokeStyle = 'rgb(163 198 235)';
     context.lineWidth = 2;
     context.beginPath();
-    context.roundRect(cx - badgeWidth / 2, badgeTop, badgeWidth, ctaHeight, ctaHeight / 2);
+    context.roundRect(centerX - badgeWidth / 2, badgeTop, badgeWidth, ctaHeight, ctaHeight / 2);
     context.fill();
     context.stroke();
     context.restore();
@@ -429,7 +486,7 @@ export default function Inscricao() {
     context.textBaseline = 'alphabetic';
     context.fillStyle = 'white';
     context.font = ctaLine.font;
-    context.fillText(ctaLine.text, cx, ctaBaseline);
+    context.fillText(ctaLine.text, centerX, ctaBaseline);
     cursor += ctaHeight + gap;
     drawMeasured(footerLine, cursor, 'rgb(55 70 90)');
     context.textAlign = 'left';
@@ -441,46 +498,58 @@ export default function Inscricao() {
     const input = event.currentTarget;
     input.value = '';
     const selectionId = ++photoSelectionRef.current;
-    if (!file.type.startsWith('image/') && !/\.(jpe?g|png|webp|heic|heif)$/i.test(file.name)) {
-      setPhotoError('Escolha uma imagem JPG, PNG, WebP ou HEIC.');
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      setPhotoError('A foto precisa ter até 10 MB.');
-      return;
-    }
     setPhotoError('');
-    const isHeic = /image\/hei[cf]/i.test(file.type) || /\.(heic|heif)$/i.test(file.name);
+    setPhotoSize(null);
+    setPhotoProcessing(true);
+    let format: PromoPhotoFormat | null = null;
     try {
-      let imageBlob: Blob = file;
-      if (isHeic) {
-        setPhotoError('Convertendo HEIC para JPG neste navegador…');
-        const { default: heic2any } = await import('heic2any');
-        const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: .92 });
-        const convertedBlob = Array.isArray(converted) ? converted[0] : converted;
-        if (!convertedBlob) throw new Error('A conversão não retornou uma imagem.');
-        imageBlob = convertedBlob;
+      if (file.size > PROMO_PHOTO_MAX_BYTES) {
+        throw new Error('A foto precisa ter até 20 MB.');
       }
-      const nextUrl = URL.createObjectURL(imageBlob);
-      await new Promise<void>((resolve, reject) => {
-        const probe = new Image();
-        probe.onload = () => resolve();
-        probe.onerror = () => reject(new Error('O navegador não conseguiu decodificar a imagem.'));
-        probe.src = nextUrl;
-      });
+      format = await identifyPromoPhoto(file);
+      if (!format) throw new Error('Escolha uma imagem JPG, PNG, WebP ou HEIC válida.');
+
+      let prepared: Awaited<ReturnType<typeof decodeAndResizePromoPhoto>>;
+      try {
+        prepared = await decodeAndResizePromoPhoto(file);
+      } catch (initialDecodeError) {
+        if (format !== 'heic') throw initialDecodeError;
+        try {
+          const { default: heic2any } = await import('heic2any');
+          const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: .92 });
+          const convertedBlob = Array.isArray(converted) ? converted[0] : converted;
+          if (!convertedBlob) throw new Error('A conversão HEIC não retornou uma imagem.');
+          prepared = await decodeAndResizePromoPhoto(convertedBlob);
+        } catch (conversionError) {
+          throw new AggregateError(
+            [initialDecodeError, conversionError],
+            'Falharam a leitura direta do HEIC e a conversão local para JPG.',
+          );
+        }
+      }
       if (selectionId !== photoSelectionRef.current) {
-        URL.revokeObjectURL(nextUrl);
         return;
       }
+      const nextUrl = URL.createObjectURL(prepared.blob);
       setPhotoPosition({ x: 0, y: 0 });
+      setPhotoZoom(1);
+      setPhotoSize({ width: prepared.width, height: prepared.height });
       setPhotoError('');
       setPhotoUrl(nextUrl);
     } catch (error) {
       if (selectionId !== photoSelectionRef.current) return;
-      setPhotoError(isHeic
-        ? 'Não foi possível converter este HEIC neste navegador. Exporte a foto como JPG e tente novamente.'
-        : 'Não foi possível abrir esta foto. Tente um JPG, PNG ou WebP válido.');
-      if (error instanceof Error) console.warn('[ITCONT] Falha ao abrir a foto local:', error.message);
+      setPhotoError(format === 'heic'
+        ? 'Não foi possível abrir nem converter este HEIC neste navegador. Exporte a foto como JPG e tente novamente.'
+        : error instanceof Error && error.message.includes('20 MB')
+          ? error.message
+          : 'Não foi possível abrir esta foto. Tente um JPG, PNG, WebP ou HEIC válido.');
+      console.warn('[ITCONT] Falha ao preparar a foto local no navegador.', {
+        format: format ?? 'não identificado',
+        bytes: file.size,
+        cause: error,
+      });
+    } finally {
+      if (selectionId === photoSelectionRef.current) setPhotoProcessing(false);
     }
   };
 
@@ -603,6 +672,8 @@ export default function Inscricao() {
                 {photoReady && <label className="itc-promo-zoom" htmlFor="itc-photo-zoom">Zoom da foto
                   <input id="itc-photo-zoom" type="range" min="1" max="3" step=".01" value={photoZoom} onChange={(event) => setPhotoZoom(Number(event.target.value))} />
                 </label>}
+                {photoProcessing && <p className="itc-promo-privacy" role="status" aria-live="polite" data-testid="promo-photo-status">Preparando a foto neste navegador…</p>}
+                {photoSize && <p className="itc-promo-privacy" data-testid="promo-photo-dimensions" data-width={photoSize.width} data-height={photoSize.height}>Foto otimizada: {photoSize.width} × {photoSize.height} px.</p>}
                 {photoError && <p className="itc-promo-error" role="alert">{photoError}</p>}
                 <p className="itc-promo-privacy">A foto fica apenas neste navegador; não é enviada nem salva.</p>
                 <div className="itc-promo-tabs" role="tablist" aria-label="Formato do cartão">
@@ -626,6 +697,9 @@ export default function Inscricao() {
                   onPointerUp={() => { dragRef.current = null; }}
                   onPointerCancel={() => { dragRef.current = null; }}
                   data-card-format={format}
+                  data-photo-width={photoSize?.width ?? ''}
+                  data-photo-height={photoSize?.height ?? ''}
+                  data-logo-percent={format === 'stories' ? 70 : 62}
                   data-testid="canvas-promo-card"
                 />
               </div>
