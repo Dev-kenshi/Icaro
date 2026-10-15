@@ -1265,11 +1265,9 @@
   gap: clamp(.55rem, 1.25vh, 1rem);
   max-width: 1100px;
 }
-.itc .itc-hero-kicker { color: var(--itc-gelo); font-size: .58rem; letter-spacing: .18em; }
-.itc .itc-hero-kicker i { display: inline-block; width: 3px; height: 3px; margin: 0 .45rem .12rem; border-radius: 50%; background: var(--itc-neon); }
-.itc .itc-intro .itc-ribbon-logo {
+.itc .itc-intro .itc-itcont-logo {
   display: block;
-  width: clamp(84px, 7vw, 108px);
+  width: min(100%, 565px);
   height: auto;
   margin-inline: auto;
   object-fit: contain;

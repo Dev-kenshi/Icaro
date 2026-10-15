@@ -294,9 +294,13 @@ check('QR code fica na inscrição e representa o endereço público', () => {
   assert.match(sec('QrEvento'), /window\.location\.origin.*window\.location\.pathname/);
 });
 check('logo e slogan oficiais aparecem no hero', () => {
-  assert.match(sec('Hero'), /className="itc-ribbon-logo"/);
-  assert.match(sec('Hero'), /alt="Logo do ITCONT"/);
+  assert.match(sec('Hero'), /className="itc-itcont-logo"/);
+  assert.match(sec('Hero'), /alt="Universidade Estadual de Feira de Santana · ITCONT"/);
   assert.match(sec('Hero'), /itcont-logo\.png/);
+  const logo = readFileSync(join(RAIZ, 'artifacts/icaro/public/itcont-logo.png'));
+  assert.equal(logo.toString('hex', 0, 8), '89504e470d0a1a0a');
+  assert.ok(logo.readUInt32BE(16) >= 500, 'usa o logotipo completo, não apenas o selo');
+  assert.ok(logo.readUInt32BE(16) / logo.readUInt32BE(20) > 4, 'proporção horizontal do logotipo completo');
   assert.match(sec('Hero'), /INOVAÇÃO/);
   assert.match(sec('Hero'), /PRÁTICA/);
   assert.match(sec('Hero'), /CONEXÕES/);

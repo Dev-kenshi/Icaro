@@ -13,13 +13,12 @@ export default function Hero({ motionPrompt = false, onEnableMotion, earthBackdr
       {cosmosBackdrop}
       {earthBackdrop}
       <div className="itc-shell itc-intro-content">
-        <span className="itc-eyebrow itc-hero-kicker">{ITCONT.local.instituicao} <i aria-hidden="true" /> {ITCONT.sigla}</span>
         <img
-          className="itc-ribbon-logo"
+          className="itc-itcont-logo"
           src={`${import.meta.env.BASE_URL}itcont-logo.png`}
-          width={74}
-          height={47}
-          alt="Logo do ITCONT"
+          width={565}
+          height={102}
+          alt="Universidade Estadual de Feira de Santana · ITCONT"
           decoding="async"
         />
         <h1 className="itc-title" id="itc-title">
