@@ -13,18 +13,15 @@ export default function Hero({ motionPrompt = false, onEnableMotion, earthBackdr
       {cosmosBackdrop}
       {earthBackdrop}
       <div className="itc-shell itc-intro-content">
-        <img
-          className="itc-itcont-logo"
-          src={`${import.meta.env.BASE_URL}itcont-event-logo.png`}
-          width={345}
-          height={166}
-          alt="Imersão Tecnológica Contábil · ITCONT"
-          decoding="async"
-        />
-        <h1 className="itc-title" id="itc-title">
-          <span className="itc-title-first"><i aria-hidden="true">I</i> Imersão</span>
-          <span className="itc-title-second">Tecnológica</span>
-          <span className="itc-chrome">Contábil</span>
+        <h1 className="itc-title itc-title-logo" id="itc-title">
+          <img
+            className="itc-itcont-logo"
+            src={`${import.meta.env.BASE_URL}itcont-event-logo.png`}
+            width={345}
+            height={166}
+            alt="Imersão Tecnológica Contábil · ITCONT"
+            decoding="async"
+          />
         </h1>
         <p className="itc-hero-slogan">INOVAÇÃO <b>•</b> PRÁTICA <b>•</b> CONEXÕES</p>
         <p className="itc-intro-summary">{ITCONT.resumo}</p>

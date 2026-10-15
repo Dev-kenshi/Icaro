@@ -1267,11 +1267,23 @@
 }
 .itc .itc-intro .itc-itcont-logo {
   display: block;
-  width: clamp(220px, 24vw, 345px);
+  width: clamp(240px, 30vw, 420px);
   max-width: 100%;
   height: auto;
   margin-inline: auto;
   object-fit: contain;
+}
+.itc .itc-intro .itc-title-logo {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+  font-size: 1rem;
+  font-stretch: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  text-shadow: none;
 }
 .itc .itc-intro .itc-title {
   width: min(100%, 1060px);

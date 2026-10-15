@@ -280,12 +280,12 @@ check('cartões da agenda mostram hora tabular, duração, tipo, agenda e .ics; 
 check('como chegar (mapa)', () => assert.match(UI, /mapaUrl\(\)/));
 check('compartilhar (WhatsApp ou navigator.share)', () => assert.match(UI, /whatsappUrl\(|navigator\.share/));
 check('hero mantém identidade oficial e convidados continuam na seção própria', () => {
-  assert.match(sec('Hero'), /I<\/i> Imersão/);
-  assert.match(sec('Hero'), /Tecnológica/);
-  assert.match(sec('Hero'), /itc-chrome">Contábil/);
-  assert.match(sec('Hero'), /font-stretch|itc-title/);
-  assert.match(sec('Hero'), /Ver programação/);
-  assert.match(sec('Hero'), /Garantir minha vaga gratuita/);
+  const hero = sec('Hero');
+  assert.match(hero, /<h1 className="itc-title itc-title-logo" id="itc-title">[\s\S]*?<img/);
+  assert.match(hero, /alt="Imersão Tecnológica Contábil · ITCONT"/);
+  assert.doesNotMatch(hero, /itc-title-first|itc-title-second|itc-chrome/);
+  assert.match(hero, /Ver programação/);
+  assert.match(hero, /Garantir minha vaga gratuita/);
   assert.match(sec('Convidados'), /ITCONT\.convidados/);
 });
 check('QR code fica na inscrição e representa o endereço público', () => {
