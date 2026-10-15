@@ -20,7 +20,7 @@
 - [GitHub sync through the connector](github-sync.md) — REST-based pushes can leave the local branch with different commit IDs; reconcile local history deliberately.
 - [Ícaro Nielsen review scope](icaro-nielsen-scope.md) — apply usability heuristics to the complete user-facing interface, not the developer API.
 - [ITCONT visual direction](itcont-visual-direction.md) — keep white/silver dominant and blue restrained; preserve the official identity and a futuristic, readable tone.
-- [ITCONT logo lockup](itcont-logo-lockup.md) — use the full UEFS + ITCONT wordmark, never the emblem-only tile, in ITCONT branding.
+- [ITCONT logo lockup](itcont-logo-lockup.md) — use the supplied full event artwork in the Hero; keep favicon art separate.
 - [Ícaro responsive navigation](icaro-responsive-navigation.md) — keep phone drawer/bottom nav, tablet icon rail, and full desktop sidebar; avoid overlays on signed-in content.
 - [ITCONT data scope](itcont-data-scope.md) — keep public event/guest details and image links only; never copy images or import registrants, payroll, accounts, or ops data.
 - [Health check contract boundaries](health-check-contract-boundaries.md) — test each endpoint against its actual source of truth; OpenAPI omissions can be intentional.

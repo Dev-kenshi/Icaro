@@ -15,10 +15,10 @@ export default function Hero({ motionPrompt = false, onEnableMotion, earthBackdr
       <div className="itc-shell itc-intro-content">
         <img
           className="itc-itcont-logo"
-          src={`${import.meta.env.BASE_URL}itcont-logo.png`}
-          width={565}
-          height={102}
-          alt="Universidade Estadual de Feira de Santana · ITCONT"
+          src={`${import.meta.env.BASE_URL}itcont-event-logo.png`}
+          width={345}
+          height={166}
+          alt="Imersão Tecnológica Contábil · ITCONT"
           decoding="async"
         />
         <h1 className="itc-title" id="itc-title">

@@ -295,12 +295,12 @@ check('QR code fica na inscrição e representa o endereço público', () => {
 });
 check('logo e slogan oficiais aparecem no hero', () => {
   assert.match(sec('Hero'), /className="itc-itcont-logo"/);
-  assert.match(sec('Hero'), /alt="Universidade Estadual de Feira de Santana · ITCONT"/);
-  assert.match(sec('Hero'), /itcont-logo\.png/);
-  const logo = readFileSync(join(RAIZ, 'artifacts/icaro/public/itcont-logo.png'));
+  assert.match(sec('Hero'), /alt="Imersão Tecnológica Contábil · ITCONT"/);
+  assert.match(sec('Hero'), /itcont-event-logo\.png/);
+  const logo = readFileSync(join(RAIZ, 'artifacts/icaro/public/itcont-event-logo.png'));
   assert.equal(logo.toString('hex', 0, 8), '89504e470d0a1a0a');
-  assert.ok(logo.readUInt32BE(16) >= 500, 'usa o logotipo completo, não apenas o selo');
-  assert.ok(logo.readUInt32BE(16) / logo.readUInt32BE(20) > 4, 'proporção horizontal do logotipo completo');
+  assert.equal(logo.readUInt32BE(16), 345, 'usa a largura da arte de marca fornecida');
+  assert.equal(logo.readUInt32BE(20), 166, 'preserva a proporção da arte de marca fornecida');
   assert.match(sec('Hero'), /INOVAÇÃO/);
   assert.match(sec('Hero'), /PRÁTICA/);
   assert.match(sec('Hero'), /CONEXÕES/);
@@ -672,7 +672,10 @@ check('fotos do evento ficam como links; a logo institucional enviada é a exce�
   const publicDir = resolve(RAIZ, 'artifacts/icaro/public');
   const pub = arquivos(publicDir).map((p) => relative(publicDir, p))
     .filter((p) => /itcont|even3/i.test(p) && /\.(png|jpe?g|webp|gif|avif)$/i.test(p));
-  assert.deepEqual(pub.filter((p) => !/itcont-earth-(?:static|small)\.webp$/.test(p) && p !== 'itcont-logo.png'), []);
+  assert.deepEqual(pub.filter((p) =>
+    !/itcont-earth-(?:static|small)\.webp$/.test(p)
+      && !['itcont-logo.png', 'itcont-event-logo.png'].includes(p),
+  ), []);
   const earth = join(RAIZ, 'artifacts/icaro/public/itcont-earth-static.webp');
   const earthSmall = join(RAIZ, 'artifacts/icaro/public/itcont-earth-small.webp');
   assert.ok(existsSync(earth));

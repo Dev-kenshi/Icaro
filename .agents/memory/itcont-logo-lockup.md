@@ -3,8 +3,8 @@ name: ITCONT logo lockup
 description: Which supplied ITCONT asset represents the full brand logo on the public site.
 ---
 
-Use the full horizontal UEFS + ITCONT lockup shown in the supplied reference, not the blue/red emblem tile by itself. The complete lockup is the intended hero branding and the ITCONT route favicon; Ícaro keeps its own favicon.
+Use the supplied "Imersão Tecnológica Contábil · ITCONT" artwork in the public Hero. Keep the route-specific favicon as a separate asset: the UEFS + ITCONT lockup is used for ITCONT pages, while Ícaro keeps its own favicon.
 
-**Why:** The emblem-only image was mistaken for the logo, and the user explicitly corrected that distinction.
+**Why:** The emblem-only tile and the UEFS header lockup are not the event's full logo. The user supplied the intended event artwork and asked to place it in the Hero.
 
-**How to apply:** When replacing ITCONT branding, use the full wordmark asset, keep the Hero alt text descriptive, and preserve route-specific favicon behavior.
+**How to apply:** Use the supplied event artwork only for the Hero, keep its alt text descriptive and its transparent background on the dark site, and preserve route-specific favicon behavior.
