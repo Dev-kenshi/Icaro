@@ -309,8 +309,8 @@ check('favicon do ITCONT usa a logo sem alterar o favicon do Ícaro', () => {
   const indexHtml = ler(join(RAIZ, 'artifacts/icaro/index.html'));
   assert.match(indexHtml, /href="\/favicon\.svg"/);
   assert.match(indexHtml, /path==='\/'\|\|path==='\/itcont'/);
-  assert.match(indexHtml, /icon\.href=`\$\{base\}\/itcont-logo\.png`/);
-  assert.ok(existsSync(join(RAIZ, 'artifacts/icaro/public/itcont-logo.png')));
+  assert.match(indexHtml, /icon\.href=`\$\{base\}\/itcont-event-logo\.png`/);
+  assert.ok(existsSync(join(RAIZ, 'artifacts/icaro/public/itcont-event-logo.png')));
 });
 check('contagem tem quatro unidades, números tabulares e segundos em todas as larguras', () => {
   assert.match(sec('Contagem'), /TEMPO ATÉ O INÍCIO DO EVENTO/);
