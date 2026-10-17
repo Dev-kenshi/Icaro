@@ -227,6 +227,64 @@ export const GetAiStatusResponse = zod.object({
 
 
 /**
+ * Stores only a latency category and duration; no prompt, answer, or user identifier is retained.
+ * @summary Record an anonymous first-audio latency sample
+ */
+export const recordAiLatencyBodyDurationMsMin = 0;
+export const recordAiLatencyBodyDurationMsMax = 60000;
+
+
+
+export const RecordAiLatencyBody = zod.object({
+  "category": zod.enum(['local', 'cache', 'llm']),
+  "durationMs": zod.number().int().min(recordAiLatencyBodyDurationMsMin).max(recordAiLatencyBodyDurationMsMax)
+})
+
+export const RecordAiLatencyResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * Requires an administrator session. Returns aggregate metrics only; never returns prompts or personal data.
+ * @summary Get Ícaro provider, latency, context, and cache health
+ */
+export const GetIcaroHealthResponse = zod.object({
+  "providers": zod.array(zod.object({
+  "id": zod.enum(['groq', 'gemini', 'cerebras', 'openrouter', 'mistral', 'github', 'nvidia', 'cloudflare', 'huggingface', 'cohere', 'openai', 'claude']),
+  "name": zod.string(),
+  "configured": zod.boolean(),
+  "available": zod.boolean(),
+  "state": zod.enum(['not_configured', 'ready', 'cooldown', 'model_unavailable', 'auth_error', 'degraded']),
+  "model": zod.string(),
+  "privacyNote": zod.string(),
+  "averageFirstTokenMs": zod.union([zod.number().int(),zod.null()]),
+  "errorRate": zod.number(),
+  "cooldownMs": zod.number().int()
+})),
+  "performance": zod.object({
+  "averageEstimatedTokens": zod.number().int(),
+  "estimatedTokenSamples": zod.number().int(),
+  "localSamples": zod.number().int(),
+  "cacheSamples": zod.number().int(),
+  "llmSamples": zod.number().int(),
+  "p95LocalCacheMs": zod.number().int().nullable(),
+  "p95LlmMs": zod.number().int().nullable(),
+  "localCacheTargetMs": zod.number().int(),
+  "llmTargetMs": zod.number().int(),
+  "localCacheTargetMet": zod.boolean().nullable(),
+  "llmTargetMet": zod.boolean().nullable()
+}),
+  "cache": zod.object({
+  "entries": zod.number().int(),
+  "capacity": zod.number().int(),
+  "ttlHours": zod.number().int()
+}),
+  "contextTokenCap": zod.number().int()
+})
+
+
+/**
  * @summary Ask an AI provider a question
  */
 export const sendAiMessageBodyPersonaDefault = `analyst`;

@@ -12,8 +12,9 @@ export type KnowledgeSearchResult = ImportedKnowledgeSection & { score: number }
 
 const sections = importedSections as ImportedKnowledgeSection[];
 const STOP_WORDS = new Set([
-  "qual", "quais", "como", "sobre", "explique", "fale", "diga", "para", "com",
-  "uma", "que", "dos", "das", "por", "sao", "ser", "tem", "pode", "hoje",
+  "qual", "quais", "como", "sobre", "explique", "explicar", "explica", "defina", "definir",
+  "fale", "diga", "para", "favor", "com", "uma", "que", "dos", "das", "por",
+  "sao", "ser", "tem", "pode", "posso", "quero", "gostaria", "me", "quando", "onde",
 ]);
 
 function terms(text: string): string[] {
@@ -42,7 +43,7 @@ export function searchImportedKnowledge(question: string, limit = 3): KnowledgeS
   })
     .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))
-    .slice(0, Math.min(limit, 5));
+    .slice(0, Math.min(limit, 6));
 }
 
 export function importedKnowledgeStats() {

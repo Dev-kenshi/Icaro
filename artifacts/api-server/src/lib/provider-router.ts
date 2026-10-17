@@ -142,14 +142,8 @@ const definitions: ProviderDefinition[] = [
   },
 ];
 
-const fastQueue: AutoProviderId[] = [
-  "groq", "cerebras", "gemini", "mistral", "openrouter", "github",
-  "nvidia", "cloudflare", "huggingface", "cohere",
-];
-const deepQueue: AutoProviderId[] = [
-  "gemini", "openrouter", "groq", "nvidia", "mistral", "cerebras",
-  "github", "cloudflare", "huggingface", "cohere",
-];
+export const FREE_AUTO_PROVIDER_IDS = ["groq", "gemini", "github", "cerebras"] as const;
+const PROVIDER_COOLDOWN_MS = 5 * 60 * 1_000;
 
 export function classifyProviderMode(question: string): ProviderMode {
   const normalized = question.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
@@ -160,7 +154,8 @@ export function classifyProviderMode(question: string): ProviderMode {
 }
 
 export function providerQueue(mode: ProviderMode): AutoProviderId[] {
-  return [...(mode === "deep" ? deepQueue : fastQueue)];
+  void mode;
+  return [...FREE_AUTO_PROVIDER_IDS];
 }
 
 export function isAutoProviderId(value: string): value is AutoProviderId {
@@ -173,14 +168,6 @@ function configuredKey(def: ProviderDefinition, env: NodeJS.ProcessEnv): string 
     if (value?.trim()) return value.trim();
   }
   return "";
-}
-
-function parseRetryAfter(value: string | null, now: number): number {
-  if (!value) return 20_000;
-  const seconds = Number(value);
-  if (Number.isFinite(seconds)) return Math.max(1_000, Math.min(300_000, seconds * 1_000));
-  const date = Date.parse(value);
-  return Number.isFinite(date) ? Math.max(1_000, Math.min(300_000, date - now)) : 20_000;
 }
 
 function textFromDelta(value: unknown): string {
@@ -233,6 +220,7 @@ export type AutoChatResult = {
 type HealthState = {
   attempts: number;
   errors: number;
+  consecutiveFailures: number;
   averageFirstTokenMs: number | null;
   cooldownUntil: number;
   modelAvailable: boolean | null;
@@ -250,6 +238,7 @@ export function createProviderRouter(options: RouterOptions = {}) {
       state = {
         attempts: 0,
         errors: 0,
+        consecutiveFailures: 0,
         averageFirstTokenMs: null,
         cooldownUntil: 0,
         modelAvailable: null,
@@ -320,9 +309,17 @@ export function createProviderRouter(options: RouterOptions = {}) {
 
   async function complete(input: ChatInput): Promise<AutoChatResult> {
     const mode = input.mode ?? classifyProviderMode(input.userMessage);
-    const firstTokenTimeoutMs = options.firstTokenTimeoutMs?.[mode] ?? (mode === "deep" ? 6_000 : 2_500);
+    const firstTokenTimeoutMs = options.firstTokenTimeoutMs?.[mode] ?? 4_000;
     const attempted: AutoProviderId[] = [];
     let lastError = "No configured provider could complete the request";
+    const recordFailure = (current: HealthState, status?: number) => {
+      current.errors += 1;
+      current.consecutiveFailures += 1;
+      if (status === 401 || status === 403) current.authRejected = true;
+      if (status === 429 || current.consecutiveFailures >= 3) {
+        current.cooldownUntil = now() + PROVIDER_COOLDOWN_MS;
+      }
+    };
 
     for (const id of input.providerId ? [input.providerId] : providerQueue(mode)) {
       const def = definitions.find((item) => item.id === id)!;
@@ -379,16 +376,13 @@ export function createProviderRouter(options: RouterOptions = {}) {
         });
 
         if (!response.ok) {
-          const retryAfter = parseRetryAfter(response.headers.get("retry-after"), now());
           await response.body?.cancel().catch(() => undefined);
-          current.errors += 1;
-          if (response.status === 429) current.cooldownUntil = now() + retryAfter;
-          if (response.status === 401 || response.status === 403) current.authRejected = true;
+          recordFailure(current, response.status);
           lastError = `${id} returned HTTP ${response.status}`;
           continue;
         }
         if (!response.body) {
-          current.errors += 1;
+          recordFailure(current);
           lastError = `${id} returned no streaming body`;
           continue;
         }
@@ -437,16 +431,17 @@ export function createProviderRouter(options: RouterOptions = {}) {
         }
 
         if (!answer.trim()) {
-          current.errors += 1;
+          recordFailure(current);
           lastError = `${id} returned an empty response`;
           continue;
         }
         current.cooldownUntil = 0;
         current.authRejected = false;
+        current.consecutiveFailures = 0;
         return { answer: answer.trim(), provider: id, model, mode, attempted, partial: false };
       } catch (error) {
         controller.abort();
-        current.errors += 1;
+        recordFailure(current);
         lastError = error instanceof Error ? error.message : "provider request failed";
         if (answer.trim()) {
           return { answer: answer.trim(), provider: id, model, mode, attempted, partial: true };

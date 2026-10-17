@@ -5,8 +5,24 @@ export const OUTPUT_ECHO_GUARD_MS = 450;
 const INTERIM_INCOMPLETE_ENDINGS = new Set([
   'a', 'o', 'as', 'os', 'um', 'uma', 'de', 'da', 'do', 'das', 'dos', 'em', 'no', 'na',
   'e', 'ou', 'que', 'qual', 'quais', 'como', 'quando', 'onde', 'sobre', 'para', 'por',
+  'com', 'se', 'mas', 'entre', 'sem', 'ate', 'desde', 'porque',
   'é', 'sera', 'será', 'proximo', 'próximo', 'proxima', 'próxima',
 ]);
+export function adaptiveQuestionSilenceMs(text: string): 500 | 1200 {
+  const trimmed = text.trim();
+  if (!trimmed || /[,;:]$/.test(trimmed)) return 1_200;
+  if (/[.!?]$/.test(trimmed)) return 500;
+  const last = trimmed.split(/\s+/).at(-1)?.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase() || '';
+  return INTERIM_INCOMPLETE_ENDINGS.has(last) ? 1_200 : 500;
+}
+export function mergeQuestionContinuation(existing: string, transcript: string): string | null {
+  const normalize = (value: string) => value.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  const current = normalize(existing);
+  const next = normalize(transcript);
+  if (!next || next === current || current.startsWith(next)) return null;
+  return next.startsWith(current) ? transcript.trim() : `${existing.trim()} ${transcript.trim()}`;
+}
 export type WakeEvent =
   | { type: 'wake' | 'stop' | 'expired' }
   | { type: 'transcript' | 'question'; text: string };

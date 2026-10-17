@@ -1,10 +1,20 @@
 import assert from 'node:assert/strict';
 import { parseWakeCommand } from '../../artifacts/icaro/src/lib/wake-commands';
-import { WakeTurnGate, QUESTION_WINDOW_MS, resemblesPlayback } from '../../artifacts/icaro/src/lib/wake-turn-gate';
+import { adaptiveQuestionSilenceMs, mergeQuestionContinuation, WakeTurnGate, QUESTION_WINDOW_MS, resemblesPlayback } from '../../artifacts/icaro/src/lib/wake-turn-gate';
 import { wakeAccessBlockReason, wakeAccessErrorMessage } from '../../artifacts/icaro/src/lib/wake-access';
 
 const checks: Array<[string, () => void]> = [
   ['Janela amarela para a pergunta dura 10 segundos', () => assert.equal(QUESTION_WINDOW_MS, 10_000)],
+  ['Pausa final adaptativa é curta para pergunta completa e longa para final incompleto', () => {
+    assert.equal(adaptiveQuestionSilenceMs('Qual é o custo?'), 500);
+    assert.equal(adaptiveQuestionSilenceMs('Explique o custo de'), 1_200);
+    assert.equal(adaptiveQuestionSilenceMs('Me fale sobre:'), 1_200);
+  }],
+  ['Continuação de fala atualiza a pergunta pendente sem duplicar revisões', () => {
+    assert.equal(mergeQuestionContinuation('Qual é o custo', 'Qual é o custo fixo?'), 'Qual é o custo fixo?');
+    assert.equal(mergeQuestionContinuation('Qual é o custo', 'e como calcular?'), 'Qual é o custo e como calcular?');
+    assert.equal(mergeQuestionContinuation('Qual é o custo', 'Qual é o'), null);
+  }],
   ['Conversa ambiente não ativa nem envia perguntas', () => assert.equal(parseWakeCommand('qual é a hora?', false).question, '')],
   ['Ok, Ícaro ativa com acento', () => assert.equal(parseWakeCommand('Ok, Ícaro', false).wake, true)],
   ['Let’s go, Ícaro ativa a escuta sem enviar pergunta', () => {

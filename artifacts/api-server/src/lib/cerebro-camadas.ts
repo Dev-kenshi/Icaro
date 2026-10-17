@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { KNOWLEDGE_BANK, normalizeKnowledgeText, resolveKnowledgeAnswer } from "./knowledge-bank";
+import { rankHybridCandidates } from "./hybrid-ranking";
 
 export type AnswerLayer = "L1" | "L2" | "L3" | "L4" | "L5" | "L6";
 export type CandidateDestination = "bank" | "base";
@@ -32,7 +33,7 @@ export type AnswerCandidate = {
 
 export type LayerResolution =
   | { kind: "answer"; answer: string; layer: "L1" | "L2" | "L3" | "L4"; sourceId: string }
-  | { kind: "compose"; snippets: Array<{ id: string; title: string; text: string }>; layer: "L5" }
+  | { kind: "compose"; snippets: Array<{ id: string; title: string; text: string; score: number }>; layer: "L5" }
   | { kind: "miss"; layer: "L6" };
 
 export type LayerStats = {
@@ -48,8 +49,9 @@ type DiskState = { cache: AnswerCacheEntry[]; candidates: AnswerCandidate[]; dai
 type VectorEntry = { question: string; answer: string; id: string; title: string; vector: number[]; source: "cache" | "bank" };
 type Embed = (text: string) => Promise<number[]>;
 
-const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1_000;
-const VERIFIED_TTL_MS = 7 * 24 * 60 * 60 * 1_000;
+const CACHE_TTL_MS = 24 * 60 * 60 * 1_000;
+const VERIFIED_TTL_MS = CACHE_TTL_MS;
+const CACHE_MAX_ENTRIES = 500;
 const CACHE_FILE = "cache-respostas.json";
 const CANDIDATES_FILE = "candidatas.jsonl";
 const STATS_FILE = "stats-cerebro.json";
@@ -139,14 +141,6 @@ function cosineSimilarity(left: number[], right: number[]): number {
   return leftNorm && rightNorm ? dot / Math.sqrt(leftNorm * rightNorm) : 0;
 }
 
-function lexicalScore(question: string, candidate: string): number {
-  const left = new Set(normalizeQuestion(question).split(" ").filter((word) => word.length > 2));
-  const right = new Set(normalizeQuestion(candidate).split(" ").filter((word) => word.length > 2));
-  if (!left.size || !right.size) return 0;
-  const intersection = [...left].filter((word) => right.has(word)).length;
-  return intersection / Math.sqrt(left.size * right.size);
-}
-
 export function createCerebroLayers(options: { dataDir: string; now?: () => number; embed?: Embed }) {
   const now = options.now ?? Date.now;
   const dataDir = options.dataDir;
@@ -176,7 +170,7 @@ export function createCerebroLayers(options: { dataDir: string; now?: () => numb
           try { return [JSON.parse(line) as AnswerCandidate]; } catch { return []; }
         });
         state = {
-          cache: cacheParsed.filter(isCacheEntry).filter((entry) => entry.expiresAt > now()),
+          cache: cacheParsed.filter(isCacheEntry).filter((entry) => entry.expiresAt > now()).slice(0, CACHE_MAX_ENTRIES),
           candidates,
           daily: readJson<DailyCounter[]>(statsRaw, []),
           approved: readJson<AnswerCandidate[]>(approvedRaw, []),
@@ -220,9 +214,7 @@ export function createCerebroLayers(options: { dataDir: string; now?: () => numb
     return embedderPromise;
   }
 
-  async function buildSemanticIndex(): Promise<VectorEntry[]> {
-    await ensureLoaded();
-    const embed = await getEmbedder();
+  function buildCandidateEntries(): Array<Omit<VectorEntry, "vector">> {
     const entries: Array<Omit<VectorEntry, "vector">> = [];
     for (const entry of KNOWLEDGE_BANK) {
       for (const trigger of entry.triggers) {
@@ -255,9 +247,14 @@ export function createCerebroLayers(options: { dataDir: string; now?: () => numb
         source: "bank",
       });
     }
+    return entries.filter((entry) => !containsPersonalData(entry.question) && !containsPersonalData(entry.answer));
+  }
+
+  async function buildSemanticIndex(): Promise<VectorEntry[]> {
+    await ensureLoaded();
+    const embed = await getEmbedder();
     const indexed: VectorEntry[] = [];
-    for (const entry of entries) {
-      if (containsPersonalData(entry.question) || containsPersonalData(entry.answer)) continue;
+    for (const entry of buildCandidateEntries()) {
       indexed.push({ ...entry, vector: await embed(entry.question) });
     }
     return indexed;
@@ -297,7 +294,7 @@ export function createCerebroLayers(options: { dataDir: string; now?: () => numb
       expiresAt: timestamp + (verificationRequired || REMOTE_FACT_RE.test(question) ? VERIFIED_TTL_MS : CACHE_TTL_MS),
       verificationRequired: verificationRequired || REMOTE_FACT_RE.test(question),
     };
-    state.cache = [entry, ...state.cache.filter((item) => item.key !== entry.key)].slice(0, 5_000);
+    state.cache = [entry, ...state.cache.filter((item) => item.key !== entry.key)].slice(0, CACHE_MAX_ENTRIES);
     const currentIndex = semanticIndexPromise;
     if (currentIndex) {
       void currentIndex.then(async (index) => {
@@ -374,61 +371,66 @@ export function createCerebroLayers(options: { dataDir: string; now?: () => numb
       }
     }
 
-    let bestVector: VectorEntry | null = null;
-    let bestSimilarity = 0;
+    const lexicalEntries = buildCandidateEntries();
+    const semanticEntries: Array<Omit<VectorEntry, "vector"> & { semanticScore: number }> = [];
+    const bestSemantic: { entry: VectorEntry | null; similarity: number } = { entry: null, similarity: 0 };
     try {
       const embeddingSearch = (async () => {
         const embed = await getEmbedder();
         const queryVector = await embed(`query: ${question}`);
-        let match: VectorEntry | null = null;
-        let similarityMax = 0;
         for (const candidate of await getSemanticIndex()) {
           const similarity = cosineSimilarity(queryVector, candidate.vector);
-          if (similarity > similarityMax) {
-            similarityMax = similarity;
-            match = candidate;
+          if (similarity > bestSemantic.similarity) {
+            bestSemantic.similarity = similarity;
+            bestSemantic.entry = candidate;
           }
+          semanticEntries.push({
+            id: candidate.id,
+            title: candidate.title,
+            question: candidate.question,
+            answer: candidate.answer,
+            source: candidate.source,
+            semanticScore: similarity,
+          });
         }
-        return { match, similarityMax };
       })();
       let timeout: ReturnType<typeof setTimeout> | undefined;
-      const result = await Promise.race([
+      await Promise.race([
         embeddingSearch,
         new Promise<null>((resolve) => { timeout = setTimeout(() => resolve(null), 3_500); }),
       ]).finally(() => { if (timeout) clearTimeout(timeout); });
-      if (result) {
-        bestVector = result.match;
-        bestSimilarity = result.similarityMax;
-      }
     } catch {
       // Keep local intent and BM25 answers available if the optional model download is unavailable.
     }
 
-    if (knowledgeMode === "auto" && bestVector && bestSimilarity >= 0.9) {
-      track("L3", question, bestVector.answer, 0, estimatedTokens);
-      await saveCache(question, bestVector.answer, "L3", bestVector.id);
-      return { kind: "answer", answer: bestVector.answer, layer: "L3", sourceId: bestVector.id };
+    if (knowledgeMode === "auto" && bestSemantic.entry && bestSemantic.similarity >= 0.9) {
+      track("L3", question, bestSemantic.entry.answer, 0, estimatedTokens);
+      await saveCache(question, bestSemantic.entry.answer, "L3", bestSemantic.entry.id);
+      return { kind: "answer", answer: bestSemantic.entry.answer, layer: "L3", sourceId: bestSemantic.entry.id };
     }
 
     if (knowledgeMode === "base") {
-      if (bestVector && bestSimilarity >= 0.82) {
-        track("L4", question, bestVector.answer, 0, estimatedTokens);
-        await saveCache(question, bestVector.answer, "L4", bestVector.id);
-        return { kind: "answer", answer: bestVector.answer, layer: "L4", sourceId: bestVector.id };
+      if (bestSemantic.entry && bestSemantic.similarity >= 0.82) {
+        track("L4", question, bestSemantic.entry.answer, 0, estimatedTokens);
+        await saveCache(question, bestSemantic.entry.answer, "L4", bestSemantic.entry.id);
+        return { kind: "answer", answer: bestSemantic.entry.answer, layer: "L4", sourceId: bestSemantic.entry.id };
       }
       return { kind: "miss", layer: "L6" };
     }
 
-    if (bestVector && bestSimilarity >= 0.82) {
-      const snippets = [{ id: bestVector.id, title: bestVector.title, text: bestVector.answer }];
-      const lexical = KNOWLEDGE_BANK
-        .map((entry) => ({ entry, score: lexicalScore(question, entry.triggers.map((trigger) => trigger.join(" ")).join(" ")) }))
-        .filter((item) => item.score > 0)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 2)
-        .map(({ entry }) => ({ id: entry.id, title: entry.title, text: entry.answer }));
-      const unique = [...new Map([...snippets, ...lexical].map((item) => [item.id, item])).values()].slice(0, 3);
-      return { kind: "compose", snippets: unique, layer: "L5" };
+    const rankedHybrid = rankHybridCandidates(question, [...lexicalEntries, ...semanticEntries]);
+    const lexicalTopScore = Math.max(0, ...rankedHybrid.map((candidate) => candidate.lexical));
+    if (rankedHybrid.length && (bestSemantic.similarity >= 0.82 || lexicalTopScore >= 1.15)) {
+      return {
+        kind: "compose",
+        snippets: rankedHybrid.slice(0, 6).map(({ entry, score }) => ({
+          id: entry.id,
+          title: entry.title,
+          text: entry.answer,
+          score: Math.round(score * 1_000) / 1_000,
+        })),
+        layer: "L5",
+      };
     }
 
     return { kind: "miss", layer: "L6" };
@@ -549,5 +551,9 @@ export function createCerebroLayers(options: { dataDir: string; now?: () => numb
     discardCandidate,
     getStats,
     flush: persist,
+    getCacheStats: async () => {
+      await ensureLoaded();
+      return { entries: state.cache.length, capacity: CACHE_MAX_ENTRIES, ttlHours: 24 };
+    },
   };
 }

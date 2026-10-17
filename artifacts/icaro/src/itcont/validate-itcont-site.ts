@@ -1,5 +1,5 @@
 /**
- * 142 validações do site do ITCONT: dados oficiais, regras (contagem, fases, agenda),
+ * 146 validações do site do ITCONT: dados oficiais, regras (contagem, fases, agenda),
  * identidade visual e leis da beleza, heurísticas de Nielsen na interface e integração.
  * Roda sem internet, sem banco e sem navegador.
  * Uso: pnpm --filter @workspace/scripts run validate:itcont-site
@@ -21,11 +21,19 @@ import {
   PROMO_PHOTO_MAX_BYTES,
   PROMO_PHOTO_MAX_SIDE,
 } from './secoes/promo-photo';
+import {
+  STORIES_VIDEO_DURATION_SECONDS,
+  STORIES_VIDEO_FPS,
+  STORIES_VIDEO_HEIGHT,
+  STORIES_VIDEO_MAX_BYTES,
+  STORIES_VIDEO_WIDTH,
+  validateStoriesVideoMetadata,
+} from './secoes/promo-video-metadata';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const RAIZ = resolve(AQUI, '../../../..');
 const ler = (p: string) => (existsSync(p) ? readFileSync(p, 'utf8') : '');
-const TOTAL_VALIDACOES = 142;
+const TOTAL_VALIDACOES = 146;
 
 const resultados: Array<{ n: number; grupo: string; nome: string; erro?: string }> = [];
 let grupo = '';
@@ -596,6 +604,31 @@ check('cartão exporta Feed 1080×1350 e Stories 1080×1920 com margem segura de
   assert.match(insc, /const logoWidth = \(width - PROMO_FRAME_INSET \* 2\) \* \(story \? \.70 : \.62\)/);
   assert.match(insc, /story \? 520 : 320/);
   assert.match(insc, /data-photo-width=\{photoSize\?\.width \?\? ''\}/);
+});
+check('vídeo Stories mantém dimensões, duração e taxa de quadros aprovadas', () => {
+  assert.deepEqual([STORIES_VIDEO_WIDTH, STORIES_VIDEO_HEIGHT, STORIES_VIDEO_DURATION_SECONDS, STORIES_VIDEO_FPS], [1080, 1920, 8, 30]);
+});
+check('validador de vídeo aceita 7–9 s e rejeita dimensões ou durações incorretas', () => {
+  assert.doesNotThrow(() => validateStoriesVideoMetadata({ width: 1080, height: 1920, durationSeconds: 7, bytes: 1_000_000 }));
+  assert.doesNotThrow(() => validateStoriesVideoMetadata({ width: 1080, height: 1920, durationSeconds: 9, bytes: 1_000_000 }));
+  assert.throws(() => validateStoriesVideoMetadata({ width: 1920, height: 1080, durationSeconds: 8, bytes: 1_000_000 }), /1080 × 1920/);
+  assert.throws(() => validateStoriesVideoMetadata({ width: 1080, height: 1920, durationSeconds: 6.99, bytes: 1_000_000 }), /7 e 9 segundos/);
+});
+check('validador rejeita vídeos com 15 MB ou mais', () => {
+  assert.equal(STORIES_VIDEO_MAX_BYTES, 15 * 1024 * 1024);
+  assert.throws(() => validateStoriesVideoMetadata({ width: 1080, height: 1920, durationSeconds: 8, bytes: STORIES_VIDEO_MAX_BYTES }), /15 MB/);
+});
+check('exportação é local, silenciosa, prioriza MP4 e tem reserva WebM/FFmpeg', () => {
+  const exporter = ler(join(AQUI, 'secoes/promo-video.ts'));
+  const promo = sec('Inscricao');
+  assert.match(exporter, /captureStream\(STORIES_VIDEO_FPS\)/);
+  assert.match(exporter, /"video\/mp4"/);
+  assert.match(exporter, /"video\/webm"/);
+  assert.match(exporter, /encodeWithFfmpeg/);
+  assert.match(exporter, /"-an"/);
+  assert.match(exporter, /validateStoriesVideoMetadata/);
+  assert.match(promo, /Baixar vídeo para Stories/);
+  assert.match(promo, /createStoriesVideo\(preview/);
 });
 check('FAQ e assistente compartilham cartão de vidro', () => {
   assert.match(sec('Faq'), /className="itc-card"/);

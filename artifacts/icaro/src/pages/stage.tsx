@@ -408,6 +408,27 @@ export default function Stage() {
     ensureAudio();
   }, []);
 
+  const firstAudioLatencyRef = useRef<{ startedAt: number; category: 'local' | 'cache' | 'llm' } | null>(null);
+  const markFirstAudio = useCallback(() => {
+    const pending = firstAudioLatencyRef.current;
+    firstAudioLatencyRef.current = null;
+    if (!pending) return;
+    const durationMs = Math.max(0, Math.round(performance.now() - pending.startedAt));
+    try {
+      performance.mark('icaro:first-audio');
+      performance.measure('icaro:first-audio-latency', 'icaro:response-request-start', 'icaro:first-audio');
+      performance.clearMarks('icaro:response-request-start');
+      performance.clearMarks('icaro:first-audio');
+    } catch {
+      // The aggregate sample is still useful if the browser does not support mark details.
+    }
+    void fetch(`${import.meta.env.BASE_URL}api/ai/latency`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category: pending.category, durationMs }),
+    }).catch(() => undefined);
+  }, []);
   const say = useCallback((t: string, link?: string, emotionMarks?: readonly SpeechEmotionMark[], sources?: GroundingSource[], searchSuggestionHtml?: string) => {
     const turn = turnRef.current;
     lastAnswerRef.current = t;
@@ -416,7 +437,7 @@ export default function Stage() {
     setLog((l) => [...l, { role: 'assistant', content: t, link, sources, searchSuggestionHtml }]);
     setCaptionWords(null);
     setCaption(t);
-    if (!voiceOnRef.current) { activeRef.current = false; setState('idle'); commandCompleteRef.current(); return; }
+    if (!voiceOnRef.current) { firstAudioLatencyRef.current = null; activeRef.current = false; setState('idle'); commandCompleteRef.current(); return; }
     speechPendingRef.current = true;
     setState('thinking');
     window.clearTimeout(speechDelayTimerRef.current);
@@ -429,7 +450,7 @@ export default function Stage() {
         onProvider: setEngine,
         onChunk: (c) => { if (turnRef.current === turn) setCaption(c); },
         onWords: (words, activeIndex) => { if (turnRef.current === turn) setCaptionWords({ words, activeIndex }); },
-        onStart: () => { if (turnRef.current === turn) { playedAudio = true; setState('talking'); } },
+        onStart: () => { if (turnRef.current === turn) { playedAudio = true; setState('talking'); markFirstAudio(); } },
         onError: (message) => { if (turnRef.current === turn) setSpeechError(message); },
         onEnd: () => {
           if (turnRef.current !== turn) return;
@@ -441,7 +462,7 @@ export default function Stage() {
     };
     if (speechDelayRef.current > 0) speechDelayTimerRef.current = window.setTimeout(startSpeech, speechDelayRef.current);
     else startSpeech();
-  }, [selectedVoice]);
+  }, [markFirstAudio, selectedVoice]);
   const sayRef = useRef(say); sayRef.current = say;
 
   // timer
@@ -613,6 +634,9 @@ export default function Stage() {
         setState('thinking'); setCaption(''); setCaptionWords(null);
         const history = logRef.current.slice(-12).map(({ role, content }) => ({ role, content: content.slice(0, 4000) }));
         const requestStartedAt = performance.now();
+        performance.clearMarks('icaro:response-request-start');
+        performance.mark('icaro:response-request-start', { startTime: requestStartedAt });
+        firstAudioLatencyRef.current = { startedAt: requestStartedAt, category: 'local' };
         if (provider !== 'openai' && provider !== 'claude') {
           const controller = new AbortController();
           aiAbortRef.current = controller;
@@ -639,10 +663,15 @@ export default function Stage() {
                 ? `BASE ${res.layer}`
                 : `IA · ${PROVIDER_NAMES[providerId as Provider] ?? providerId.toUpperCase()}`;
             setResponseMeta({ source, durationMs: Math.round(performance.now() - requestStartedAt) });
+            firstAudioLatencyRef.current = {
+              startedAt: requestStartedAt,
+              category: providerId === 'local' ? (res.layer === 'L1' ? 'cache' : 'local') : 'llm',
+            };
             setQuotaNotice(false);
             sayRef.current(res.answer, undefined, res.emotionMarks, res.sources, res.searchSuggestionHtml);
           }).catch((error: unknown) => {
             if (controller.signal.aborted || turnRef.current !== turn) return;
+            firstAudioLatencyRef.current = null;
             speechPendingRef.current = false;
             activeRef.current = false;
             setState('idle'); setCaption(''); setCaptionWords(null);
@@ -667,11 +696,16 @@ export default function Stage() {
                 ? `BASE ${String(res.layer)}`
                 : `IA · ${PROVIDER_NAMES[providerId as Provider] ?? providerId.toUpperCase()}`;
             setResponseMeta({ source, durationMs: Math.round(performance.now() - requestStartedAt) });
+            firstAudioLatencyRef.current = {
+              startedAt: requestStartedAt,
+              category: providerId === 'local' ? (res.layer === 'L1' ? 'cache' : 'local') : 'llm',
+            };
             setQuotaNotice(false);
             sayRef.current(res.answer, undefined, undefined, res.sources, res.searchSuggestionHtml);
           },
           onError: (e) => {
             if (turnRef.current !== turn) return;
+            firstAudioLatencyRef.current = null;
             speechPendingRef.current = false;
             activeRef.current = false;
             setState('idle'); setCaption(''); setCaptionWords(null);
@@ -782,6 +816,7 @@ export default function Stage() {
     try {
       const audio = await recordUtterance({
         signal: controller.signal,
+        silenceMs: 1_200,
         onSpeech: () => { if (!controller.signal.aborted) setCaption('Ouvindo…'); },
       });
       if (controller.signal.aborted) { setState('idle'); setCaption(''); return; }
@@ -852,6 +887,7 @@ export default function Stage() {
           const strongVoice = listening
             ? micLevel > 0.035
             : micLevel > 0.055 && micLevel > outputLevel * 1.35;
+          if (listening) listener.reportAudioLevel(strongVoice ? micLevel : 0);
           if (strongVoice) {
             if (!aboveSince) {
               aboveSince = now;
@@ -905,7 +941,7 @@ export default function Stage() {
         setLongListening(false);
       }
     };
-  }, [state, voiceOn]);
+  }, [state, voiceOn, listener.reportAudioLevel]);
   useEffect(() => { if (!listener.supported) { setTyping(true); setCaption(''); } }, [listener.supported]);
   const microphoneHelpShown = useRef(false);
   useEffect(() => {

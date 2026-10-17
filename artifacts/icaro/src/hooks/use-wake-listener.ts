@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
-import { WakeTurnGate } from '@/lib/wake-turn-gate';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { adaptiveQuestionSilenceMs, mergeQuestionContinuation, WakeTurnGate } from '@/lib/wake-turn-gate';
+import { parseWakeCommand } from '@/lib/wake-commands';
 import { wakeAccessBlockReason } from '@/lib/wake-access';
 
 interface Recognition {
@@ -55,6 +56,8 @@ export function useWakeListener(options: Options) {
   const pauseRef = useRef<(() => Promise<void>) | null>(null);
   const completeRef = useRef<((playedAudio?: boolean) => void) | null>(null);
   const installLocalRef = useRef<(() => Promise<void>) | null>(null);
+  const audioLevelHandlerRef = useRef<(level: number) => void>(() => undefined);
+  const reportAudioLevel = useCallback((level: number) => audioLevelHandlerRef.current(level), []);
   const activateNow = () => {
     requested.current = false;
     gate.current.arm(Date.now()); setActive(true); latest.current.onWake();
@@ -70,7 +73,9 @@ export function useWakeListener(options: Options) {
     let installing = false;
     let timer = 0;
     let interimTimer = 0;
+    let deferredTimer = 0;
     let interimCandidate: { index: number; text: string } | null = null;
+    let deferredQuestion: { index: number; text: string; lastSpeechAt: number } | null = null;
     let failures = 0;
     let stopping = false;
     let stopPromise: Promise<void> = Promise.resolve();
@@ -85,19 +90,46 @@ export function useWakeListener(options: Options) {
       interimTimer = 0;
       interimCandidate = null;
     };
-    const dispatch = (events: ReturnType<WakeTurnGate['receive']>) => {
+    const clearDeferredQuestion = () => {
+      window.clearTimeout(deferredTimer);
+      deferredTimer = 0;
+      deferredQuestion = null;
+    };
+    const scheduleDeferredQuestion = (pending: NonNullable<typeof deferredQuestion>) => {
+      window.clearTimeout(deferredTimer);
+      const waitMs = adaptiveQuestionSilenceMs(pending.text);
+      deferredTimer = window.setTimeout(() => {
+        if (deferredQuestion !== pending || disposed || !desired.current) return;
+        deferredQuestion = null;
+        deferredTimer = 0;
+        latest.current.onQuestion(pending.text);
+      }, waitMs);
+    };
+    audioLevelHandlerRef.current = (level) => {
+      if (!deferredQuestion || !Number.isFinite(level) || level < 0.035) return;
+      const now = Date.now();
+      if (now - deferredQuestion.lastSpeechAt < 120) return;
+      deferredQuestion.lastSpeechAt = now;
+      scheduleDeferredQuestion(deferredQuestion);
+    };
+    const deferQuestion = (text: string, index: number) => {
+      clearDeferredQuestion();
+      deferredQuestion = { index, text, lastSpeechAt: Date.now() };
+      scheduleDeferredQuestion(deferredQuestion);
+    };
+    const dispatch = (events: ReturnType<WakeTurnGate['receive']>, resultIndex = -1) => {
       setActive(gate.current.active);
       for (const action of events) {
         switch (action.type) {
-          case 'stop': case 'expired': clearInterimCommit(); latest.current.onStop(); break;
-          case 'wake': latest.current.onWake(); break;
+          case 'stop': case 'expired': clearInterimCommit(); clearDeferredQuestion(); latest.current.onStop(); break;
+          case 'wake': clearDeferredQuestion(); latest.current.onWake(); break;
           case 'transcript': latest.current.onTranscript(action.text); break;
-          case 'question': clearInterimCommit(); latest.current.onQuestion(action.text); break;
+          case 'question': clearInterimCommit(); deferQuestion(action.text, resultIndex); break;
         }
       }
     };
     completeRef.current = (playedAudio = false) => {
-      clearInterimCommit();
+      clearInterimCommit(); clearDeferredQuestion();
       gate.current.complete(Date.now(), playedAudio); setActive(false);
     };
     const failLocal = (reason: string, unsupported = false) => {
@@ -142,7 +174,7 @@ export function useWakeListener(options: Options) {
       return localCheckPromise;
     };
     const expiryTimer = window.setInterval(() => {
-      if (gate.current.expire(Date.now())) { clearInterimCommit(); setActive(false); latest.current.onStop(); }
+      if (gate.current.expire(Date.now())) { clearInterimCommit(); clearDeferredQuestion(); setActive(false); latest.current.onStop(); }
     }, 100);
     const start = () => {
       if (disposed || !desired.current || rec) return;
@@ -193,21 +225,35 @@ export function useWakeListener(options: Options) {
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const result = event.results[i];
           const transcript = result[0].transcript;
+          const echo = latest.current.isEcho?.(transcript) ?? false;
           if (transcript.trim()) { failures = 0; setError(null); }
-          if (latest.current.busy && transcript.trim() && !latest.current.isEcho?.(transcript)) {
+          if (latest.current.busy && transcript.trim() && !echo) {
             latest.current.onBargeSpeech?.(transcript);
           }
+          if (result.isFinal) clearInterimCommit();
+          const pending = deferredQuestion;
+          const pendingCommand = pending ? parseWakeCommand(transcript, true) : null;
+          if (pending && transcript.trim() && !echo && !pendingCommand?.wake && !pendingCommand?.stop) {
+            const merged = mergeQuestionContinuation(pending.text, transcript);
+            if (merged) {
+              pending.text = merged;
+              pending.index = i;
+              pending.lastSpeechAt = Date.now();
+              scheduleDeferredQuestion(pending);
+            }
+            continue;
+          }
+          if (pending && (pendingCommand?.wake || pendingCommand?.stop)) clearDeferredQuestion();
           const events = gate.current.receive(
             transcript,
             result.isFinal,
             i,
             Date.now(),
             latest.current.busy,
-            latest.current.isEcho?.(transcript),
-            latest.current.allowWakeDuringWait,
+            echo,
+            latest.current.allowWakeDuringWait || Boolean(pending),
           );
-          if (result.isFinal) clearInterimCommit();
-          dispatch(events);
+          dispatch(events, i);
           if (!result.isFinal) {
             const transcriptText = events.flatMap((action) => action.type === 'transcript' ? [action.text] : [])[0];
             if (!transcriptText) { clearInterimCommit(); continue; }
@@ -225,7 +271,7 @@ export function useWakeListener(options: Options) {
                 latest.current.busy,
                 latest.current.isEcho?.(candidate.text) ?? false,
               );
-              dispatch(commitEvents);
+              dispatch(commitEvents, candidate.index);
             }, INTERIM_COMMIT_MS);
           }
         }
@@ -304,7 +350,7 @@ export function useWakeListener(options: Options) {
     };
     installLocalRef.current = installLocalPack;
     pauseRef.current = () => {
-      desired.current = false; gate.current.stop(); window.clearTimeout(timer); clearInterimCommit();
+      desired.current = false; gate.current.stop(); window.clearTimeout(timer); clearInterimCommit(); clearDeferredQuestion();
       running.current = false; requested.current = false;
       setActive(false); setStatus('paused');
       latest.current.onStop();
@@ -336,7 +382,8 @@ export function useWakeListener(options: Options) {
     };
     start();
     return () => {
-      disposed = true; window.clearTimeout(timer); window.clearTimeout(interimTimer); window.clearInterval(expiryTimer);
+      disposed = true; window.clearTimeout(timer); window.clearTimeout(interimTimer); window.clearTimeout(deferredTimer); window.clearInterval(expiryTimer);
+      audioLevelHandlerRef.current = () => undefined;
       running.current = false; requested.current = false;
       restart.current = null; pauseRef.current = null; completeRef.current = null; installLocalRef.current = null;
       if (rec) {
@@ -355,6 +402,7 @@ export function useWakeListener(options: Options) {
     pause: () => pauseRef.current?.() ?? Promise.resolve(),
     installLocalPack: () => installLocalRef.current?.() ?? Promise.resolve(),
     complete: (playedAudio = false) => completeRef.current?.(playedAudio),
+    reportAudioLevel,
     activate: () => {
       completeRef.current?.();
       requested.current = true;

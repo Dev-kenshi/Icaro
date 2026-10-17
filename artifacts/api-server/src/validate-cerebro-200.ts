@@ -91,7 +91,7 @@ try {
     await runCase(`composição L5 ${index + 1}`, async () => {
       const result = await brain.resolve(`soft match sem informação direta ${index}`);
       assert(result.kind === "compose" && result.layer === "L5", "a faixa semântica intermediária não pediu composição");
-      assert(result.snippets.length > 0 && result.snippets.length <= 3, "a composição não limitou os trechos");
+      assert(result.snippets.length > 0 && result.snippets.length <= 6, "a composição não limitou os seis trechos híbridos");
     });
   }
 

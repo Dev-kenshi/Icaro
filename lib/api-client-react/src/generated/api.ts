@@ -22,6 +22,8 @@ import type {
 import type {
   AiChatInput,
   AiChatResponse,
+  AiLatencySampleInput,
+  AiLatencySampleResponse,
   AiProviderHealth,
   AiProviderStatus,
   AiSpeechInput,
@@ -32,6 +34,7 @@ import type {
   CosmosFeedsResponse,
   GetAiVoicesParams,
   HealthStatus,
+  IcaroHealthResponse,
   ItcontEventDetail,
   TtsTimestampsInput,
   TtsTimestampsResult
@@ -623,6 +626,173 @@ export function useGetAiStatus<TData = Awaited<ReturnType<typeof getAiStatus>>, 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetAiStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRecordAiLatencyUrl = () => {
+
+
+
+
+  return `/api/ai/latency`
+}
+
+/**
+ * Stores only a latency category and duration; no prompt, answer, or user identifier is retained.
+ * @summary Record an anonymous first-audio latency sample
+ */
+export const recordAiLatency = async (aiLatencySampleInput: AiLatencySampleInput, options?: Parameters<typeof customFetch>[1]): Promise<AiLatencySampleResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AiLatencySampleResponse>(getRecordAiLatencyUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(aiLatencySampleInput)
+  }
+);}
+
+
+
+
+
+export const getRecordAiLatencyMutationKey = () => ['recordAiLatency'] as const;
+
+export const getRecordAiLatencyMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordAiLatency>>, TError,RecordAiLatencyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordAiLatency>>, TError,RecordAiLatencyMutationVariables, TContext> => {
+
+const mutationKey = getRecordAiLatencyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordAiLatency>>, RecordAiLatencyMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  recordAiLatency(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordAiLatencyMutationResult = NonNullable<Awaited<ReturnType<typeof recordAiLatency>>>
+    export type RecordAiLatencyMutationBody = BodyType<AiLatencySampleInput>
+    export type RecordAiLatencyMutationError = ErrorType<void>
+    export type RecordAiLatencyMutationVariables = {data: BodyType<AiLatencySampleInput>}
+
+    /**
+ * @summary Record an anonymous first-audio latency sample
+ */
+export const useRecordAiLatency = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordAiLatency>>, TError,RecordAiLatencyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recordAiLatency>>,
+        TError,
+        RecordAiLatencyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRecordAiLatencyMutationOptions(options));
+    }
+
+export const getGetIcaroHealthUrl = () => {
+
+
+
+
+  return `/api/saude`
+}
+
+/**
+ * Requires an administrator session. Returns aggregate metrics only; never returns prompts or personal data.
+ * @summary Get Ícaro provider, latency, context, and cache health
+ */
+export const getIcaroHealth = async ( options?: Parameters<typeof customFetch>[1]): Promise<IcaroHealthResponse> => {
+
+  return customFetch<IcaroHealthResponse>(getGetIcaroHealthUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetIcaroHealthQueryKey = () => {
+    return [
+    `/api/saude`
+    ] as const;
+    }
+
+
+export const getGetIcaroHealthQueryOptions = <TData = Awaited<ReturnType<typeof getIcaroHealth>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getIcaroHealth>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetIcaroHealthQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getIcaroHealth>>> = ({ signal }) => getIcaroHealth({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getIcaroHealth>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetIcaroHealthQueryResult = NonNullable<Awaited<ReturnType<typeof getIcaroHealth>>>
+export type GetIcaroHealthQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get Ícaro provider, latency, context, and cache health
+ */
+
+export function useGetIcaroHealth<TData = Awaited<ReturnType<typeof getIcaroHealth>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getIcaroHealth>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetIcaroHealthQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

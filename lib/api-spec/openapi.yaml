@@ -71,6 +71,8 @@ paths:
           description: Invalid event slug
         "401":
           description: Authentication required
+        "429":
+          description: Too many latency samples in a short period
         "404":
           description: Event not found
         "500":
@@ -172,6 +174,46 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AiProviderStatus"
+  /ai/latency:
+    post:
+      operationId: recordAiLatency
+      tags: [ai]
+      summary: Record an anonymous first-audio latency sample
+      description: Stores only a latency category and duration; no prompt, answer, or user identifier is retained.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiLatencySampleInput"
+      responses:
+        "200":
+          description: Latency sample accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiLatencySampleResponse"
+        "400":
+          description: Invalid latency sample
+        "401":
+          description: Authentication required
+  /saude:
+    get:
+      operationId: getIcaroHealth
+      tags: [health, ai]
+      summary: Get Ícaro provider, latency, context, and cache health
+      description: Requires an administrator session. Returns aggregate metrics only; never returns prompts or personal data.
+      responses:
+        "200":
+          description: Aggregated health indicators for Ícaro
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IcaroHealthResponse"
+        "401":
+          description: Authentication required
+        "403":
+          description: Administrator role required
   /ai/chat:
     post:
       operationId: sendAiMessage
@@ -593,6 +635,78 @@ components:
         cooldownMs:
           type: integer
       required: [id, name, configured, available, state, model, privacyNote, averageFirstTokenMs, errorRate, cooldownMs]
+    AiLatencySampleInput:
+      type: object
+      additionalProperties: false
+      properties:
+        category:
+          type: string
+          enum: [local, cache, llm]
+        durationMs:
+          type: integer
+          minimum: 0
+          maximum: 60000
+      required: [category, durationMs]
+    AiLatencySampleResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        ok:
+          type: boolean
+      required: [ok]
+    IcaroPerformanceHealth:
+      type: object
+      additionalProperties: false
+      properties:
+        averageEstimatedTokens:
+          type: integer
+        estimatedTokenSamples:
+          type: integer
+        localSamples:
+          type: integer
+        cacheSamples:
+          type: integer
+        llmSamples:
+          type: integer
+        p95LocalCacheMs:
+          type: [integer, "null"]
+        p95LlmMs:
+          type: [integer, "null"]
+        localCacheTargetMs:
+          type: integer
+        llmTargetMs:
+          type: integer
+        localCacheTargetMet:
+          type: [boolean, "null"]
+        llmTargetMet:
+          type: [boolean, "null"]
+      required: [averageEstimatedTokens, estimatedTokenSamples, localSamples, cacheSamples, llmSamples, p95LocalCacheMs, p95LlmMs, localCacheTargetMs, llmTargetMs, localCacheTargetMet, llmTargetMet]
+    IcaroCacheHealth:
+      type: object
+      additionalProperties: false
+      properties:
+        entries:
+          type: integer
+        capacity:
+          type: integer
+        ttlHours:
+          type: integer
+      required: [entries, capacity, ttlHours]
+    IcaroHealthResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        providers:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiProviderHealth"
+        performance:
+          $ref: "#/components/schemas/IcaroPerformanceHealth"
+        cache:
+          $ref: "#/components/schemas/IcaroCacheHealth"
+        contextTokenCap:
+          type: integer
+      required: [providers, performance, cache, contextTokenCap]
     LayerCount:
       type: object
       additionalProperties: false

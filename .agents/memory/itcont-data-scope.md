@@ -14,3 +14,9 @@ The public ITCONT assistant must use only the official event data and published 
 **Why:** The user explicitly required a free, keyless public assistant grounded only in those sources, with an honest fallback.
 
 **How to apply:** Preserve these limits in any assistant or event-Q&A changes. Ask before broadening the knowledge source or connecting a generative model.
+
+The user's promotional photo and the video derived from it must remain on-device. Process and export them in the browser; do not upload or persist them on the server.
+
+**Why:** The user explicitly required a local-only Stories export while retaining local photo handling.
+
+**How to apply:** Use browser canvas/Blob processing and client-side encoding for promotional media. Do not add API endpoints, analytics payloads, or object storage for these files.

@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { chromium, type Page, type Route } from 'playwright-core';
 
 const BASE = process.env.ICARO_URL ?? 'http://localhost:80/';
+const STAGE_URL = process.env.ICARO_STAGE_URL ?? new URL('icaro', BASE).toString();
 const CHROME = process.env.CHROMIUM_PATH ?? '/repl/tools/bin/chromium';
 
 function wav(seconds: number) {
@@ -118,7 +119,7 @@ async function fresh() {
   pageErrors = [];
   page = await context.newPage();
   page.on('pageerror', (error) => pageErrors.push(error.message));
-  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await page.goto(STAGE_URL, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.stage');
   if (await page.locator('dialog.stage-help[open]').count()) {
     await page.getByTestId('button-close-help').press('Escape');
@@ -181,14 +182,20 @@ async function runChecks() {
   });
   check('9. O áudio chega ao analisador/saída e a fala termina sem travar', async () => {
     await until(async () => (await audit()).sourceStarts > 0, 3_000, 'início do buffer de voz');
+    const caption = page.locator('[data-testid="text-caption"]');
+    const captionsToggle = page.getByTestId('button-captions-toggle');
+    await captionsToggle.click();
+    await until(async () => {
+      const text = await caption.innerText();
+      return text.length > 0 && /áudio.*está ativado/i.test(text);
+    }, 2_000, 'legenda durante a fala');
+    assert.match(await caption.innerText(), /áudio.*está ativado/i);
+    await captionsToggle.click();
+    assert.equal(await caption.getAttribute('hidden') !== null, true);
     await until(async () => (await page.locator('.stage').getAttribute('data-state')) === 'idle', 8_000, 'fim da fala');
     const m = await audit();
     assert.ok(m.sourceToAnalyser > 0, 'a fonte de áudio não chegou ao analisador');
     assert.ok(m.analyserToDestination > 0, 'o analisador não foi conectado à saída do dispositivo');
-    assert.equal(await page.locator('[data-testid="text-caption"]').getAttribute('hidden') !== null, true);
-    await page.getByTestId('button-captions-toggle').click();
-    assert.match(await page.locator('[data-testid="text-caption"]').innerText(), /áudio.*está ativado/i);
-    await page.getByTestId('button-captions-toggle').click();
     assert.equal(pageErrors.length, 0, pageErrors.join('; '));
   });
   check('10. Falha de voz aparece na tela e uma nova tentativa se recupera', async () => {

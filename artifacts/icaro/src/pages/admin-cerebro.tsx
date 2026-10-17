@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import { useAuthUser } from "@/components/login/login-gate";
+import type { IcaroHealthResponse } from "@workspace/api-client-react";
 
 type LayerKey = "L1" | "L2" | "L3" | "L4" | "L5" | "L6";
 type Stats = {
@@ -57,6 +58,8 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
 export default function AdminCerebro() {
   const user = useAuthUser();
   const [stats, setStats] = useState<Stats | null>(null);
+  const [health, setHealth] = useState<IcaroHealthResponse | null>(null);
+  const [healthError, setHealthError] = useState<string | null>(null);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -79,6 +82,12 @@ export default function AdminCerebro() {
       ]);
       setStats(nextStats);
       setCandidates(nextCandidates);
+      try {
+        setHealth(await requestJson<IcaroHealthResponse>("/api/saude"));
+        setHealthError(null);
+      } catch (cause) {
+        setHealthError(cause instanceof Error ? cause.message : "Não foi possível carregar a saúde do Ícaro.");
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Não foi possível carregar o painel.");
     } finally {
@@ -141,6 +150,45 @@ export default function AdminCerebro() {
         </div>
       )}
       {notice && <div role="status" aria-live="polite" className="rounded-xl border border-secondary/30 bg-secondary/10 p-3 text-sm text-primary" data-testid="status-admin-success">{notice}</div>}
+
+      <section className="space-y-4" aria-label="Saúde e desempenho do Ícaro" data-testid="section-icaro-health">
+        <div>
+          <h2 className="font-display text-3xl">Saúde e desempenho</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Métricas agregadas de resposta e voz; nenhum texto de pergunta ou resposta é exibido.</p>
+        </div>
+        {healthError && <p role="status" className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">{healthError}</p>}
+        {health && (
+          <>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <Metric label="Tokens estimados em média" value={health.performance.estimatedTokenSamples
+                ? health.performance.averageEstimatedTokens.toLocaleString("pt-BR")
+                : "Sem amostras"} />
+              <Metric label="P95 local e cache" value={formatLatency(health.performance.p95LocalCacheMs, health.performance.localCacheTargetMs, health.performance.localCacheTargetMet)} />
+              <Metric label="P95 IA remota" value={formatLatency(health.performance.p95LlmMs, health.performance.llmTargetMs, health.performance.llmTargetMet)} />
+              <Metric label="Cache de respostas" value={`${health.cache.entries}/${health.cache.capacity} · ${health.cache.ttlHours} h`} />
+            </div>
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h3 className="font-semibold">Provedores automáticos gratuitos</h3>
+                <span className="text-xs text-muted-foreground">Contexto Ícaro: até {health.contextTokenCap.toLocaleString("pt-BR")} tokens estimados</span>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                {health.providers.map((provider) => (
+                  <div key={provider.id} className="rounded-xl bg-muted/70 p-3 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold">{provider.name}</span>
+                      <span className={provider.available ? "text-secondary" : "text-muted-foreground"}>
+                        {provider.available ? "Disponível" : provider.state === "cooldown" ? "Pausa temporária" : "Indisponível"}
+                      </span>
+                    </div>
+                    <div className="mt-1 truncate font-mono-data text-[10px] text-muted-foreground">{provider.model}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </section>
 
         {loading && !stats ? (
         <div role="status" aria-live="polite" className="space-y-4 rounded-2xl border border-border bg-card p-6 sm:p-8">
@@ -242,6 +290,11 @@ export default function AdminCerebro() {
       ) : null}
     </div>
   );
+}
+
+function formatLatency(value: number | null, target: number, passed: boolean | null): string {
+  if (value === null) return `Sem amostras · alvo ${target.toLocaleString("pt-BR")} ms`;
+  return `${value.toLocaleString("pt-BR")} ms · ${passed ? "dentro" : "acima"} do alvo ${target.toLocaleString("pt-BR")} ms`;
 }
 
 function Metric({ label, value }: { label: string; value: string }) {

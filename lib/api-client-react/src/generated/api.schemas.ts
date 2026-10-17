@@ -216,6 +216,59 @@ export const AiProviderId = {
   claude: 'claude',
 } as const;
 
+export type AiLatencySampleInputCategory = typeof AiLatencySampleInputCategory[keyof typeof AiLatencySampleInputCategory];
+
+
+export const AiLatencySampleInputCategory = {
+  local: 'local',
+  cache: 'cache',
+  llm: 'llm',
+} as const;
+
+export interface AiLatencySampleInput {
+  category: AiLatencySampleInputCategory;
+  /**
+     * @minimum 0
+     * @maximum 60000
+     */
+  durationMs: number;
+}
+
+export interface AiLatencySampleResponse {
+  ok: boolean;
+}
+
+export interface IcaroPerformanceHealth {
+  averageEstimatedTokens: number;
+  estimatedTokenSamples: number;
+  localSamples: number;
+  cacheSamples: number;
+  llmSamples: number;
+  /** @nullable */
+  p95LocalCacheMs: number | null;
+  /** @nullable */
+  p95LlmMs: number | null;
+  localCacheTargetMs: number;
+  llmTargetMs: number;
+  /** @nullable */
+  localCacheTargetMet: boolean | null;
+  /** @nullable */
+  llmTargetMet: boolean | null;
+}
+
+export interface IcaroCacheHealth {
+  entries: number;
+  capacity: number;
+  ttlHours: number;
+}
+
+export interface IcaroHealthResponse {
+  providers: AiProviderHealth[];
+  performance: IcaroPerformanceHealth;
+  cache: IcaroCacheHealth;
+  contextTokenCap: number;
+}
+
 export interface LayerCount {
   count: number;
   percent: number;

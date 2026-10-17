@@ -5,6 +5,9 @@ import {
   GetAiStatusResponse,
   GetAiVoicesQueryParams,
   GetAiVoicesResponse,
+  GetIcaroHealthResponse,
+  RecordAiLatencyBody,
+  RecordAiLatencyResponse,
   SendAiMessageBody,
   SendAiMessageResponse,
   SpeakAiTextBody,
@@ -20,8 +23,10 @@ import {
 } from "../lib/elevenlabs-voice-catalog";
 import { normalizeAnswerText } from "../lib/answer-text";
 import { createEmotionTagStream } from "../lib/emotion-tags";
-import { createProviderRouter, isAutoProviderId } from "../lib/provider-router";
+import { createProviderRouter, FREE_AUTO_PROVIDER_IDS, isAutoProviderId } from "../lib/provider-router";
+import { buildBudgetedPrompt, estimatePromptTokens, summarizeRecentHistory } from "../lib/context-budget";
 import { createCerebroLayers, presenterize, redactPersonalData } from "../lib/cerebro-camadas";
+import { createPerformanceMetrics, type LatencyKind } from "../lib/performance-metrics";
 import { createCalculationLookup } from "../lib/calculos-db";
 import { searchImportedKnowledge } from "../lib/knowledge-corpus";
 import { requireAuth } from "../middlewares/require-auth";
@@ -35,7 +40,11 @@ import {
 const router: IRouter = Router();
 const CHAT_WINDOW_MS = 10 * 60 * 1000;
 const CHAT_LIMIT = 30;
+const LATENCY_WINDOW_MS = 60 * 1000;
+const LATENCY_LIMIT = 60;
+const CONTEXT_TOKEN_CAP = 6_000;
 const chatHits = new Map<string, { count: number; resetAt: number }>();
+const latencyHits = new Map<string, { count: number; resetAt: number }>();
 const MAX_TRACKED_RATE_LIMIT_KEYS = 10_000;
 
 function makeRateLimitSlot(map: Map<string, { count: number; resetAt: number }>, now: number) {
@@ -83,6 +92,7 @@ const groq = createGroqTextService({
   getModel: getGroqModel,
 });
 const providerRouter = createProviderRouter();
+const performanceMetrics = createPerformanceMetrics();
 void providerRouter.refreshModels();
 
 function getElevenLabsKey() {
@@ -267,10 +277,6 @@ const ICARO_PERSONA = [
   "Nunca diga que é o ChatGPT, a OpenAI, o Claude ou o Gemini. Você é o ÍCARO.",
 ].join("\n");
 
-function icaroInstructions(datasetContext: string) {
-  return [ICARO_PERSONA, datasetContext].filter(Boolean).join("\n\n");
-}
-
 function analystInstructions(datasetContext: string) {
   return [
     "Você é Ícaro, um assistente de inteligência, ciência de dados, análise de dados, resultados e operações.",
@@ -279,6 +285,53 @@ function analystInstructions(datasetContext: string) {
   ]
     .filter(Boolean)
     .join("\n\n");
+}
+
+function preparePrompt(
+  input: ReturnType<typeof SendAiMessageBody.parse>,
+  effectiveQuestion = input.question.trim(),
+) {
+  const safeUserMessage = redactPersonalData(effectiveQuestion);
+  const safeHistory = summarizeRecentHistory(input.history.map((message) => ({
+    role: message.role,
+    content: redactPersonalData(message.content),
+  })));
+  const datasetContext = buildDatasetContext(input.dataset);
+  const imported = input.persona === "icaro" && !input.dataset
+    ? searchImportedKnowledge(safeUserMessage, 6)
+      .filter((item) => item.score >= 1)
+      .sort((left, right) => right.score - left.score)
+      .slice(0, 6)
+      .map((item) => ({
+        score: item.score,
+        content: `Fonte: ${item.title} (${item.source})\n${item.text}`,
+      }))
+    : [];
+  const prepared = input.persona === "icaro"
+    ? buildBudgetedPrompt({
+      fixedInstructions: imported.length
+        ? `${ICARO_PERSONA}\n\nUse estes trechos locais apenas quando forem pertinentes; identifique a fonte e não extrapole o conteúdo.`
+        : ICARO_PERSONA,
+      baseContext: datasetContext,
+      snippets: imported,
+      history: safeHistory,
+      userMessage: safeUserMessage,
+      tokenCap: CONTEXT_TOKEN_CAP,
+    })
+    : {
+      systemPrompt: analystInstructions(datasetContext),
+      history: safeHistory,
+      userMessage: safeUserMessage,
+      estimatedTokens: estimatePromptTokens(`${analystInstructions(datasetContext)}\n${safeHistory.map((item) => item.content).join("\n")}\n${safeUserMessage}`),
+    };
+  const estimatedTokens = prepared.estimatedTokens;
+  performanceMetrics.recordEstimatedTokens(estimatedTokens);
+  return {
+    systemPrompt: prepared.systemPrompt,
+    safeHistory: prepared.history,
+    safeUserMessage: prepared.userMessage,
+    estimatedTokens,
+  };
 }
 
 function isShortContextualFollowUp(question: string, history: Array<{ role: string; content: string }>): boolean {
@@ -361,6 +414,32 @@ router.get("/ai/status", (_req, res) => {
     providers: providerRouter.getHealth(),
   });
   res.json(data);
+});
+
+router.post("/ai/latency", requireAuth(), (req, res) => {
+  if (isRateLimited(latencyHits, req.ip || req.socket.remoteAddress || "unknown", LATENCY_WINDOW_MS, LATENCY_LIMIT)) {
+    res.status(429).json({ error: "Muitas amostras de latência em sequência." });
+    return;
+  }
+  const parsed = RecordAiLatencyBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "A amostra de latência é inválida." });
+    return;
+  }
+  performanceMetrics.recordLatency(parsed.data.category as LatencyKind, parsed.data.durationMs);
+  res.json(RecordAiLatencyResponse.parse({ ok: true }));
+});
+
+router.get("/saude", requireAuth("admin"), async (_req, res) => {
+  const [cache] = await Promise.all([cerebro.getCacheStats()]);
+  res.json(GetIcaroHealthResponse.parse({
+    providers: providerRouter.getHealth().filter((item) =>
+      FREE_AUTO_PROVIDER_IDS.some((id) => id === item.id),
+    ),
+    performance: performanceMetrics.snapshot(),
+    cache,
+    contextTokenCap: CONTEXT_TOKEN_CAP,
+  }));
 });
 
 router.get("/ia/saude", requireAuth("admin"), (_req, res) => {
@@ -483,31 +562,13 @@ router.post("/ai/chat", async (req, res) => {
   }
 
   const input = parsed.data;
-  const importedKnowledge = input.persona === "icaro" && !input.dataset
-    ? searchImportedKnowledge(input.question, 3).filter((item) => item.score >= 1)
-    : [];
-  const importedContext = importedKnowledge.length
-    ? [
-      "Trechos da base local importada do ÍCARO v5. Use apenas os trechos pertinentes, indique o título da fonte e não extrapole o que eles dizem.",
-      ...importedKnowledge.map((item) => `Fonte: ${item.title} (${item.source})\n${item.text.slice(0, 3_000)}`),
-    ].join("\n\n")
-    : "";
-  const datasetContext = [buildDatasetContext(input.dataset), importedContext].filter(Boolean).join("\n\n");
-  const systemPrompt = input.persona === "icaro"
-    ? icaroInstructions(datasetContext)
-    : analystInstructions(datasetContext);
   const userMessage = input.question.trim();
-  const safeUserMessage = redactPersonalData(userMessage);
-  const safeHistory = input.history.map((message) => ({
-    role: message.role,
-    content: redactPersonalData(message.content),
-  }));
-  const responseTokenLimit = input.persona === "icaro" ? 1024 : 8192;
-
   if (!userMessage) {
     res.status(400).json({ error: "Escreva uma pergunta antes de enviar." });
     return;
   }
+  const { systemPrompt, safeUserMessage, safeHistory } = preparePrompt(input, userMessage);
+  const responseTokenLimit = input.persona === "icaro" ? 1024 : 8192;
 
   if (input.webSearch) {
     const apiKey = getGeminiKey();
@@ -570,8 +631,8 @@ router.post("/ai/chat", async (req, res) => {
       return;
     }
     if (layered.kind === "compose" && input.provider === "auto") {
-      const snippets = layered.snippets.slice(0, 3)
-        .map((snippet, index) => `Trecho ${index + 1} — ${snippet.title}: ${snippet.text}`)
+      const snippets = layered.snippets.slice(0, 6)
+        .map((snippet, index) => `Trecho ${index + 1} — ${snippet.title}: ${snippet.text.slice(0, 900)}`)
         .join("\n");
       try {
         const composed = await providerRouter.complete({
@@ -582,7 +643,7 @@ router.post("/ai/chat", async (req, res) => {
             "Não use markdown nem etiquetas de emoção.",
             snippets,
           ].join("\n\n"),
-          history: [],
+          history: safeHistory,
           userMessage: safeUserMessage,
           maxTokens: 150,
           mode: "fast",
@@ -610,7 +671,7 @@ router.post("/ai/chat", async (req, res) => {
 
   if (input.provider === "auto") {
     const configuredAutoProviders = providerRouter.getHealth().filter((item) =>
-      item.id !== "openai" && item.id !== "claude" && item.configured && item.available,
+      FREE_AUTO_PROVIDER_IDS.some((id) => id === item.id) && item.configured && item.available,
     );
     if (!configuredAutoProviders.length) {
       res.status(503).json({ error: "Nenhum provedor automático está configurado ou disponível." });
@@ -1062,29 +1123,20 @@ router.post("/ai/chat/stream", async (req, res) => {
   }
   const input = parsed.data;
   const userMessage = input.question.trim();
-  const safeUserMessage = redactPersonalData(userMessage);
-  const safeHistory = input.history.map((message) => ({
-    role: message.role,
-    content: redactPersonalData(message.content),
-  }));
   if (!userMessage) {
     res.status(400).json({ error: "Escreva uma pergunta antes de enviar." });
     return;
   }
-
-  const importedKnowledge = input.persona === "icaro" && !input.dataset
-    ? searchImportedKnowledge(input.question, 3).filter((item) => item.score >= 1)
-    : [];
-  const importedContext = importedKnowledge.length
-    ? [
-      "Trechos da base local importada do ÍCARO v5. Use apenas os trechos pertinentes, indique o título da fonte e não extrapole o que eles dizem.",
-      ...importedKnowledge.map((item) => `Fonte: ${item.title} (${item.source})\n${item.text.slice(0, 3_000)}`),
-    ].join("\n\n")
-    : "";
-  const datasetContext = [buildDatasetContext(input.dataset), importedContext].filter(Boolean).join("\n\n");
-  const systemPrompt = input.persona === "icaro"
-    ? icaroInstructions(datasetContext)
-    : analystInstructions(datasetContext);
+  const rewriteHistory = summarizeRecentHistory(input.history.map((message) => ({
+    role: message.role,
+    content: redactPersonalData(message.content),
+  })));
+  const effectiveUserMessage = await rewriteContextualFollowUp(
+    redactPersonalData(userMessage),
+    rewriteHistory,
+    input.provider === "auto" ? undefined : input.provider,
+  );
+  const { systemPrompt, safeHistory, safeUserMessage } = preparePrompt(input, effectiveUserMessage);
   const sendEvent = (event: string, data: unknown) => {
     if (!res.destroyed && !res.writableEnded) res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   };
@@ -1139,12 +1191,6 @@ router.post("/ai/chat/stream", async (req, res) => {
     return;
   }
 
-  const effectiveUserMessage = await rewriteContextualFollowUp(
-    safeUserMessage,
-    safeHistory,
-    input.provider === "auto" ? undefined : input.provider,
-  );
-
   if (input.persona === "icaro" && !input.dataset) {
     const calculation = await resolveCalculation(effectiveUserMessage);
     if (calculation) {
@@ -1175,8 +1221,8 @@ router.post("/ai/chat/stream", async (req, res) => {
       return;
     }
     if (layered.kind === "compose") {
-      const snippets = layered.snippets.slice(0, 3)
-        .map((snippet, index) => `Trecho ${index + 1} — ${snippet.title}: ${snippet.text}`)
+      const snippets = layered.snippets.slice(0, 6)
+        .map((snippet, index) => `Trecho ${index + 1} — ${snippet.title}: ${snippet.text.slice(0, 900)}`)
         .join("\n");
       try {
         const composed = await providerRouter.complete({
@@ -1214,7 +1260,7 @@ router.post("/ai/chat/stream", async (req, res) => {
 
   const configured = providerRouter.getHealth().some((item) =>
     (input.provider === "auto"
-      ? item.id !== "openai" && item.id !== "claude"
+      ? FREE_AUTO_PROVIDER_IDS.some((id) => id === item.id)
       : item.id === input.provider)
     && item.configured
     && item.available,

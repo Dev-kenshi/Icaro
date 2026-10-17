@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent } from 'react';
-import { Check, Copy, Download, ImagePlus, Share2 } from 'lucide-react';
+import { Check, Copy, Download, ImagePlus, Share2, Video } from 'lucide-react';
 import { ITCONT } from '../dados';
 import { dataExtenso, whatsappUrl } from '../logica';
 import QrEvento from './QrEvento';
@@ -10,6 +10,7 @@ import {
   PROMO_PHOTO_MAX_BYTES,
   type PromoPhotoFormat,
 } from './promo-photo';
+import { createStoriesVideo } from './promo-video';
 
 const LOGO_OFICIAL = 'https://static.even3.com/logos/ImagemdoCodex21deset.de202609_39_23.91a8f584302f4c68b0fa.png';
 const PROMO_WIDTH = 1080;
@@ -72,6 +73,10 @@ export default function Inscricao() {
   const [photoProcessing, setPhotoProcessing] = useState(false);
   const [photoSize, setPhotoSize] = useState<{ width: number; height: number } | null>(null);
   const [photoError, setPhotoError] = useState('');
+  const [videoExporting, setVideoExporting] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
+  const [videoStatus, setVideoStatus] = useState('');
+  const [videoError, setVideoError] = useState('');
   const [logoState, setLogoState] = useState<LogoState>('loading');
   const [promoVisible, setPromoVisible] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
@@ -605,6 +610,41 @@ export default function Inscricao() {
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
+  const downloadStoriesVideo = async () => {
+    if (videoExporting) return;
+    setVideoError('');
+    setVideoStatus('Preparando o formato Stories…');
+    setVideoProgress(0);
+    setVideoExporting(true);
+    setFormat('stories');
+    try {
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve())));
+      const preview = canvasRef.current;
+      if (!preview || preview.width !== PROMO_WIDTH * 2 || preview.height !== PROMO_HEIGHTS.stories * 2
+        || preview.dataset.cardFormat !== 'stories') {
+        throw new Error('A prévia Stories ainda está sendo preparada. Tente novamente em alguns segundos.');
+      }
+      if (photoUrl && !photoReady) throw new Error('Aguarde a foto terminar de carregar antes de gerar o vídeo.');
+      const result = await createStoriesVideo(preview, (progress, message) => {
+        setVideoProgress(progress);
+        setVideoStatus(message);
+      });
+      const url = URL.createObjectURL(result.blob);
+      const anchor = document.createElement('a');
+      anchor.download = `itcont-stories-9x16.${result.extension}`;
+      anchor.href = url;
+      anchor.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+      setVideoProgress(100);
+      setVideoStatus(`Vídeo ${result.extension.toUpperCase()} pronto para baixar.`);
+    } catch (error) {
+      setVideoError(error instanceof Error ? error.message : 'Não foi possível gerar o vídeo Stories.');
+      setVideoStatus('');
+    } finally {
+      setVideoExporting(false);
+    }
+  };
+
   const shareCard = async () => {
     if (!navigator.share || !navigator.canShare) return;
     const blob = await createPromoBlob();
@@ -698,6 +738,19 @@ export default function Inscricao() {
                   <button type="button" className="itc-primary" onClick={downloadCard} data-testid="button-download-promo"><Download size={16} aria-hidden="true" /> Baixar PNG</button>
                   {canShareCard && <button type="button" className="itc-secondary" onClick={shareCard} data-testid="button-share-promo"><Share2 size={16} aria-hidden="true" /> Compartilhar</button>}
                 </div>
+                <button
+                  type="button"
+                  className="itc-secondary mt-2 w-full"
+                  onClick={() => void downloadStoriesVideo()}
+                  disabled={videoExporting || photoProcessing || (Boolean(photoUrl) && !photoReady)}
+                  aria-busy={videoExporting}
+                  data-testid="button-download-promo-video"
+                >
+                  <Video size={16} aria-hidden="true" /> {videoExporting ? `Gerando vídeo… ${videoProgress}%` : 'Baixar vídeo para Stories'}
+                </button>
+                {videoExporting && <progress className="mt-2 block h-2 w-full" max={100} value={videoProgress} aria-label="Progresso da exportação do vídeo Stories" data-testid="progress-promo-video" />}
+                {videoStatus && <p className="itc-promo-privacy" role="status" aria-live="polite" data-testid="status-promo-video">{videoStatus}</p>}
+                {videoError && <p className="itc-promo-error" role="alert" data-testid="error-promo-video">{videoError}</p>}
                 <p className="itc-promo-mobile-help">Abra o Instagram e escolha a imagem baixada.</p>
               </div>
               <div className="itc-promo-preview">
