@@ -781,10 +781,12 @@ check('descrição, canonical, Open Graph, Twitter e fontes priorizadas', () => 
   assert.match(UI, /og:title/);
   assert.match(UI, /og:image/);
   const indexHtml = ler(join(RAIZ, 'artifacts/icaro/index.html'));
-  assert.match(indexHtml, /<title>ITCONT 2026 · I Imersão Tecnológica Contábil<\/title>/);
+   assert.match(indexHtml, /<title>ITCONT 2026 UEFS \| Imersão Tecnológica Contábil na Bahia<\/title>/);
   assert.match(indexHtml, /rel="canonical" href="https:\/\/itcont-uefs\.onrender\.com\/"/);
   assert.match(indexHtml, /property="og:url" content="https:\/\/itcont-uefs\.onrender\.com\/"/);
-  assert.match(indexHtml, /property="og:image" content="https:\/\/itcont-uefs\.onrender\.com\/itcont-event-logo\.png"/);
+  assert.match(indexHtml, /property="og:image" content="https:\/\/itcont-uefs\.onrender\.com\/og-itcont\.png"/);
+  assert.match(indexHtml, /property="og:locale" content="pt_BR"/);
+  assert.match(indexHtml, /name="twitter:image" content="https:\/\/itcont-uefs\.onrender\.com\/og-itcont\.png"/);
   assert.match(indexHtml, /name="twitter:card" content="summary_large_image"/);
   assert.match(indexHtml, /rel="preload" as="image" href="%BASE_URL%itcont-event-logo\.png" fetchpriority="high"/);
   assert.match(indexHtml, /rel="preload" as="font"[^>]*fetchpriority="high"/);
@@ -805,7 +807,7 @@ check('fotos do evento ficam como links; logos institucionais e favicons gerados
   const publicDir = resolve(RAIZ, 'artifacts/icaro/public');
   const pub = arquivos(publicDir).map((p) => relative(publicDir, p))
     .filter((p) => /itcont|even3/i.test(p) && /\.(png|jpe?g|webp|gif|avif)$/i.test(p));
-  const approvedLogos = new Set(['itcont-logo.png', 'itcont-event-logo.png']);
+  const approvedLogos = new Set(['itcont-logo.png', 'itcont-event-logo.png', 'og-itcont.png']);
   const generatedFavicons = /^favicon-itcont-(?:16|32|48|180)\.png$/;
   assert.deepEqual(pub.filter((p) => !/itcont-earth-(?:static|small)\.webp$/.test(p)
     && !approvedLogos.has(p) && !generatedFavicons.test(p)), []);

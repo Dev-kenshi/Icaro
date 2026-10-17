@@ -33,6 +33,9 @@
     "validate:itcont-browser": "tsx ./validate-itcont-browser.ts",
     "validate:itcont-promo-browser": "tsx ./validate-itcont-promo-browser.ts",
     "validate:itcont-video-browser": "tsx ./validate-itcont-video-browser.ts",
+    "prerender:itcont": "tsx ./prerender-itcont-seo.ts",
+    "generate:itcont-og": "tsx ./generate-itcont-og.ts",
+    "validate:itcont-seo": "tsx ./validate-itcont-seo.ts",
     "generate:route-favicons": "tsx ./src/generate-route-favicons.ts",
     "validate:route-favicons": "tsx ./src/validate-route-favicons.ts",
     "validate:full-project": "tsx ./src/validate-full-project.ts",
@@ -42,6 +45,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "lighthouse": "^13.5.0",
     "playwright-core": "^1.63.0",
     "sharp": "^0.35.5",
     "tsx": "catalog:"

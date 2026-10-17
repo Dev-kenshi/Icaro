@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { ITCONT } from './dados';
+import { ITCONT_SEO_DESCRIPTION, ITCONT_SEO_TITLE } from './seo-static';
 import { layoutPara } from './logica';
 import './tokens.css';
 import './site.css';
@@ -200,9 +201,9 @@ export default function SiteItcont() {
     const themeColor = getComputedStyle(document.querySelector('.itc') ?? document.documentElement).getPropertyValue('--itc-fundo').trim();
     const ogImage = document.head.querySelector<HTMLMetaElement>('meta[property="og:image"]')?.content || ITCONT.banner;
     const specs: Array<[string, string, string]> = [
-      ['name', 'description', ITCONT.descricao],
-      ['property', 'og:title', `${ITCONT.sigla} 2026 · ${ITCONT.titulo}`],
-      ['property', 'og:description', ITCONT.resumo],
+      ['name', 'description', ITCONT_SEO_DESCRIPTION],
+      ['property', 'og:title', ITCONT_SEO_TITLE],
+      ['property', 'og:description', ITCONT_SEO_DESCRIPTION],
       ['property', 'og:image', ogImage],
       ['name', 'theme-color', themeColor],
     ];
@@ -215,7 +216,7 @@ export default function SiteItcont() {
       target.setAttribute('content', content);
       if (!node) document.head.appendChild(target);
     });
-    document.title = `${ITCONT.sigla} 2026 · ${ITCONT.titulo}`;
+    document.title = ITCONT_SEO_TITLE;
     return () => {
       document.title = title;
       nodes.forEach(({ node, content }, selector) => {

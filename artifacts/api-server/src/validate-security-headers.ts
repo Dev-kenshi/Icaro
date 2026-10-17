@@ -67,7 +67,7 @@ try {
   const otherCspHeader = reportOnly
     ? "content-security-policy"
     : "content-security-policy-report-only";
-  const itcontTitle = "ITCONT 2026 · I Imersão Tecnológica Contábil";
+  const itcontTitle = "ITCONT 2026 UEFS | Imersão Tecnológica Contábil na Bahia";
   const icaroTitle = "Ícaro Inteligência e Operações";
   for (const route of ["/", "/itcont", "/itcont/programacao"]) {
     const response = await fetch(`${origin}${route}`);
@@ -77,7 +77,7 @@ try {
     assert.ok(html.includes(`<title>${itcontTitle}</title>`), `título ITCONT ausente em ${route}`);
     assert.ok(html.includes(`href="https://${canonicalHost}/"`), `canonical ITCONT incorreto em ${route}`);
     assert.ok(html.includes(`property="og:url" content="https://${canonicalHost}/"`), `og:url ITCONT incorreto em ${route}`);
-    assert.ok(html.includes(`property="og:image" content="https://${canonicalHost}/itcont-event-logo.png"`));
+    assert.ok(html.includes(`property="og:image" content="https://${canonicalHost}/og-itcont.png"`));
     assert.equal(response.headers.get("permissions-policy"), "camera=(), geolocation=(), microphone=(), payment=()");
     for (const [name, expected] of commonHeaders) {
       assert.equal(response.headers.get(name), expected, `header ${name} ausente ou incorreto em ${route}`);

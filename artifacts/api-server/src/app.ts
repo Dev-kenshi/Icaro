@@ -169,17 +169,17 @@ if (fs.existsSync(indexHtmlPath)) {
     const appPath = stripConfiguredBasePath(pathname).replace(/\/+$/, "") || "/";
     const route = appPath === "/" || /^\/itcont(?:\/|$)/.test(appPath) ? "itcont" : "icaro";
     const title = route === "itcont"
-      ? "ITCONT 2026 · I Imersão Tecnológica Contábil"
+      ? "ITCONT 2026 UEFS | Imersão Tecnológica Contábil na Bahia"
       : "Ícaro Inteligência e Operações";
     const description = route === "itcont"
-      ? "ITCONT 2026: I Imersão Tecnológica Contábil, na Universidade Estadual de Feira de Santana."
+      ? "ITCONT 2026 na UEFS reúne contabilidade e inteligência artificial em Feira de Santana, nos dias 21 e 22 de outubro, com inscrição gratuita. Saiba mais."
       : "Ícaro, assistente de inteligência e operações com respostas por texto e voz.";
     const publicBasePath = configuredBasePath ? `${configuredBasePath}/` : "/";
     const canonicalPath = route === "itcont"
       ? publicBasePath
       : `${publicBasePath}${appPath.replace(/^\/+/, "")}`;
     const canonicalUrl = `https://${canonicalHost}${canonicalPath}`;
-    const ogImage = `https://${canonicalHost}${publicBasePath}${route === "itcont" ? "itcont-event-logo.png" : "favicon-icaro-180.png"}`;
+    const ogImage = `https://${canonicalHost}${publicBasePath}${route === "itcont" ? "og-itcont.png" : "favicon-icaro-180.png"}`;
     const withSmallFavicon = withRouteIcon(indexHtmlTemplate, "route-favicon-16", route, 16);
     const withFavicon = withRouteIcon(withSmallFavicon, "route-favicon", route, 32);
     const withLargeFavicon = withRouteIcon(withFavicon, "route-favicon-48", route, 48);
@@ -191,8 +191,17 @@ if (fs.existsSync(indexHtmlPath)) {
     html = setTagAttribute(html, "meta", "property", "og:description", "content", description);
     html = setTagAttribute(html, "meta", "property", "og:url", "content", canonicalUrl);
     html = setTagAttribute(html, "meta", "property", "og:image", "content", ogImage);
+    html = setTagAttribute(html, "meta", "property", "og:locale", "content", "pt_BR");
+    html = setTagAttribute(html, "meta", "property", "og:site_name", "content", route === "itcont" ? "ITCONT 2026 UEFS" : "Ícaro Inteligência e Operações");
+    html = setTagAttribute(html, "meta", "name", "twitter:card", "content", "summary_large_image");
+    html = setTagAttribute(html, "meta", "name", "twitter:image", "content", ogImage);
+    html = setTagAttribute(html, "meta", "name", "robots", "content", /^\/(?:icaro|admin)(?:\/|$)/.test(appPath) ? "noindex, nofollow" : "index, follow");
     html = setTagAttribute(html, "meta", "name", "twitter:title", "content", title);
     html = setTagAttribute(html, "meta", "name", "twitter:description", "content", description);
+    if (route !== "itcont") {
+      html = html.replace(/<main\b[^>]*id=["']itcont-seo-prerender["'][^>]*>[\s\S]*?<\/main>/i, "");
+      html = html.replace(/<script\b[^>]*class=["']itcont-jsonld["'][^>]*>[\s\S]*?<\/script>/gi, "");
+    }
     return html;
   };
 
