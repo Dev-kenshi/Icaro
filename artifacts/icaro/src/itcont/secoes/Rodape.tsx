@@ -1,5 +1,6 @@
 import { ArrowUpRight, Bot, ExternalLink } from 'lucide-react';
 import { ITCONT } from '../dados';
+import InstagramLink from './InstagramLink';
 
 export default function Rodape() {
   return (
@@ -14,6 +15,7 @@ export default function Rodape() {
           <p><Bot size={16} aria-hidden="true" /> Assistente oficial: ÍCARO</p>
           <a href="/icaro" data-testid="link-icaro-stage">Acessar o palco do ÍCARO <ArrowUpRight size={15} aria-hidden="true" /></a>
           <p><a href={ITCONT.fonteUrl} target="_blank" rel="noopener noreferrer" data-testid="link-official-source">Página oficial do evento <ExternalLink size={14} aria-hidden="true" /></a></p>
+          <p><InstagramLink className="itc-instagram-link--footer" testId="link-instagram-footer" /></p>
         </div>
         <div>
           <p>{ITCONT.creditos}</p>

@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import {
   GOOGLE_SITE_VERIFICATION_CONTENT,
   GOOGLE_SITE_VERIFICATION_FILE,
+  ITCONT_INSTAGRAM_URL,
   ITCONT_SEO_DESCRIPTION,
   ITCONT_SEO_TITLE,
   ITCONT_SEO_URL,
@@ -43,6 +44,10 @@ assert.deepEqual(
 );
 const event = schemas.find((schema) => schema["@type"] === "Event");
 assert.ok(event);
+const organization = schemas.find((schema) => schema["@type"] === "Organization");
+assert.ok(organization);
+assert.deepEqual(organization.sameAs, [ITCONT_INSTAGRAM_URL]);
+assert.deepEqual(event.organizer.sameAs, [ITCONT_INSTAGRAM_URL]);
 assert.equal(event.startDate, "2026-10-21T19:00:00-03:00");
 assert.equal(event.endDate, "2026-10-22T21:30:00-03:00");
 assert.equal(event.eventAttendanceMode, "https://schema.org/OfflineEventAttendanceMode");

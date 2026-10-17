@@ -1,5 +1,5 @@
 /**
- * 146 validações do site do ITCONT: dados oficiais, regras (contagem, fases, agenda),
+ * 148 validações do site do ITCONT: dados oficiais, regras (contagem, fases, agenda),
  * identidade visual e leis da beleza, heurísticas de Nielsen na interface e integração.
  * Roda sem internet, sem banco e sem navegador.
  * Uso: pnpm --filter @workspace/scripts run validate:itcont-site
@@ -34,7 +34,7 @@ import {
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const RAIZ = resolve(AQUI, '../../../..');
 const ler = (p: string) => (existsSync(p) ? readFileSync(p, 'utf8') : '');
-const TOTAL_VALIDACOES = 147;
+const TOTAL_VALIDACOES = 148;
 
 const resultados: Array<{ n: number; grupo: string; nome: string; erro?: string }> = [];
 let grupo = '';
@@ -710,6 +710,32 @@ check('hero desktop separa título e Terra e mantém a contagem na primeira tela
   assert.match(CSS, /\.itc \.itc-cosmos-backdrop \{[\s\S]*?opacity: \.55[\s\S]*?mask-image: linear-gradient/);
   assert.match(CSS, /\.itc \.itc-hero-facts > span \{ display: flex; align-items: flex-start; gap: 8px; flex-wrap: nowrap; \}/);
   assert.match(CSS, /\.itc \.itc-hero \{ background: linear-gradient\(180deg, rgb\(8 15 22/);
+});
+check('Instagram oficial está no hero, inscrição e rodapé com acessibilidade e alvo de toque', () => {
+  const hero = sec('Hero');
+  const inscricao = sec('Inscricao');
+  const rodape = sec('Rodape');
+  const link = ler(join(AQUI, 'secoes/InstagramLink.tsx'));
+  const signupNote = inscricao.match(/<p className="itc-instagram-signup-note">([\s\S]*?)<\/p>/)?.[1] ?? '';
+  assert.match(hero, /itc-hero-audience[\s\S]*?<p className="itc-hero-social">[\s\S]*?link-instagram-hero/);
+  assert.match(inscricao, /itc-share-row[\s\S]*?link-instagram-signup[\s\S]*?e marque a gente no seu Stories/);
+  assert.match(signupNote, /Siga[\s\S]*?e marque a gente no seu Stories/);
+  assert.doesNotMatch(signupNote, /[—–]/, 'a mensagem do Instagram não deve usar travessões');
+  assert.match(rodape, /link-instagram-footer/);
+  assert.match(link, /siInstagram/);
+  assert.match(link, /href=\{ITCONT_INSTAGRAM_URL\}/);
+  assert.match(link, /target="_blank"/);
+  assert.match(link, /rel="noopener noreferrer"/);
+  assert.match(link, /aria-label=\{ITCONT_INSTAGRAM_ARIA_LABEL\}/);
+  assert.match(CSS, /\.itc \.itc-instagram-link \{[^}]*min-width: 44px;[^}]*min-height: 44px;/);
+  assert.match(CSS, /\.itc \.itc-instagram-link:focus-visible \{[^}]*outline: 3px solid var\(--itc-neon\)/);
+  for (const background of ['abismo', 'marinho', 'ceu-1', 'ceu-2', 'footer-top']) {
+    const pillBackground = misturarHex(cor('superficie-prata'), cor(background), .84);
+    assert.ok(
+      contraste(cor('tinta'), pillBackground) >= 4.5,
+      `texto do link sobre o vidro (${background}) = ${contraste(cor('tinta'), pillBackground)}:1`,
+    );
+  }
 });
 check('Local tem endereço compacto, agenda ICS e mapa alto sem encostar na navegação', () => {
   assert.match(sec('Local'), /Auditório III do Módulo IV · UEFS · Av\. Transnordestina · Feira de Santana\/BA/);

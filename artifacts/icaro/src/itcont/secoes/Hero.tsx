@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { ITCONT } from '../dados';
 import { dataExtenso, horaCurta } from '../logica';
 import Contagem from './Contagem';
+import InstagramLink from './InstagramLink';
 
 type HeroProps = { motionPrompt?: boolean; onEnableMotion?: () => void; earthBackdrop?: ReactNode; cosmosBackdrop?: ReactNode };
 
@@ -39,6 +40,9 @@ export default function Hero({ motionPrompt = false, onEnableMotion, earthBackdr
           </a>
         </div>
         <p className="itc-hero-audience">Uma imersão UEFS para estudantes, docentes, profissionais e comunidade.</p>
+        <p className="itc-hero-social">
+          <InstagramLink testId="link-instagram-hero" />
+        </p>
       </div>
       <Contagem />
       {motionPrompt && <button

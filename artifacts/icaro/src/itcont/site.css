@@ -2703,6 +2703,64 @@
   }
 }
 
+.itc .itc-instagram-link {
+  box-sizing: border-box;
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  padding: .55rem .85rem;
+  border: 1px solid color-mix(in srgb, var(--itc-neon) 38%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--itc-superficie-prata) 84%, transparent);
+  color: var(--itc-tinta);
+  font-size: .85rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  backdrop-filter: blur(12px) saturate(1.25);
+  transition: background-color .2s var(--itc-ritmo), border-color .2s var(--itc-ritmo);
+  touch-action: manipulation;
+}
+
+.itc .itc-instagram-link:hover {
+  border-color: var(--itc-neon);
+  background: color-mix(in srgb, var(--itc-superficie-prata) 96%, transparent);
+}
+
+.itc .itc-instagram-link:focus-visible {
+  outline: 3px solid var(--itc-neon);
+  outline-offset: 3px;
+}
+
+.itc .itc-instagram-link svg {
+  flex: 0 0 18px;
+}
+
+.itc .itc-hero-social {
+  display: flex;
+  margin: .45rem 0 0;
+}
+
+.itc .itc-instagram-signup-note {
+  margin: .8rem 0 .25rem;
+  color: var(--itc-tinta);
+  font-size: .9rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.itc .itc-instagram-signup-note .itc-instagram-link {
+  vertical-align: middle;
+}
+
+.itc .itc-footer .itc-instagram-link {
+  margin-top: .25rem;
+}
+
 /* Static solar illustration is used only when the 3D renderer is unavailable. */
 .itc #inicio > .itc-solar-fallback {
   display: block;

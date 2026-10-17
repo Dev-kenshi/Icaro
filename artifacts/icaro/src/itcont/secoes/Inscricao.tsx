@@ -4,6 +4,7 @@ import { ITCONT } from '../dados';
 import { dataExtenso, whatsappUrl } from '../logica';
 import QrEvento from './QrEvento';
 import { MarcaIcone } from './MarcaIcone';
+import InstagramLink from './InstagramLink';
 import {
   decodeAndResizePromoPhoto,
   identifyPromoPhoto,
@@ -804,6 +805,9 @@ export default function Inscricao() {
               <button type="button" className="itc-secondary" onClick={share} data-testid="button-share-event"><MarcaIcone marca="whatsapp" /> Compartilhar</button>
               <button type="button" className="itc-secondary" onClick={copy} data-testid="button-copy-event-link"><Copy size={16} aria-hidden="true" /> Copiar link</button>
             </div>
+            <p className="itc-instagram-signup-note">
+              Siga <InstagramLink testId="link-instagram-signup" /> e marque a gente no seu Stories.
+            </p>
             <p className="itc-copy-note" role="status" aria-live="polite" data-testid="status-copy-link">{copied && <><Check size={14} aria-hidden="true" /> {copied}</>}</p>
           </section>
           <div className="itc-register-side">

@@ -2,6 +2,9 @@ import { ITCONT } from "./dados";
 
 export const ITCONT_SEO_ORIGIN = "https://itcont-uefs.onrender.com";
 export const ITCONT_SEO_URL = `${ITCONT_SEO_ORIGIN}/`;
+export const ITCONT_INSTAGRAM_URL = "https://www.instagram.com/cont_amanha/";
+export const ITCONT_INSTAGRAM_ARIA_LABEL =
+  "Instagram do ITCONT, @cont_amanha (abre em nova aba)";
 export const ITCONT_SEO_TITLE = "ITCONT 2026 UEFS | Imersão Tecnológica Contábil na Bahia";
 export const ITCONT_SEO_DESCRIPTION =
   "ITCONT 2026 na UEFS reúne contabilidade e inteligência artificial em Feira de Santana, nos dias 21 e 22 de outubro, com inscrição gratuita. Saiba mais.";
@@ -127,7 +130,13 @@ const structuredData = () => {
           longitude: -38.97132,
         },
       },
-      organizer: { "@id": organizationId },
+      organizer: {
+        "@type": "Organization",
+        "@id": organizationId,
+        name: ITCONT.realizacao,
+        url: ITCONT_SEO_URL,
+        sameAs: [ITCONT_INSTAGRAM_URL],
+      },
       performer: ITCONT.convidados.map(({ nome, foto }) => ({
         "@type": "Person",
         name: nome,
@@ -152,8 +161,14 @@ const structuredData = () => {
       "@context": "https://schema.org",
       "@type": "Organization",
       "@id": organizationId,
-      name: ITCONT.local.instituicao,
-      url: "https://www.uefs.br/",
+      name: ITCONT.realizacao,
+      url: ITCONT_SEO_URL,
+      sameAs: [ITCONT_INSTAGRAM_URL],
+      parentOrganization: {
+        "@type": "Organization",
+        name: ITCONT.local.instituicao,
+        url: "https://www.uefs.br/",
+      },
       logo: {
         "@type": "ImageObject",
         url: `${ITCONT_SEO_ORIGIN}/itcont-event-logo.png`,

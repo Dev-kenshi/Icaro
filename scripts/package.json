@@ -36,6 +36,7 @@
     "prerender:itcont": "tsx ./prerender-itcont-seo.ts",
     "generate:itcont-og": "tsx ./generate-itcont-og.ts",
     "validate:itcont-seo": "tsx ./validate-itcont-seo.ts",
+    "validate:itcont-instagram-browser": "tsx ./validate-itcont-instagram-browser.ts",
     "generate:route-favicons": "tsx ./src/generate-route-favicons.ts",
     "validate:route-favicons": "tsx ./src/validate-route-favicons.ts",
     "validate:full-project": "tsx ./src/validate-full-project.ts",
