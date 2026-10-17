@@ -54,12 +54,12 @@ const inspectPage = () => {
   if (Math.max(root.scrollWidth, body.scrollWidth) > width + 1) {
     add('horizontal-overflow', `scrollWidth ${Math.max(root.scrollWidth, body.scrollWidth)}px > viewport ${width}px`);
   }
-  const logo = document.querySelector<HTMLImageElement>('.itc-ribbon-logo');
+  const logo = document.querySelector<HTMLImageElement>('.itc-itcont-logo');
   if (!logo) add('hero-logo-missing', 'logo do ITCONT não foi renderizada');
   else {
     const renderedWidth = logo.getBoundingClientRect().width;
-    if (logo.naturalWidth < renderedWidth * 3) {
-      add('hero-logo-source-density', `imagem ${logo.naturalWidth}px para ${renderedWidth.toFixed(1)}px renderizados; exige ao menos 3x`);
+    if (logo.naturalWidth < renderedWidth) {
+      add('hero-logo-upscaled', `arte ${logo.naturalWidth}px para ${renderedWidth.toFixed(1)}px renderizados`);
     }
   }
   const isVisible = (element: Element) => {
@@ -326,7 +326,7 @@ async function main() {
         await page.goto(`${baseUrl}/itcont`, { waitUntil: 'domcontentloaded', timeout: 45_000 });
         await page.locator('#inicio').waitFor({ state: 'visible', timeout: 20_000 });
         await page.waitForFunction(() => document.querySelector('.itc')?.getAttribute('data-css-ready') === 'true', undefined, { timeout: 20_000 });
-        await page.waitForFunction(() => document.querySelector<HTMLImageElement>('.itc-ribbon-logo')?.complete === true, undefined, { timeout: 20_000 });
+        await page.waitForFunction(() => document.querySelector<HTMLImageElement>('.itc-itcont-logo')?.complete === true, undefined, { timeout: 20_000 });
         await page.evaluate(() => document.fonts.ready);
         await page.waitForTimeout(350);
         const findings = await page.evaluate(inspectPage);
@@ -349,8 +349,8 @@ async function main() {
       });
       const page = await context.newPage();
       await page.goto(`${baseUrl}/itcont`, { waitUntil: 'domcontentloaded', timeout: 45_000 });
-      await page.waitForFunction(() => document.querySelector<HTMLImageElement>('.itc-ribbon-logo')?.complete === true, undefined, { timeout: 20_000 });
-      const result = await page.locator('.itc-ribbon-logo').evaluate((image) => {
+      await page.waitForFunction(() => document.querySelector<HTMLImageElement>('.itc-itcont-logo')?.complete === true, undefined, { timeout: 20_000 });
+      const result = await page.locator('.itc-itcont-logo').evaluate((image) => {
         const logo = image as HTMLImageElement;
         return {
           naturalWidth: logo.naturalWidth,
@@ -358,17 +358,14 @@ async function main() {
           currentSrc: logo.currentSrc,
         };
       });
-      const expectedSource = deviceScaleFactor === 1
-        ? 'itcont-logo.png'
-        : `itcont-logo-${deviceScaleFactor}x.png`;
       const findings: Finding[] = [];
-      if (!result.currentSrc.endsWith(expectedSource)) {
-        findings.push({ check: 'hero-logo-srcset', detail: `DPR ${deviceScaleFactor} escolheu ${result.currentSrc}` });
+      if (!result.currentSrc.endsWith('itcont-event-logo.png')) {
+        findings.push({ check: 'hero-logo-source', detail: `DPR ${deviceScaleFactor} escolheu ${result.currentSrc}` });
       }
-      if (result.naturalWidth * deviceScaleFactor < result.renderedWidth * 3) {
+      if (result.naturalWidth < result.renderedWidth) {
         findings.push({
-          check: 'hero-logo-source-density',
-          detail: `DPR ${deviceScaleFactor}: imagem ${result.naturalWidth * deviceScaleFactor}px, exibição ${result.renderedWidth.toFixed(1)}px`,
+          check: 'hero-logo-upscaled',
+          detail: `DPR ${deviceScaleFactor}: arte ${result.naturalWidth}px, exibição ${result.renderedWidth.toFixed(1)}px`,
         });
       }
       cases.push({ width: 390, height: 844, reducedMotion: true, location: `logo-dpr-${deviceScaleFactor}`, findings });

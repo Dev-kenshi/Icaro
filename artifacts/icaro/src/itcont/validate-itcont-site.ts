@@ -280,9 +280,10 @@ check('cartões da agenda mostram hora tabular, duração, tipo, agenda e .ics; 
 check('como chegar (mapa)', () => assert.match(UI, /mapaUrl\(\)/));
 check('compartilhar (WhatsApp ou navigator.share)', () => assert.match(UI, /whatsappUrl\(|navigator\.share/));
 check('hero mantém identidade oficial e convidados continuam na seção própria', () => {
-  assert.match(sec('Hero'), /I<\/i> Imersão/);
-  assert.match(sec('Hero'), /Tecnológica/);
-  assert.match(sec('Hero'), /itc-chrome">Contábil/);
+  assert.match(sec('Hero'), /className="itc-title itc-title-logo"/);
+  assert.match(sec('Hero'), /alt="Imersão Tecnológica Contábil · ITCONT"/);
+  assert.match(sec('Hero'), /itcont-event-logo\.png/);
+  assert.doesNotMatch(sec('Hero'), /itc-title-first|itc-title-second|itc-chrome/);
   assert.match(sec('Hero'), /font-stretch|itc-title/);
   assert.match(sec('Hero'), /Ver programação/);
   assert.match(sec('Hero'), /Garantir minha vaga gratuita/);
@@ -294,11 +295,9 @@ check('QR code fica na inscrição e representa o endereço público', () => {
   assert.match(sec('QrEvento'), /window\.location\.origin.*window\.location\.pathname/);
 });
 check('logo e slogan oficiais aparecem no hero', () => {
-  assert.match(sec('Hero'), /className="itc-ribbon-logo"/);
-  assert.match(sec('Hero'), /alt="Logo do ITCONT"/);
-  assert.match(sec('Hero'), /itcont-logo\.png/);
-  assert.match(sec('Hero'), /srcSet=\{`[\s\S]*itcont-logo-2x\.png 2x[\s\S]*itcont-logo-3x\.png 3x`\}/);
-  assert.match(sec('Hero'), /width=\{112\}[\s\S]*height=\{53\}[\s\S]*fetchPriority="high"/);
+  assert.match(sec('Hero'), /className="itc-itcont-logo"/);
+  assert.match(sec('Hero'), /alt="Imersão Tecnológica Contábil · ITCONT"/);
+  assert.match(sec('Hero'), /width=\{345\}[\s\S]*height=\{166\}[\s\S]*fetchPriority="high"/);
   assert.match(sec('Hero'), /INOVAÇÃO/);
   assert.match(sec('Hero'), /PRÁTICA/);
   assert.match(sec('Hero'), /CONEXÕES/);
@@ -310,14 +309,10 @@ check('favicon do ITCONT usa a logo sem alterar o favicon do Ícaro', () => {
   assert.match(indexHtml, /src="%BASE_URL%itcont-route-init\.js"/);
   assert.equal((indexHtml.match(/itcont-route-init\.js/g) ?? []).length, 1);
   assert.match(routeInit, /pagePath === "\/" \|\| pagePath === "\/itcont"/);
-  assert.match(routeInit, /icon\.href = `\$\{basePath\}\/itcont-logo\.png`/);
-  assert.ok(existsSync(join(RAIZ, 'artifacts/icaro/public/itcont-logo.png')));
-  const logoWidths = ['itcont-logo.png', 'itcont-logo-2x.png', 'itcont-logo-3x.png'].map((name) => {
-    const png = readFileSync(join(RAIZ, 'artifacts/icaro/public', name));
-    assert.equal(png.toString('ascii', 1, 4), 'PNG', `${name} não é PNG`);
-    return [png.readUInt32BE(16), png.readUInt32BE(20)];
-  });
-  assert.deepEqual(logoWidths, [[400, 53], [800, 105], [1200, 158]]);
+  assert.match(routeInit, /icon\.href = `\$\{basePath\}\/itcont-event-logo\.png`/);
+  const logo = readFileSync(join(RAIZ, 'artifacts/icaro/public/itcont-event-logo.png'));
+  assert.equal(logo.toString('hex', 0, 8), '89504e470d0a1a0a');
+  assert.deepEqual([logo.readUInt32BE(16), logo.readUInt32BE(20)], [345, 166]);
 });
 check('contagem tem quatro unidades, números tabulares e segundos em todas as larguras', () => {
   assert.match(sec('Contagem'), /TEMPO ATÉ O INÍCIO DO EVENTO/);
@@ -698,6 +693,7 @@ check('descrição, canonical, Open Graph, Twitter e fontes priorizadas', () => 
   assert.match(indexHtml, /rel="canonical" href="https:\/\/icaro-0q50\.onrender\.com\/"/);
   assert.match(indexHtml, /property="og:url" content="https:\/\/icaro-0q50\.onrender\.com\/"/);
   assert.match(indexHtml, /name="twitter:card" content="summary_large_image"/);
+  assert.match(indexHtml, /rel="preload" as="image" href="%BASE_URL%itcont-event-logo\.png" fetchpriority="high"/);
   assert.match(indexHtml, /rel="preload" as="font"[^>]*fetchpriority="high"/);
   assert.match(indexHtml, /display=swap/);
   assert.match(indexHtml, /itcont-earth-small\.webp[^>]*fetchpriority="low"/);
@@ -712,7 +708,8 @@ check('fotos do evento ficam como links; a logo institucional enviada é a exce�
   const publicDir = resolve(RAIZ, 'artifacts/icaro/public');
   const pub = arquivos(publicDir).map((p) => relative(publicDir, p))
     .filter((p) => /itcont|even3/i.test(p) && /\.(png|jpe?g|webp|gif|avif)$/i.test(p));
-  assert.deepEqual(pub.filter((p) => !/itcont-earth-(?:static|small)\.webp$/.test(p) && !/^itcont-logo(?:-2x|-3x)?\.png$/.test(p)), []);
+  const approvedLogos = new Set(['itcont-logo.png', 'itcont-event-logo.png']);
+  assert.deepEqual(pub.filter((p) => !/itcont-earth-(?:static|small)\.webp$/.test(p) && !approvedLogos.has(p)), []);
   const earth = join(RAIZ, 'artifacts/icaro/public/itcont-earth-static.webp');
   const earthSmall = join(RAIZ, 'artifacts/icaro/public/itcont-earth-small.webp');
   assert.ok(existsSync(earth));

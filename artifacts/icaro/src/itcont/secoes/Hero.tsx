@@ -13,21 +13,16 @@ export default function Hero({ motionPrompt = false, onEnableMotion, earthBackdr
       {cosmosBackdrop}
       {earthBackdrop}
       <div className="itc-shell itc-intro-content">
-        <span className="itc-eyebrow itc-hero-kicker">{ITCONT.local.instituicao} <i aria-hidden="true" /> {ITCONT.sigla}</span>
-        <img
-          className="itc-ribbon-logo"
-          src={`${import.meta.env.BASE_URL}itcont-logo.png`}
-          srcSet={`${import.meta.env.BASE_URL}itcont-logo.png 1x, ${import.meta.env.BASE_URL}itcont-logo-2x.png 2x, ${import.meta.env.BASE_URL}itcont-logo-3x.png 3x`}
-          width={112}
-          height={53}
-          alt="Logo do ITCONT"
-          decoding="async"
-          fetchPriority="high"
-        />
-        <h1 className="itc-title" id="itc-title">
-          <span className="itc-title-first"><i aria-hidden="true">I</i> Imersão</span>
-          <span className="itc-title-second">Tecnológica</span>
-          <span className="itc-chrome">Contábil</span>
+        <h1 className="itc-title itc-title-logo" id="itc-title">
+          <img
+            className="itc-itcont-logo"
+            src={`${import.meta.env.BASE_URL}itcont-event-logo.png`}
+            width={345}
+            height={166}
+            alt="Imersão Tecnológica Contábil · ITCONT"
+            decoding="async"
+            fetchPriority="high"
+          />
         </h1>
         <p className="itc-hero-slogan">INOVAÇÃO <b>•</b> PRÁTICA <b>•</b> CONEXÕES</p>
         <p className="itc-intro-summary">{ITCONT.resumo}</p>

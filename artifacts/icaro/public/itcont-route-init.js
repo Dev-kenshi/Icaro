@@ -7,7 +7,7 @@ if (pagePath === "/" || pagePath === "/itcont") {
   document.documentElement.dataset.itcont = "true";
   const icon = document.querySelector('link[rel="icon"]');
   if (icon) {
-    icon.href = `${basePath}/itcont-logo.png`;
+    icon.href = `${basePath}/itcont-event-logo.png`;
     icon.type = "image/png";
   }
 }

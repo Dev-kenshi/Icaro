@@ -71,7 +71,7 @@ try {
     await page.locator("#inicio").waitFor({ state: "visible", timeout: 20_000 });
     await page.waitForFunction(() => document.querySelector(".itc")?.getAttribute("data-css-ready") === "true", undefined, { timeout: 20_000 });
     await page.evaluate(() => document.fonts.ready);
-    await page.waitForFunction(() => document.querySelector<HTMLImageElement>(".itc-ribbon-logo")?.naturalWidth > 0, undefined, { timeout: 20_000 });
+    await page.waitForFunction(() => document.querySelector<HTMLImageElement>(".itc-itcont-logo")?.naturalWidth > 0, undefined, { timeout: 20_000 });
     console.log("Hero, JavaScript e fontes carregados.");
 
     await page.locator("#local").scrollIntoViewIfNeeded();
