@@ -30,7 +30,8 @@
     "validate:itcont-site": "tsx ../artifacts/icaro/src/itcont/validate-itcont-site.ts",
     "audit:itcont-layout": "tsx ./audit-itcont-layout.ts",
     "validate:itcont-1000": "tsx ../artifacts/icaro/src/itcont/validate-itcont-1000.ts",
-    "validate:itcont-assistant": "tsx ../artifacts/icaro/src/itcont/validate-itcont-assistant.ts"
+    "validate:itcont-assistant": "tsx ../artifacts/icaro/src/itcont/validate-itcont-assistant.ts",
+    "validate:icaro-command-maze": "tsx ../artifacts/icaro/src/validate-command-maze.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",

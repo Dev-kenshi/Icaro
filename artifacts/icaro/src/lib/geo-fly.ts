@@ -37,13 +37,22 @@ export function parseFlyQuery(t: string): string | null {
     const name = knownPoint[1].toLowerCase() === 'uefs' ? 'UEFS' : 'Abrini';
     return knownPoint[2] ? `${name}, ${knownPoint[2]}` : `${name}, Feira de Santana, Bahia, Brasil`;
   }
+  const directArrival =
+    /^(?:abra|abrir|mostre|mostrar|navegue|voe|viaje|leve)\b.*\b(?:chegando|chegar|chegue)\s+(?:em|a|ao|para|ate)\s+(.+)$/i.exec(t);
+  if (directArrival) {
+    const place = limparLugar(directArrival[1]);
+    if (/^feira(?: de santana)?(?:,? ?(?:bahia|ba))?$/i.test(place)) return 'Feira de Santana, Bahia, Brasil';
+    if (place.length >= 2 && place.length <= 80) return place;
+  }
   // "mostre Feira de Santana" (sem "no mapa") é o destino de casa; "Bonfim de Feira" segue o caminho normal.
   if (/\b(?:mostre|mostrar|mostra|exiba|abra|abrir)\s+(?:a |o )?(?:cidade de )?feira(?: de santana)?$/i.test(t)) return 'Feira de Santana, Bahia, Brasil';
+  const streetViewTarget = /(?:abra|abrir)\s+(?:a |o )?(.+?)\s+(?:no|em)\s+(?:google )?street view$/i.exec(t);
   const m =
     /(?:onde fica|onde e|aonde fica)\s+(?:a |o |as |os )?(.+)$/i.exec(t) ??
     /(?:mostre|mostrar|mostra|exiba|ver)\s+(?:a |o )?(.+?)\s+no mapa$/i.exec(t) ??
     /(?:localize|localizar|encontre no mapa|pesquise no mapa)\s+(?:a |o |um |uma )?(.+)$/i.exec(t) ??
     /(?:abra|abrir)\s+(?:o )?(?:google maps|maps|street view)\s+(?:de|para)\s+(.+)$/i.exec(t) ??
+    streetViewTarget ??
     /(?:va|voe|voar|viajar|leve|navegue|ir)\s+(?:para|ate)?\s*(?:a |o |ao )?(.+)$/i.exec(t);
   const q = m?.[1] ? limparLugar(m[1]) : '';
   if (!q || q.length < 2 || q.length > 80) return null;

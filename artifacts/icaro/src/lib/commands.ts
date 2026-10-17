@@ -176,7 +176,7 @@ export function interpret(input: string): CommandResult {
     if (s < 1 || s > 86400) return { kind: 'say', text: 'Escolha um período entre um segundo e 24 horas.' };
     return { kind: 'timer', seconds: s, text: `Temporizador iniciado por ${formatDuration(s)}.` };
   }
-  if (/^(minhas notas|minhas anotacoes|listar notas|liste (as )?(minhas )?notas|ler notas|mostrar notas)/.test(t)) return { kind: 'listNotes' };
+  if (/^(minhas notas|minhas anotacoes|listar (as )?(minhas )?notas|liste (as )?(minhas )?notas|ler notas|mostrar notas)/.test(t)) return { kind: 'listNotes' };
   const noteM = normalize(input).replace(WAKE, '').match(/^(anotar|anote|nota|lembre-se de|lembre se de|lembrete)[:\s]*(.*)$/);
   if (noteM) {
     // keep original casing/accents from input
