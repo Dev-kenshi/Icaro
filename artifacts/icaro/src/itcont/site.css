@@ -199,6 +199,14 @@
 .itc .itc-promo-controls > label { color: var(--itc-texto); font-weight: 700; }
 .itc .itc-promo-tabs, .itc .itc-promo-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 .itc .itc-promo-tabs > *, .itc .itc-promo-actions > * { flex: 1 1 130px; min-width: 0; }
+.itc .itc-promo-phrases { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+.itc .itc-promo-phrases > button { min-width: 0; min-height: 46px; padding: .55rem .45rem; font-size: .9rem; line-height: 1.2; white-space: normal; }
+.itc .itc-promo-custom-phrase { display: grid; gap: .35rem; }
+.itc .itc-promo-custom-phrase > label { color: var(--itc-texto); font-weight: 700; }
+.itc .itc-promo-custom-input { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .5rem; }
+.itc .itc-promo-custom-input input { width: 100%; }
+.itc .itc-promo-custom-input span { min-width: 3.5rem; color: var(--itc-tinta-2); font-variant-numeric: tabular-nums; text-align: right; }
+.itc .itc-promo-custom-phrase small { color: var(--itc-tinta-2); font-size: .78rem; }
 .itc .itc-promo-photo-button { width: 100%; }
 .itc .itc-promo-zoom { display: grid; gap: .3rem; color: var(--itc-texto); }
 .itc .itc-promo-zoom input[type="range"] { min-height: 32px; padding: 0; accent-color: var(--itc-royal); }
@@ -2412,6 +2420,9 @@
 .itc #inscricao .itc-promo > .itc-eyebrow { grid-area: eyebrow; }
 .itc #inscricao .itc-promo > h3 { grid-area: title; }
 .itc #inscricao .itc-promo-controls { grid-area: controls; align-content: start; gap: .9rem; }
+.itc #inscricao .itc-promo-phrases { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.itc #inscricao .itc-promo-phrases > button { flex: none; min-width: 0; }
+.itc #inscricao .itc-promo-custom-phrase { min-width: 0; }
 .itc #inscricao .itc-promo-preview { grid-area: preview; min-width: 420px; margin: 0; }
 .itc #inscricao .itc-promo > p[role="status"] { grid-area: status; }
 .itc #inscricao .itc-promo > p:not([role]) { grid-area: disclaimer; }
@@ -2438,6 +2449,9 @@
     grid-template-areas: "eyebrow" "title" "preview" "controls" "status" "disclaimer";
   }
   .itc #inscricao .itc-promo-preview { min-width: 0; }
+}
+@media (min-width: 1100px) {
+  .itc #inscricao .itc-promo-phrases { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 /* Responsive audit fixes: tablet hero flow, contained Earth, and usable compact navigation. */

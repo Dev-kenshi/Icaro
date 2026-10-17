@@ -21,6 +21,7 @@ import {
   PROMO_PHOTO_MAX_BYTES,
   PROMO_PHOTO_MAX_SIDE,
 } from './secoes/promo-photo';
+import { PROMO_PHRASE_OPTIONS, sanitizeCustomPromoPhrase } from './secoes/promo-phrases';
 import {
   STORIES_VIDEO_DURATION_SECONDS,
   STORIES_VIDEO_FPS,
@@ -33,7 +34,7 @@ import {
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const RAIZ = resolve(AQUI, '../../../..');
 const ler = (p: string) => (existsSync(p) ? readFileSync(p, 'utf8') : '');
-const TOTAL_VALIDACOES = 146;
+const TOTAL_VALIDACOES = 147;
 
 const resultados: Array<{ n: number; grupo: string; nome: string; erro?: string }> = [];
 let grupo = '';
@@ -629,6 +630,33 @@ check('cartão exporta Feed 1080×1350 e Stories 1080×1920 com margem segura de
   assert.match(insc, /const logoWidth = \(width - PROMO_FRAME_INSET \* 2\) \* \(story \? \.70 : \.62\)/);
   assert.match(insc, /story \? 520 : 320/);
   assert.match(insc, /data-photo-width=\{photoSize\?\.width \?\? ''\}/);
+});
+check('frases do cartão, filtro personalizado e preferência local estão completos', () => {
+  assert.deepEqual(PROMO_PHRASE_OPTIONS.map((option) => option.label), [
+    'Eu vou!',
+    'Estarei lá!',
+    'Partiu ITCONT!',
+    'Presença confirmada!',
+    'Já garanti minha vaga!',
+    'Te vejo lá!',
+    'Bora aprender IA!',
+    'Contador do futuro!',
+    'Eu não vou perder!',
+  ]);
+  assert.equal(sanitizeCustomPromoPhrase('Vou!'), 'Vou!');
+  assert.equal(sanitizeCustomPromoPhrase('Quero estar lá!'), 'Quero estar lá!');
+  assert.equal(sanitizeCustomPromoPhrase('Já garanti minha vaga!'), 'Já garanti minha vaga!');
+  assert.equal(sanitizeCustomPromoPhrase('Bora 🚀 aprender IA!'), 'Bora aprender IA!');
+  assert.equal(sanitizeCustomPromoPhrase('Eu merda vou!'), 'Eu vou!');
+  assert.equal(sanitizeCustomPromoPhrase('Vou—participar!'), 'Vou participar!');
+  assert.equal(Array.from(sanitizeCustomPromoPhrase('x'.repeat(30))).length, 22);
+  const insc = sec('Inscricao');
+  assert.match(insc, /localStorage\.getItem\(PROMO_PHRASE_STORAGE_KEY\)/);
+  assert.match(insc, /localStorage\.setItem\(PROMO_PHRASE_STORAGE_KEY/);
+  assert.match(insc, /phraseFontSize > 40/);
+  assert.match(insc, /data-phrase-font-size|dataset\.phraseFontSize/);
+  assert.match(CSS, /itc-promo-phrases \{[^}]*repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(CSS, /@media \(min-width: 1100px\)[\s\S]*itc-promo-phrases \{ grid-template-columns: repeat\(3,/);
 });
 check('vídeo Stories mantém dimensões, duração e taxa de quadros aprovadas', () => {
   assert.deepEqual([STORIES_VIDEO_WIDTH, STORIES_VIDEO_HEIGHT, STORIES_VIDEO_DURATION_SECONDS, STORIES_VIDEO_FPS], [1080, 1920, 8, 30]);

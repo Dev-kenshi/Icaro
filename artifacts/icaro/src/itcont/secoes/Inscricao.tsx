@@ -11,6 +11,11 @@ import {
   type PromoPhotoFormat,
 } from './promo-photo';
 import { createStoriesVideo } from './promo-video';
+import {
+  PROMO_PHRASE_OPTIONS,
+  sanitizeCustomPromoPhrase,
+  type PromoPhraseChoiceId,
+} from './promo-phrases';
 
 const LOGO_OFICIAL = 'https://static.even3.com/logos/ImagemdoCodex21deset.de202609_39_23.91a8f584302f4c68b0fa.png';
 const PROMO_WIDTH = 1080;
@@ -27,6 +32,29 @@ const PROMO_CORNER_RIBBON_INNER_WIDTH = 60;
 type PromoFormat = keyof typeof PROMO_HEIGHTS;
 type LogoState = 'loading' | 'loaded' | 'failed';
 type LogoCrop = { x: number; y: number; width: number; height: number };
+type PromoPhraseChoice = { id: PromoPhraseChoiceId; customText: string };
+
+const PROMO_PHRASE_STORAGE_KEY = 'itcont-promo-phrase-v1';
+const DEFAULT_PROMO_PHRASE: PromoPhraseChoice = { id: 'eu-vou', customText: '' };
+
+function isPromoPhraseChoiceId(value: unknown): value is PromoPhraseChoiceId {
+  return value === 'custom' || PROMO_PHRASE_OPTIONS.some((option) => option.id === value);
+}
+
+function readSavedPromoPhrase(): PromoPhraseChoice {
+  if (typeof window === 'undefined') return DEFAULT_PROMO_PHRASE;
+  try {
+    const stored = window.localStorage.getItem(PROMO_PHRASE_STORAGE_KEY);
+    if (!stored) return DEFAULT_PROMO_PHRASE;
+    const parsed = JSON.parse(stored) as { id?: unknown; customText?: unknown };
+    if (!isPromoPhraseChoiceId(parsed.id)) return DEFAULT_PROMO_PHRASE;
+    const customText = sanitizeCustomPromoPhrase(typeof parsed.customText === 'string' ? parsed.customText : '');
+    if (parsed.id === 'custom' && !customText.trim()) return DEFAULT_PROMO_PHRASE;
+    return { id: parsed.id, customText };
+  } catch {
+    return DEFAULT_PROMO_PHRASE;
+  }
+}
 
 function findLogoContentBounds(image: HTMLImageElement): LogoCrop {
   const width = image.naturalWidth;
@@ -65,7 +93,7 @@ export default function Inscricao() {
   const [copied, setCopied] = useState('');
   const [name, setName] = useState('');
   const [format, setFormat] = useState<PromoFormat>('feed');
-  const [phrase, setPhrase] = useState<'eu-vou' | 'estarei-la'>('eu-vou');
+  const [phraseChoice, setPhraseChoice] = useState<PromoPhraseChoice>(readSavedPromoPhrase);
   const [photoUrl, setPhotoUrl] = useState('');
   const [photoZoom, setPhotoZoom] = useState(1);
   const [photoPosition, setPhotoPosition] = useState({ x: 0, y: 0 });
@@ -89,6 +117,17 @@ export default function Inscricao() {
   const dragRef = useRef<{ x: number; y: number } | null>(null);
   const siteUrl = typeof window !== 'undefined' ? window.location.href : ITCONT.fonteUrl;
   const cardName = name.trim().slice(0, 24);
+  const canvasPhrase = phraseChoice.id === 'custom'
+    ? phraseChoice.customText.trim() || PROMO_PHRASE_OPTIONS[0].label
+    : PROMO_PHRASE_OPTIONS.find((option) => option.id === phraseChoice.id)?.label ?? PROMO_PHRASE_OPTIONS[0].label;
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(PROMO_PHRASE_STORAGE_KEY, JSON.stringify(phraseChoice));
+    } catch {
+      // Private browsing and strict browser policies can disable storage.
+    }
+  }, [phraseChoice]);
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -161,7 +200,6 @@ export default function Inscricao() {
     const ratio = 2;
     const story = format === 'stories';
     const top = story ? 250 : 32;
-    const canvasPhrase = phrase === 'eu-vou' ? 'Eu vou!' : 'Estarei lá';
     canvas.width = width * ratio;
     canvas.height = height * ratio;
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
@@ -262,6 +300,52 @@ export default function Inscricao() {
       context.textBaseline = 'alphabetic';
       context.fillText(line.text, centerX, y + line.ascent, usableWidth);
     };
+    const phraseMaxPillWidth = usableWidth * .92;
+    const phraseMaxTextWidth = phraseMaxPillWidth - 64;
+    const phraseLineGap = 4;
+    const wrapPhrase = (text: string, size: number) => {
+      const lines: ReturnType<typeof measure>[] = [];
+      let current = '';
+      const addWord = (word: string) => {
+        const candidate = current ? `${current} ${word}` : word;
+        if (measure(candidate, 800, size).width <= phraseMaxTextWidth) {
+          current = candidate;
+          return;
+        }
+        if (current) {
+          lines.push(measure(current, 800, size));
+          current = '';
+        }
+        let chunk = '';
+        for (const character of Array.from(word)) {
+          const next = chunk + character;
+          if (chunk && measure(next, 800, size).width > phraseMaxTextWidth) {
+            lines.push(measure(chunk, 800, size));
+            chunk = character;
+          } else {
+            chunk = next;
+          }
+        }
+        current = chunk;
+      };
+      text.split(/\s+/u).filter(Boolean).forEach(addWord);
+      if (current) lines.push(measure(current, 800, size));
+      return lines.length ? lines : [measure('Eu vou!', 800, size)];
+    };
+    let phraseFontSize = story ? 44 : 48;
+    let phraseLines = wrapPhrase(canvasPhrase, phraseFontSize);
+    while (phraseLines.length > 1 && phraseFontSize > 40) {
+      phraseFontSize -= 1;
+      phraseLines = wrapPhrase(canvasPhrase, phraseFontSize);
+    }
+    const phraseTextHeight = phraseLines.reduce((sum, line) => sum + line.height, 0)
+      + Math.max(0, phraseLines.length - 1) * phraseLineGap;
+    const phraseHeight = Math.max(story ? 80 : 96, phraseTextHeight + 36);
+    const phraseTextWidth = Math.max(...phraseLines.map((line) => line.width));
+    const phrasePillWidth = Math.min(
+      phraseMaxPillWidth,
+      Math.max(160, phraseTextWidth + 64),
+    );
     const nameFontSize = story ? 100 : 110;
     const nameMaxWidth = usableWidth * .92;
     const wrapName = (text: string, maxWidth: number) => {
@@ -279,7 +363,6 @@ export default function Inscricao() {
       return lines.length ? lines : [measure('SEU NOME', 900, nameFontSize)];
     };
     const nameLines = wrapName(cardName ? cardName.toLocaleUpperCase('pt-BR') : 'SEU NOME', nameMaxWidth);
-    const phraseLine = measure(canvasPhrase, 800, story ? 44 : 48);
     const eventLine = measure('IMERSÃO TECNOLÓGICA', 800, story ? 46 : 52);
     const accountingLine = measure('Contábil', 900, story ? 90 : 100);
     const dateParts = [dataExtenso(ITCONT.inicio), dataExtenso(ITCONT.fim)];
@@ -299,7 +382,6 @@ export default function Inscricao() {
       ];
     const ctaLine = measure('Inscrição gratuita', 800, story ? 40 : 42);
     const footerLine = measure('Cartão de divulgação · não substitui a inscrição oficial', 500, story ? 20 : 24);
-    const phraseHeight = story ? 80 : 96;
     const ctaHeight = story ? 80 : 92;
     const nameLineGap = story ? 7 : 8;
     const nameHeight = nameLines.reduce((sum, line) => sum + line.height, 0)
@@ -439,8 +521,8 @@ export default function Inscricao() {
       context.lineWidth = 1.4;
       context.strokeText(line.text, anchorX, baseline - 1, maxWidth);
     };
-    const drawPhrase = (phraseTop: number, maxWidth: number) => {
-      const phraseWidth = Math.min(maxWidth, phraseLine.width + 64);
+    const drawPhrase = (phraseTop: number) => {
+      const phraseWidth = phrasePillWidth;
       const phraseGradient = context.createLinearGradient(centerX - phraseWidth / 2, phraseTop, centerX + phraseWidth / 2, phraseTop + phraseHeight);
       phraseGradient.addColorStop(0, 'rgb(255 255 255)');
       phraseGradient.addColorStop(.48, 'rgb(211 219 230)');
@@ -452,11 +534,15 @@ export default function Inscricao() {
       context.roundRect(centerX - phraseWidth / 2, phraseTop, phraseWidth, phraseHeight, phraseHeight / 2);
       context.fill();
       context.stroke();
-      context.font = phraseLine.font;
       context.textAlign = 'center';
       context.textBaseline = 'alphabetic';
       context.fillStyle = 'rgb(9 43 101)';
-      context.fillText(canvasPhrase, centerX, phraseTop + (phraseHeight - phraseLine.height) / 2 + phraseLine.ascent);
+      let lineTop = phraseTop + (phraseHeight - phraseTextHeight) / 2;
+      phraseLines.forEach((line) => {
+        context.font = line.font;
+        context.fillText(line.text, centerX, lineTop + line.ascent);
+        lineTop += line.height + phraseLineGap;
+      });
     };
 
     let cursor = photoTop + photoDiameter + PROMO_PHOTO_RING_OUTSET + gap;
@@ -464,8 +550,23 @@ export default function Inscricao() {
       drawMetalLine(line, cursor, true, centerX, usableWidth * .92);
       cursor += line.height + (index < nameLines.length - 1 ? nameLineGap : 0);
     });
+    const phrasePreviousBottom = cursor;
     cursor += gap;
-    drawPhrase(cursor, usableWidth * .72);
+    const phraseTop = cursor;
+    drawPhrase(phraseTop);
+    canvas.dataset.phraseText = canvasPhrase;
+    canvas.dataset.phraseFontSize = String(phraseFontSize);
+    canvas.dataset.phraseLineCount = String(phraseLines.length);
+    canvas.dataset.phrasePillLeft = String(centerX - phrasePillWidth / 2);
+    canvas.dataset.phrasePillRight = String(centerX + phrasePillWidth / 2);
+    canvas.dataset.phrasePillTop = String(phraseTop);
+    canvas.dataset.phrasePillHeight = String(phraseHeight);
+    canvas.dataset.phraseTextWidth = String(phraseTextWidth);
+    canvas.dataset.phrasePreviousBottom = String(phrasePreviousBottom);
+    canvas.dataset.phraseNextTop = String(phraseTop + phraseHeight + gap);
+    canvas.dataset.phraseMinGap = String(minGap);
+    canvas.dataset.phraseGapBefore = String(gap);
+    canvas.dataset.phraseGapAfter = String(gap);
     cursor += phraseHeight + gap;
     drawMeasured(eventLine, cursor, 'rgb(11 65 145)');
     cursor += eventLine.height + gap;
@@ -509,7 +610,7 @@ export default function Inscricao() {
     cursor += ctaHeight + gap;
     drawMeasured(footerLine, cursor, 'rgb(55 70 90)');
     context.textAlign = 'left';
-  }, [cardName, format, phrase, photoPosition, photoReady, photoZoom, logoState, promoVisible]);
+  }, [cardName, canvasPhrase, format, phraseChoice.id, photoPosition, photoReady, photoZoom, logoState, promoVisible]);
 
   const choosePhoto = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.currentTarget.files?.[0];
@@ -717,10 +818,53 @@ export default function Inscricao() {
               <div className="itc-promo-controls">
                 <label htmlFor="itc-name">Nome para o cartão (até 24 caracteres)</label>
                 <input id="itc-name" value={name} onChange={(event) => setName(event.target.value.slice(0, 24))} maxLength={24} placeholder="Seu nome" autoComplete="given-name" data-testid="input-promo-name" />
-                <div className="itc-promo-tabs" role="group" aria-label="Frase do cartão">
-                  <button type="button" className={phrase === 'eu-vou' ? 'itc-primary' : 'itc-secondary'} aria-pressed={phrase === 'eu-vou'} onClick={() => setPhrase('eu-vou')}>Eu vou!</button>
-                  <button type="button" className={phrase === 'estarei-la' ? 'itc-primary' : 'itc-secondary'} aria-pressed={phrase === 'estarei-la'} onClick={() => setPhrase('estarei-la')}>Estarei lá</button>
+                <div className="itc-promo-phrases" role="group" aria-label="Frases para o cartão">
+                  {PROMO_PHRASE_OPTIONS.map((option) => (
+                    <button
+                      type="button"
+                      key={option.id}
+                      className={phraseChoice.id === option.id ? 'itc-primary' : 'itc-secondary'}
+                      aria-pressed={phraseChoice.id === option.id}
+                      onClick={() => setPhraseChoice((current) => ({ ...current, id: option.id }))}
+                      data-testid={`promo-phrase-${option.id}`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className={phraseChoice.id === 'custom' ? 'itc-primary' : 'itc-secondary'}
+                    aria-pressed={phraseChoice.id === 'custom'}
+                    onClick={() => setPhraseChoice((current) => ({ ...current, id: 'custom' }))}
+                    data-testid="promo-phrase-custom"
+                  >
+                    Escrever a minha
+                  </button>
                 </div>
+                {phraseChoice.id === 'custom' && (
+                  <div className="itc-promo-custom-phrase">
+                    <label htmlFor="itc-custom-phrase">Sua frase (até 22 caracteres)</label>
+                    <div className="itc-promo-custom-input">
+                      <input
+                        id="itc-custom-phrase"
+                        type="text"
+                        value={phraseChoice.customText}
+                        onChange={(event) => setPhraseChoice({
+                          id: 'custom',
+                          customText: sanitizeCustomPromoPhrase(event.currentTarget.value),
+                        })}
+                        maxLength={44}
+                        autoComplete="off"
+                        aria-describedby="itc-custom-phrase-hint itc-custom-phrase-count"
+                        data-testid="input-promo-custom-phrase"
+                      />
+                      <span id="itc-custom-phrase-count" aria-live="polite" data-testid="promo-custom-phrase-count">
+                        {Array.from(phraseChoice.customText).length}/22
+                      </span>
+                    </div>
+                    <small id="itc-custom-phrase-hint">Emojis, palavrões e traços são filtrados.</small>
+                  </div>
+                )}
                 <input ref={fileInputRef} className="sr-only" type="file" accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif" onChange={choosePhoto} aria-label="Anexe sua melhor foto" data-testid="input-promo-photo" />
                 <button type="button" className="itc-secondary itc-promo-photo-button" onClick={() => fileInputRef.current?.click()}><ImagePlus size={17} aria-hidden="true" /> {photoUrl ? 'Trocar foto' : 'Anexe sua melhor foto'}</button>
                 {photoReady && <label className="itc-promo-zoom" htmlFor="itc-photo-zoom">Zoom da foto
@@ -767,6 +911,8 @@ export default function Inscricao() {
                   data-photo-width={photoSize?.width ?? ''}
                   data-photo-height={photoSize?.height ?? ''}
                   data-logo-percent={format === 'stories' ? 70 : 62}
+                  data-phrase-text={canvasPhrase}
+                  data-phrase-selected={phraseChoice.id}
                   data-testid="canvas-promo-card"
                 />
               </div>

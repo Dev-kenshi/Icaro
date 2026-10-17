@@ -28,6 +28,11 @@ try {
   await page.locator("#inscricao").scrollIntoViewIfNeeded();
   const canvas = page.getByTestId("canvas-promo-card");
   await canvas.waitFor({ state: "visible", timeout: 30_000 });
+  await page.getByTestId("promo-phrase-estarei-la").click();
+  await page.waitForFunction(() => {
+    const preview = document.querySelector<HTMLCanvasElement>('[data-testid="canvas-promo-card"]');
+    return preview?.dataset.phraseText === "Estarei lá!";
+  }, undefined, { timeout: 15_000 });
   const forceFfmpegOnly = process.env.FORCE_FFMPEG_ONLY === "1";
 
   const checkExport = async (label: string) => {

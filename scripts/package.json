@@ -31,6 +31,7 @@
     "validate:itcont-site": "tsx ../artifacts/icaro/src/itcont/validate-itcont-site.ts && pnpm run validate:security-headers",
     "validate:security-headers": "tsx ../artifacts/api-server/src/validate-security-headers.ts",
     "validate:itcont-browser": "tsx ./validate-itcont-browser.ts",
+    "validate:itcont-promo-browser": "tsx ./validate-itcont-promo-browser.ts",
     "validate:itcont-video-browser": "tsx ./validate-itcont-video-browser.ts",
     "generate:route-favicons": "tsx ./src/generate-route-favicons.ts",
     "validate:route-favicons": "tsx ./src/validate-route-favicons.ts",

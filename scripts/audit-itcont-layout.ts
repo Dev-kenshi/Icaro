@@ -440,9 +440,9 @@ async function main() {
 
     const cardCases = [
       { format: 'feed', tab: 'promo-format-feed', phrase: 'Eu vou!', slug: 'eu-vou', previewWidth: 2160, previewHeight: 2700, width: 1080, height: 1350 },
-      { format: 'feed', tab: 'promo-format-feed', phrase: 'Estarei lá', slug: 'estarei-la', previewWidth: 2160, previewHeight: 2700, width: 1080, height: 1350 },
+      { format: 'feed', tab: 'promo-format-feed', phrase: 'Estarei lá!', slug: 'estarei-la', previewWidth: 2160, previewHeight: 2700, width: 1080, height: 1350 },
       { format: 'stories', tab: 'promo-format-stories', phrase: 'Eu vou!', slug: 'eu-vou', previewWidth: 2160, previewHeight: 3840, width: 1080, height: 1920 },
-      { format: 'stories', tab: 'promo-format-stories', phrase: 'Estarei lá', slug: 'estarei-la', previewWidth: 2160, previewHeight: 3840, width: 1080, height: 1920 },
+      { format: 'stories', tab: 'promo-format-stories', phrase: 'Estarei lá!', slug: 'estarei-la', previewWidth: 2160, previewHeight: 3840, width: 1080, height: 1920 },
     ] as const;
     for (const card of cardCases) {
       await cardPage.locator(`[data-testid="${card.tab}"]`).click();
