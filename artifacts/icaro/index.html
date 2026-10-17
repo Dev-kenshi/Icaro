@@ -9,18 +9,18 @@
     <meta property="og:title" content="Ícaro Inteligência e Operações" />
     <meta property="og:description" content="Ícaro, assistente de inteligência e operações com respostas por texto e voz." />
     <meta property="og:type" content="website" />
+    <link rel="canonical" href="https://icaro-0q50.onrender.com/" />
+    <meta property="og:url" content="https://icaro-0q50.onrender.com/" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Ícaro Inteligência e Operações" />
     <meta name="twitter:description" content="Ícaro, assistente de inteligência e operações com respostas por texto e voz." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <script>(()=>{const base='%BASE_URL%'.replace(/\/$/,'');const path=location.pathname.replace(base,'').replace(/\/$/,'')||'/';if(path==='/'||path==='/itcont'){document.documentElement.dataset.itcont='true';const icon=document.querySelector('link[rel="icon"]');if(icon){icon.href=`${base}/itcont-logo.png`;icon.type='image/png'}}})()</script>
-    <link rel="preload" as="image" href="%BASE_URL%itcont-earth-small.webp" imagesrcset="%BASE_URL%itcont-earth-small.webp 280w, %BASE_URL%itcont-earth-static.webp 512w" imagesizes="(max-width: 767px) 280px, min(40vw, 540px)" fetchpriority="high" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preload" as="font" type="font/woff2" href="https://fonts.gstatic.com/s/archivo/v25/k3kQo8UDI-1M0wlSfdnoLg.woff2" crossorigin>
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,800;100..125,900&amp;family=DM+Sans:wght@400;500;700&amp;family=Inter:wght@400;500;600;700&amp;family=Michroma&amp;display=swap&amp;subset=latin">
-    <link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,800;100..125,900&amp;family=DM+Sans:wght@400;500;700&amp;family=Inter:wght@400;500;600;700&amp;family=Michroma&amp;display=swap&amp;subset=latin">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,800;100..125,900&amp;family=DM+Sans:wght@400;500;700&amp;family=Inter:wght@400;500;600;700&amp;family=Michroma&amp;display=swap&amp;subset=latin"></noscript>
+    <link rel="preload" as="font" type="font/woff2" href="https://fonts.gstatic.com/s/archivo/v25/k3kQo8UDI-1M0wlSfdnoLg.woff2" crossorigin fetchpriority="high">
+    <link id="itcont-google-fonts" rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,800;100..125,900&amp;family=DM+Sans:wght@400;500;600;700&amp;family=Inter:wght@400;500;600;700&amp;family=Michroma&amp;display=swap&amp;subset=latin">
+    <script defer src="%BASE_URL%itcont-route-init.js"></script>
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,800;100..125,900&amp;family=DM+Sans:wght@400;500;600;700&amp;family=Inter:wght@400;500;600;700&amp;family=Michroma&amp;display=swap&amp;subset=latin"></noscript>
     <style>
       html,body,#root{margin:0;min-height:100%}
       html[data-itcont] body{background:#081a44}
@@ -34,7 +34,7 @@
       .itc .itc-shell{width:min(1180px,calc(100% - 48px));margin-inline:auto}
       .itc .itc-hero{min-height:100svh;display:grid;align-items:center;position:relative;overflow:hidden;padding:7rem 0 5rem}
       .itc .itc-hero-grid{display:grid;grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);align-items:center;gap:clamp(2rem,6vw,6rem);position:relative}
-      .itc .itc-title{max-width:950px;margin:0 0 1.5rem;font:900 clamp(2.8rem,4.4vw,5.8rem)/.91 system-ui,sans-serif;letter-spacing:-.065em;text-transform:uppercase}
+      .itc .itc-title{max-width:950px;margin:0 0 1.5rem;font:900 clamp(2.8rem,4.4vw,5.8rem)/.91 'Archivo',system-ui,sans-serif;letter-spacing:-.065em;text-transform:uppercase}
       .itc .itc-hero-actions,.itc .itc-hero-facts{display:flex;flex-wrap:wrap;gap:12px}
       .itc .itc-hero-facts{display:grid;gap:.45rem;margin:1.7rem 0}
       .itc .itc-primary,.itc .itc-secondary{min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:.82rem 1.15rem;border-radius:10px;font-weight:800}
@@ -54,7 +54,7 @@
     </style>
   </head>
   <body>
-    <img id="itc-page-earth" src="%BASE_URL%itcont-earth-small.webp" srcset="%BASE_URL%itcont-earth-small.webp 280w, %BASE_URL%itcont-earth-static.webp 512w" sizes="(max-width: 767px) 280px, min(40vw, 540px)" width="512" height="512" loading="eager" decoding="async" fetchpriority="high" alt="" aria-hidden="true" data-live="false" />
+    <img id="itc-page-earth" src="%BASE_URL%itcont-earth-small.webp" srcset="%BASE_URL%itcont-earth-small.webp 280w, %BASE_URL%itcont-earth-static.webp 512w" sizes="(max-width: 767px) 280px, min(40vw, 540px)" width="512" height="512" loading="eager" decoding="async" fetchpriority="low" alt="" aria-hidden="true" data-live="false" />
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -17,10 +17,12 @@ export default function Hero({ motionPrompt = false, onEnableMotion, earthBackdr
         <img
           className="itc-ribbon-logo"
           src={`${import.meta.env.BASE_URL}itcont-logo.png`}
-          width={74}
-          height={47}
+          srcSet={`${import.meta.env.BASE_URL}itcont-logo.png 1x, ${import.meta.env.BASE_URL}itcont-logo-2x.png 2x, ${import.meta.env.BASE_URL}itcont-logo-3x.png 3x`}
+          width={112}
+          height={53}
           alt="Logo do ITCONT"
           decoding="async"
+          fetchPriority="high"
         />
         <h1 className="itc-title" id="itc-title">
           <span className="itc-title-first"><i aria-hidden="true">I</i> Imersão</span>

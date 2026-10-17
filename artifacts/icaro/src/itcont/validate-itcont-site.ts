@@ -297,16 +297,27 @@ check('logo e slogan oficiais aparecem no hero', () => {
   assert.match(sec('Hero'), /className="itc-ribbon-logo"/);
   assert.match(sec('Hero'), /alt="Logo do ITCONT"/);
   assert.match(sec('Hero'), /itcont-logo\.png/);
+  assert.match(sec('Hero'), /srcSet=\{`[\s\S]*itcont-logo-2x\.png 2x[\s\S]*itcont-logo-3x\.png 3x`\}/);
+  assert.match(sec('Hero'), /width=\{112\}[\s\S]*height=\{53\}[\s\S]*fetchPriority="high"/);
   assert.match(sec('Hero'), /INOVAÇÃO/);
   assert.match(sec('Hero'), /PRÁTICA/);
   assert.match(sec('Hero'), /CONEXÕES/);
 });
 check('favicon do ITCONT usa a logo sem alterar o favicon do Ícaro', () => {
   const indexHtml = ler(join(RAIZ, 'artifacts/icaro/index.html'));
+  const routeInit = ler(join(RAIZ, 'artifacts/icaro/public/itcont-route-init.js'));
   assert.match(indexHtml, /href="\/favicon\.svg"/);
-  assert.match(indexHtml, /path==='\/'\|\|path==='\/itcont'/);
-  assert.match(indexHtml, /icon\.href=`\$\{base\}\/itcont-logo\.png`/);
+  assert.match(indexHtml, /src="%BASE_URL%itcont-route-init\.js"/);
+  assert.equal((indexHtml.match(/itcont-route-init\.js/g) ?? []).length, 1);
+  assert.match(routeInit, /pagePath === "\/" \|\| pagePath === "\/itcont"/);
+  assert.match(routeInit, /icon\.href = `\$\{basePath\}\/itcont-logo\.png`/);
   assert.ok(existsSync(join(RAIZ, 'artifacts/icaro/public/itcont-logo.png')));
+  const logoWidths = ['itcont-logo.png', 'itcont-logo-2x.png', 'itcont-logo-3x.png'].map((name) => {
+    const png = readFileSync(join(RAIZ, 'artifacts/icaro/public', name));
+    assert.equal(png.toString('ascii', 1, 4), 'PNG', `${name} não é PNG`);
+    return [png.readUInt32BE(16), png.readUInt32BE(20)];
+  });
+  assert.deepEqual(logoWidths, [[400, 53], [800, 105], [1200, 158]]);
 });
 check('contagem tem quatro unidades, números tabulares e segundos em todas as larguras', () => {
   assert.match(sec('Contagem'), /TEMPO ATÉ O INÍCIO DO EVENTO/);
@@ -314,15 +325,34 @@ check('contagem tem quatro unidades, números tabulares e segundos em todas as l
   assert.doesNotMatch(sec('Contagem'), /matchMedia\('\(min-width: 768px\)'\)/);
   assert.match(CSS, /font-variant-numeric:\s*tabular-nums/);
 });
-check('relatório mais recente do audit responsivo tem 28 casos sem falhas e capturas-chave', () => {
+check('relatório responsivo inclui três larguras móveis, três densidades e quatro cartões PNG sem falhas', () => {
   const path = resolve(RAIZ, 'generated-artifacts/audit/itcont-layout-report.json');
-  const report = JSON.parse(ler(path)) as { generatedAt: string; widths: number[]; caseCount: number; failureCount: number; screenshots: string[]; transitionScreenshots: string[] };
-  assert.deepEqual(report.widths, [320, 360, 390, 414, 768, 840, 1024, 1280, 1366, 1440, 1568, 1920]);
-  assert.equal(report.caseCount, 28);
+  const report = JSON.parse(ler(path)) as { generatedAt: string; widths: number[]; caseCount: number; failureCount: number; screenshots: string[]; transitionScreenshots: string[]; cases: Array<{ location?: string }>; cardPngs: string[] };
+  assert.deepEqual(report.widths, [320, 360, 390, 414, 430, 768, 840, 1024, 1280, 1366, 1440, 1568, 1920]);
+  assert.equal(report.caseCount, 33);
   assert.equal(report.failureCount, 0);
   assert.ok(Date.now() - Date.parse(report.generatedAt) < 24 * 60 * 60 * 1000, 'relatório tem mais de 24 horas');
-  for (const width of [390, 840, 1024, 1440]) assert.ok(report.screenshots.includes(`itcont-${width}px.png`), `captura de ${width}px ausente`);
+  for (const width of [360, 390, 430, 840, 1024, 1440]) assert.ok(report.screenshots.includes(`itcont-${width}px.png`), `captura de ${width}px ausente`);
   for (const capture of ['itcont-transition-1568x736.png', 'itcont-transition-390x844.png']) assert.ok(report.transitionScreenshots.includes(capture), `captura de transição ausente: ${capture}`);
+  for (const dpr of [1, 2, 3]) assert.ok(report.cases.some((entry) => entry.location === `logo-dpr-${dpr}`), `checagem DPR ${dpr} ausente`);
+  assert.deepEqual(report.cardPngs, [
+    'itcont-card-feed-eu-vou.png',
+    'itcont-card-feed-estarei-la.png',
+    'itcont-card-stories-eu-vou.png',
+    'itcont-card-stories-estarei-la.png',
+  ]);
+  const expectedCardDimensions: Record<string, [number, number]> = {
+    'itcont-card-feed-eu-vou.png': [1080, 1350],
+    'itcont-card-feed-estarei-la.png': [1080, 1350],
+    'itcont-card-stories-eu-vou.png': [1080, 1920],
+    'itcont-card-stories-estarei-la.png': [1080, 1920],
+  };
+  for (const file of report.cardPngs) {
+    const png = readFileSync(resolve(RAIZ, 'generated-artifacts/audit', file));
+    assert.ok(statSync(resolve(RAIZ, 'generated-artifacts/audit', file)).size > 1000, `PNG do cartão vazio: ${file}`);
+    assert.equal(png.toString('ascii', 1, 4), 'PNG', `arquivo não é PNG: ${file}`);
+    assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], expectedCardDimensions[file], `dimensões incorretas: ${file}`);
+  }
 });
 check('ação secundária do hero abre a programação', () => assert.match(sec('Hero'), /href="#programacao"/));
 check('Ícaro aparece no menu desktop e na navegação móvel inferior', () => {
@@ -401,6 +431,7 @@ check('mapa da seção Local e MapLibre são carregados somente quando visíveis
   assert.match(site, /itc-local-deferred/);
   assert.match(local, /lazy\(\(\) => import\('\.\/MapaLocal'\)\)/);
   assert.match(local, /new IntersectionObserver/);
+  assert.match(local, /rootMargin: '0px'/);
   assert.match(local, /mapRequested/);
   assert.match(map, /import\('maplibre-gl'\)/);
 });
@@ -496,6 +527,8 @@ check('cartão do ITCONT usa logo ampliada, faixas metálicas e eixo central', (
   assert.match(insc, /PROMO_CORNER_RIBBON_WIDTH = 76/);
   assert.match(insc, /context\.lineWidth = PROMO_CORNER_RIBBON_WIDTH/);
   assert.match(insc, /PROMO_CORNER_RIBBON_INNER_WIDTH = 60/);
+  assert.match(insc, /const p0 = point\(22, -80\);[\s\S]*const p3 = point\(170, 95\);[\s\S]*const p6 = point\(-75, 270\);/);
+  assert.match(insc, /drawCornerRibbon\(false\);[\s\S]*drawCornerRibbon\(true\);/);
   assert.ok(.62 * (1080 - 2 * 32) >= .60 * (1080 - 2 * 32));
   assert.ok(.70 * (1080 - 2 * 32) >= .60 * (1080 - 2 * 32));
   assert.match(insc, /layer = 8/);
@@ -657,7 +690,18 @@ check('consultas de contêiner (@container)', () => assert.match(CSS, /@containe
 check('versão para imprimir (@media print)', () => assert.match(CSS, /@media print/));
 check('tipografia fluida (clamp)', () => assert.match(CSS + TOK, /clamp\(/));
 check('título da aba com ITCONT', () => assert.match(UI, /document\.title\s*=\s*[^;]*ITCONT/));
-check('descrição e Open Graph para compartilhar', () => { assert.match(UI, /name="description"|name=\\"description\\"|'description'/); assert.match(UI, /og:title/); assert.match(UI, /og:image/); });
+check('descrição, canonical, Open Graph, Twitter e fontes priorizadas', () => {
+  assert.match(UI, /name="description"|name=\\"description\\"|'description'/);
+  assert.match(UI, /og:title/);
+  assert.match(UI, /og:image/);
+  const indexHtml = ler(join(RAIZ, 'artifacts/icaro/index.html'));
+  assert.match(indexHtml, /rel="canonical" href="https:\/\/icaro-0q50\.onrender\.com\/"/);
+  assert.match(indexHtml, /property="og:url" content="https:\/\/icaro-0q50\.onrender\.com\/"/);
+  assert.match(indexHtml, /name="twitter:card" content="summary_large_image"/);
+  assert.match(indexHtml, /rel="preload" as="font"[^>]*fetchpriority="high"/);
+  assert.match(indexHtml, /display=swap/);
+  assert.match(indexHtml, /itcont-earth-small\.webp[^>]*fetchpriority="low"/);
+});
 check('crédito: Emanuel Macêdo Luz, desenvolvedor do projeto', () => assert.match(sec('Rodape'), /ITCONT\.creditos|Emanuel Macêdo Luz, desenvolvedor do projeto/));
 check('rodapé com realização (Contador do Amanhã, UEFS)', () => assert.match(sec('Rodape'), /ITCONT\.realizacao/));
 check('rodapé cita a fonte oficial', () => assert.match(sec('Rodape'), /ITCONT\.fonteUrl|FONTE_OFICIAL/));
@@ -668,7 +712,7 @@ check('fotos do evento ficam como links; a logo institucional enviada é a exce�
   const publicDir = resolve(RAIZ, 'artifacts/icaro/public');
   const pub = arquivos(publicDir).map((p) => relative(publicDir, p))
     .filter((p) => /itcont|even3/i.test(p) && /\.(png|jpe?g|webp|gif|avif)$/i.test(p));
-  assert.deepEqual(pub.filter((p) => !/itcont-earth-(?:static|small)\.webp$/.test(p) && p !== 'itcont-logo.png'), []);
+  assert.deepEqual(pub.filter((p) => !/itcont-earth-(?:static|small)\.webp$/.test(p) && !/^itcont-logo(?:-2x|-3x)?\.png$/.test(p)), []);
   const earth = join(RAIZ, 'artifacts/icaro/public/itcont-earth-static.webp');
   const earthSmall = join(RAIZ, 'artifacts/icaro/public/itcont-earth-small.webp');
   assert.ok(existsSync(earth));

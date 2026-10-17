@@ -189,13 +189,13 @@ export default function Inscricao() {
 
     const drawCornerRibbon = (mirror: boolean) => {
       const point = (x: number, y: number) => mirror ? { x: width - x, y: height - y } : { x, y };
-      const p0 = point(88, 450);
-      const p1 = point(75, 365);
-      const p2 = point(66, 270);
-      const p3 = point(66, 205);
-      const p4 = point(66, 145);
-      const p5 = point(86, 83);
-      const p6 = point(130, 72);
+      const p0 = point(22, -80);
+      const p1 = point(55, 20);
+      const p2 = point(175, 20);
+      const p3 = point(170, 95);
+      const p4 = point(165, 170);
+      const p5 = point(55, 205);
+      const p6 = point(-75, 270);
       const gradient = context.createLinearGradient(p0.x, p0.y, p6.x, p6.y);
       gradient.addColorStop(0, 'rgb(7 43 119)');
       gradient.addColorStop(.38, 'rgb(20 88 214)');

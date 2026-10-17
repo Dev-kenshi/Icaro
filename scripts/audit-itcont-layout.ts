@@ -6,12 +6,12 @@ import { chromium } from 'playwright-core';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const outputDir = resolve(root, 'generated-artifacts/audit');
-const widths = [320, 360, 390, 414, 768, 840, 1024, 1280, 1366, 1440, 1568, 1920];
+const widths = [320, 360, 390, 414, 430, 768, 840, 1024, 1280, 1366, 1440, 1568, 1920];
 const selectedWidths = process.env.ITCONT_AUDIT_WIDTHS
   ? process.env.ITCONT_AUDIT_WIDTHS.split(',').map(Number).filter((value) => widths.includes(value))
   : widths;
 const heights: Record<number, number> = {
-  320: 800, 360: 800, 390: 844, 414: 896, 768: 1024, 840: 900,
+  320: 800, 360: 800, 390: 844, 414: 896, 430: 932, 768: 1024, 840: 900,
   1024: 900, 1280: 900, 1366: 900, 1440: 900, 1568: 736, 1920: 1080,
 };
 const port = Number(process.env.ITCONT_AUDIT_PORT ?? 4173);
@@ -53,6 +53,14 @@ const inspectPage = () => {
   const body = document.body;
   if (Math.max(root.scrollWidth, body.scrollWidth) > width + 1) {
     add('horizontal-overflow', `scrollWidth ${Math.max(root.scrollWidth, body.scrollWidth)}px > viewport ${width}px`);
+  }
+  const logo = document.querySelector<HTMLImageElement>('.itc-ribbon-logo');
+  if (!logo) add('hero-logo-missing', 'logo do ITCONT não foi renderizada');
+  else {
+    const renderedWidth = logo.getBoundingClientRect().width;
+    if (logo.naturalWidth < renderedWidth * 3) {
+      add('hero-logo-source-density', `imagem ${logo.naturalWidth}px para ${renderedWidth.toFixed(1)}px renderizados; exige ao menos 3x`);
+    }
   }
   const isVisible = (element: Element) => {
     if (element.closest('[aria-hidden="true"], .sr-only')) return false;
@@ -302,14 +310,15 @@ async function main() {
   const screenshots: string[] = [];
   const transitionScreenshots: string[] = [];
   const sectionScreenshots: string[] = [];
+  const cardPngs: string[] = [];
   try {
     for (const width of selectedWidths) {
       for (const reducedMotion of [false, true]) {
         const height = heights[width];
         const context = await browser.newContext({
           viewport: { width, height },
-          isMobile: width <= 414,
-          hasTouch: width <= 414,
+          isMobile: width <= 430,
+          hasTouch: width <= 430,
           reducedMotion: reducedMotion ? 'reduce' : 'no-preference',
         });
         const page = await context.newPage();
@@ -317,6 +326,7 @@ async function main() {
         await page.goto(`${baseUrl}/itcont`, { waitUntil: 'domcontentloaded', timeout: 45_000 });
         await page.locator('#inicio').waitFor({ state: 'visible', timeout: 20_000 });
         await page.waitForFunction(() => document.querySelector('.itc')?.getAttribute('data-css-ready') === 'true', undefined, { timeout: 20_000 });
+        await page.waitForFunction(() => document.querySelector<HTMLImageElement>('.itc-ribbon-logo')?.complete === true, undefined, { timeout: 20_000 });
         await page.evaluate(() => document.fonts.ready);
         await page.waitForTimeout(350);
         const findings = await page.evaluate(inspectPage);
@@ -328,6 +338,41 @@ async function main() {
         }
         await context.close();
       }
+    }
+    for (const deviceScaleFactor of [1, 2, 3]) {
+      const context = await browser.newContext({
+        viewport: { width: 390, height: 844 },
+        deviceScaleFactor,
+        isMobile: true,
+        hasTouch: true,
+        reducedMotion: 'reduce',
+      });
+      const page = await context.newPage();
+      await page.goto(`${baseUrl}/itcont`, { waitUntil: 'domcontentloaded', timeout: 45_000 });
+      await page.waitForFunction(() => document.querySelector<HTMLImageElement>('.itc-ribbon-logo')?.complete === true, undefined, { timeout: 20_000 });
+      const result = await page.locator('.itc-ribbon-logo').evaluate((image) => {
+        const logo = image as HTMLImageElement;
+        return {
+          naturalWidth: logo.naturalWidth,
+          renderedWidth: logo.getBoundingClientRect().width,
+          currentSrc: logo.currentSrc,
+        };
+      });
+      const expectedSource = deviceScaleFactor === 1
+        ? 'itcont-logo.png'
+        : `itcont-logo-${deviceScaleFactor}x.png`;
+      const findings: Finding[] = [];
+      if (!result.currentSrc.endsWith(expectedSource)) {
+        findings.push({ check: 'hero-logo-srcset', detail: `DPR ${deviceScaleFactor} escolheu ${result.currentSrc}` });
+      }
+      if (result.naturalWidth * deviceScaleFactor < result.renderedWidth * 3) {
+        findings.push({
+          check: 'hero-logo-source-density',
+          detail: `DPR ${deviceScaleFactor}: imagem ${result.naturalWidth * deviceScaleFactor}px, exibição ${result.renderedWidth.toFixed(1)}px`,
+        });
+      }
+      cases.push({ width: 390, height: 844, reducedMotion: true, location: `logo-dpr-${deviceScaleFactor}`, findings });
+      await context.close();
     }
     for (const [width, height] of [[1568, 736], [390, 844]] as const) {
       for (const section of ['#programacao', '#inscricao']) {
@@ -377,6 +422,58 @@ async function main() {
       transitionScreenshots.push(filename);
       await context.close();
     }
+
+    const cardPage = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+    await cardPage.goto(`${baseUrl}/itcont`, { waitUntil: 'domcontentloaded', timeout: 45_000 });
+    await cardPage.locator('#inicio').waitFor({ state: 'visible', timeout: 20_000 });
+    await cardPage.waitForFunction(() => document.querySelector('.itc')?.getAttribute('data-css-ready') === 'true', undefined, { timeout: 20_000 });
+    await cardPage.evaluate(() => document.fonts.ready);
+    await cardPage.locator('#inscricao').scrollIntoViewIfNeeded();
+    const canvas = cardPage.locator('[data-testid="canvas-promo-card"]');
+    await canvas.waitFor({ state: 'visible', timeout: 20_000 });
+    await cardPage.locator('[data-testid="input-promo-photo"]').setInputFiles(
+      resolve(root, 'artifacts/icaro/public/itcont-earth-small.webp'),
+    );
+    await cardPage.waitForFunction(() => {
+      const preview = document.querySelector<HTMLCanvasElement>('[data-testid="canvas-promo-card"]');
+      return preview?.getAttribute('aria-label')?.includes('Arraste para ajustar a foto.') === true;
+    }, undefined, { timeout: 30_000 });
+    await cardPage.waitForFunction(() => !document.body.innerText.includes('Carregando a logo oficial do ITCONT…'), undefined, { timeout: 30_000 });
+    if (await cardPage.locator('.itc-promo-error').count()) throw new Error('A logo oficial não carregou para gerar as imagens de validação.');
+
+    const cardCases = [
+      { format: 'feed', tab: 'promo-format-feed', phrase: 'Eu vou!', slug: 'eu-vou', previewWidth: 2160, previewHeight: 2700, width: 1080, height: 1350 },
+      { format: 'feed', tab: 'promo-format-feed', phrase: 'Estarei lá', slug: 'estarei-la', previewWidth: 2160, previewHeight: 2700, width: 1080, height: 1350 },
+      { format: 'stories', tab: 'promo-format-stories', phrase: 'Eu vou!', slug: 'eu-vou', previewWidth: 2160, previewHeight: 3840, width: 1080, height: 1920 },
+      { format: 'stories', tab: 'promo-format-stories', phrase: 'Estarei lá', slug: 'estarei-la', previewWidth: 2160, previewHeight: 3840, width: 1080, height: 1920 },
+    ] as const;
+    for (const card of cardCases) {
+      await cardPage.locator(`[data-testid="${card.tab}"]`).click();
+      await cardPage.getByRole('button', { name: card.phrase, exact: true }).click();
+      await cardPage.waitForFunction(({ format, previewWidth, previewHeight }) => {
+        const preview = document.querySelector<HTMLCanvasElement>('[data-testid="canvas-promo-card"]');
+        return preview?.dataset.cardFormat === format
+          && preview.width === previewWidth
+          && preview.height === previewHeight
+          && Boolean(preview.dataset.photoWidth);
+      }, { format: card.format, previewWidth: card.previewWidth, previewHeight: card.previewHeight }, { timeout: 15_000 });
+      await cardPage.evaluate(() => new Promise<void>((resolveFrame) => requestAnimationFrame(() => requestAnimationFrame(() => resolveFrame()))));
+      const dataUrl = await canvas.evaluate((element, outputSize) => {
+        const output = document.createElement('canvas');
+        output.width = outputSize.width;
+        output.height = outputSize.height;
+        const context = output.getContext('2d');
+        if (!context) throw new Error('Não foi possível criar o PNG de validação.');
+        context.drawImage(element as HTMLCanvasElement, 0, 0, output.width, output.height);
+        return output.toDataURL('image/png');
+      }, { width: card.width, height: card.height });
+      const base64 = dataUrl.split(',')[1];
+      if (!base64) throw new Error(`Não foi possível codificar o cartão ${card.format}/${card.slug} como PNG.`);
+      const filename = `itcont-card-${card.format}-${card.slug}.png`;
+      await writeFile(resolve(outputDir, filename), Buffer.from(base64, 'base64'));
+      cardPngs.push(filename);
+    }
+    await cardPage.close();
   } finally {
     await browser.close();
     stopPreview();
@@ -400,6 +497,7 @@ async function main() {
     screenshots,
     transitionScreenshots,
     sectionScreenshots,
+    cardPngs,
     failureCount: failures.length,
     failures,
   };

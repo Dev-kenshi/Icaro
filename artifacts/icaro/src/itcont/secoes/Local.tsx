@@ -27,7 +27,7 @@ export default function Local() {
       if (!entry.isIntersecting) return;
       setMapRequested(true);
       observer.disconnect();
-    }, { rootMargin: '180px 0px', threshold: 0 });
+    }, { rootMargin: '0px', threshold: 0 });
     observer.observe(slot);
     return () => observer.disconnect();
   }, []);

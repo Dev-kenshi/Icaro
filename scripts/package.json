@@ -27,7 +27,9 @@
     "repair:health": "tsx ./src/repair-health.ts",
     "sync:check": "tsx ./src/sync-doctor.ts",
     "sync:fix": "tsx ./src/sync-doctor.ts --fix",
-    "validate:itcont-site": "tsx ../artifacts/icaro/src/itcont/validate-itcont-site.ts",
+    "validate:itcont-site": "tsx ../artifacts/icaro/src/itcont/validate-itcont-site.ts && pnpm run validate:security-headers",
+    "validate:security-headers": "tsx ../artifacts/api-server/src/validate-security-headers.ts",
+    "validate:itcont-browser": "tsx ./validate-itcont-browser.ts",
     "audit:itcont-layout": "tsx ./audit-itcont-layout.ts",
     "validate:itcont-1000": "tsx ../artifacts/icaro/src/itcont/validate-itcont-1000.ts",
     "validate:itcont-assistant": "tsx ../artifacts/icaro/src/itcont/validate-itcont-assistant.ts"

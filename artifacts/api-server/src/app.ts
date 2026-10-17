@@ -14,6 +14,40 @@ app.disable("x-powered-by");
 // Replit serves this API through one trusted proxy and forwards the client IP.
 app.set("trust proxy", 1);
 
+const itcontCsp = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "script-src 'self' 'wasm-unsafe-eval'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "img-src 'self' data: blob: https://static.even3.com https://images.even3.com https://server.arcgisonline.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "connect-src 'self' https://server.arcgisonline.com",
+  "worker-src 'self' blob:",
+  "media-src 'self' data: blob:",
+  "frame-src 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'self'",
+].join("; ");
+
+app.use((req, res, next) => {
+  res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+
+  const path = req.path.replace(/\/+$/, "") || "/";
+  if (path === "/" || path === "/itcont") {
+    res.setHeader("Permissions-Policy", "camera=(), geolocation=(), microphone=(), payment=()");
+    const cspHeader = process.env.CSP_REPORT_ONLY === "1"
+      ? "Content-Security-Policy-Report-Only"
+      : "Content-Security-Policy";
+    res.setHeader(cspHeader, itcontCsp);
+  }
+
+  next();
+});
+
 app.use(
   pinoHttp({
     logger,
