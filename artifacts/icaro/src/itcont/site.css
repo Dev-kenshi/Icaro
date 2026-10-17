@@ -56,8 +56,7 @@
   height: 100%;
   pointer-events: none;
 }
-.itc .itc-cosmos-backdrop .cosmos-navigation,
-.itc .itc-cosmos-backdrop .cosmos-viewport[data-render-mode="static"] { display: none !important; }
+.itc .itc-cosmos-backdrop .cosmos-navigation { display: none !important; }
 .itc::before {
   content: "";
   position: fixed;
@@ -826,8 +825,9 @@
   .itc[data-layout="desktop"] .itc-ticket-logo { width: 56px; height: 56px; margin-bottom: .7rem; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .itc .itc-earth-map-image,
-  .itc .itc-earth-fallback-map { animation: none; }
+  .itc:not([data-motion-enabled="true"]) .itc-earth-map-image,
+  .itc:not([data-motion-enabled="true"]) .itc-earth-fallback-map,
+  .itc:not([data-motion-enabled="true"]) .itc-solar-orbit { animation: none; }
 }
 
 /* ITCONT game-storefront direction: editorial hierarchy, deep surfaces, restrained cyan. */
@@ -2449,7 +2449,7 @@
   left: auto;
   width: clamp(300px, 36vw, 520px);
   transform: translateY(-50%);
-  opacity: .2;
+  opacity: 1;
   -webkit-mask-image: radial-gradient(circle, var(--itc-abismo) 58%, transparent 82%);
   mask-image: radial-gradient(circle, var(--itc-abismo) 58%, transparent 82%);
 }
@@ -2473,7 +2473,7 @@
     grid-template-rows: auto auto;
     align-items: start;
     row-gap: 1rem;
-    min-height: max(900px, 100svh);
+    min-height: max(760px, 100svh);
     padding: clamp(2.5rem, 6vh, 4.5rem) 0 4rem;
   }
   .itc #inicio > .itc-intro-content { grid-column: 1; grid-row: 1; width: min(100% - 48px, 900px); }
@@ -2568,17 +2568,12 @@
 .itc #inicio > .itc-cosmos-backdrop {
   position: absolute;
   inset: 0 0 0 42%;
-  z-index: 0;
-  opacity: .4;
+  z-index: 2;
+  opacity: .86;
   transform: none;
-  -webkit-mask-image: radial-gradient(circle 49% at 51% 50%, transparent 0 90%, var(--itc-branco) 100%);
-  mask-image: radial-gradient(circle 49% at 51% 50%, transparent 0 90%, var(--itc-branco) 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgb(0 0 0 / .18) 18%, rgb(0 0 0 / .78) 48%, rgb(0 0 0 / 1) 68%, rgb(0 0 0 / 1) 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, rgb(0 0 0 / .18) 18%, rgb(0 0 0 / .78) 48%, rgb(0 0 0 / 1) 68%, rgb(0 0 0 / 1) 100%);
 }
-@media (max-width: 767px) {
-  /* The solar scene is decorative; avoid initializing WebGL on phones. */
-  .itc #inicio > .itc-cosmos-backdrop { display: none !important; }
-}
-.itc #inicio > .itc-solar-fallback { display: none !important; }
 .itc #inicio { isolation: isolate; }
 .itc #inicio::after {
   content: "";
@@ -2590,6 +2585,23 @@
   background: linear-gradient(180deg, transparent 0%, var(--itc-marinho) 100%);
 }
 .itc #inicio > .itc-earth-backdrop { z-index: 1; }
+.itc #inicio > .itc-earth-backdrop.itc-earth-globo { animation: none; }
+.itc #inicio > .itc-earth-backdrop .globo-terra { opacity: .22; }
+.itc #inicio > .itc-earth-backdrop .globo-veu { display: none; }
+.itc #inicio > .itc-earth-backdrop .maplibregl-ctrl-attrib { display: none; }
+.itc #inicio > .itc-earth-credit {
+  display: block;
+  position: absolute;
+  z-index: 3;
+  top: 1rem;
+  right: 30%;
+  max-width: 225px;
+  color: var(--itc-gelo);
+  font-size: .58rem;
+  line-height: 1.2;
+  text-align: right;
+  text-shadow: 0 1px 4px var(--itc-abismo);
+}
 .itc #inicio .itc-intro-content,
 .itc #inicio > .itc-section,
 .itc #inicio .itc-motion-enable { position: relative; z-index: 2; }
@@ -2621,4 +2633,119 @@
     grid-row: 3;
     margin: 0;
   }
+}
+
+/* Keep the reduced-motion control and event details in the first viewport on short landscape screens. */
+@media (min-width: 600px) and (max-width: 1100px) and (max-height: 650px) {
+  .itc #inicio.itc-hero {
+    min-height: 100svh;
+    min-height: 100dvh;
+    grid-template-columns: minmax(0, 1.1fr) minmax(270px, .9fr);
+    grid-template-rows: minmax(0, 1fr);
+    align-items: center;
+    column-gap: clamp(.75rem, 2vw, 1.25rem);
+    row-gap: 0;
+    padding: clamp(3rem, 7vh, 4rem) 24px 1rem;
+  }
+  .itc #inicio > .itc-intro-content {
+    grid-column: 1;
+    grid-row: 1;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    gap: .4rem;
+    text-align: left;
+  }
+  .itc #inicio > .itc-section {
+    grid-column: 2;
+    grid-row: 1;
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+  }
+  .itc #inicio > .itc-section .itc-shell { width: 100%; max-width: none; padding: 0; }
+  .itc #inicio .itc-title { margin: 0 0 .3rem; text-align: left; }
+  .itc #inicio .itc-itcont-logo { width: min(100%, 280px); height: auto; }
+  .itc #inicio .itc-hero-slogan { margin: .1rem 0; font-size: .58rem; letter-spacing: .14em; }
+  .itc #inicio .itc-intro-summary { max-width: 40rem; font-size: .82rem; line-height: 1.35; }
+  .itc #inicio .itc-hero-facts { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: .3rem .75rem; margin: .4rem 0; font-size: .68rem; }
+  .itc #inicio .itc-hero-facts > span { justify-content: flex-start; }
+  .itc #inicio .itc-hero-actions { justify-content: flex-start; gap: .5rem; }
+  .itc #inicio .itc-hero-actions > * { flex: 0 1 auto; padding: .58rem .72rem; font-size: .72rem; }
+  .itc #inicio .itc-hero-audience { margin: .35rem 0 0; font-size: .64rem; }
+  .itc #inicio .itc-counter { grid-template-columns: minmax(0, 1fr); gap: .35rem; padding: .55rem; }
+  .itc #inicio .itc-count-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .2rem; }
+  .itc #inicio .itc-count-cell strong { font-size: clamp(1.35rem, 3.2vw, 2rem) !important; }
+  .itc #inicio .itc-count-cell span { font-size: .52rem; letter-spacing: .04em; }
+  .itc #inicio > .itc-earth-backdrop { right: 18%; width: min(40vw, 420px); opacity: 1; }
+  .itc #inicio .itc-motion-enable {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    bottom: auto;
+    left: auto;
+    z-index: 8;
+    margin: 0;
+  }
+}
+
+/* Static solar illustration is used only when the 3D renderer is unavailable. */
+.itc #inicio > .itc-solar-fallback {
+  display: block;
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  right: clamp(1rem, 4vw, 3rem);
+  width: min(46vw, 470px);
+  height: clamp(160px, 34vh, 280px);
+  transform: translateY(-50%) rotate(-12deg);
+  opacity: .58;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgb(0 0 0 / 1) 18%, rgb(0 0 0 / 1) 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, rgb(0 0 0 / 1) 18%, rgb(0 0 0 / 1) 100%);
+}
+.itc .itc-solar-sun {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, rgb(255 246 207), rgb(255 199 104) 55%, rgb(255 112 45 / .1));
+  box-shadow: 0 0 26px 4px rgb(255 195 112 / .7);
+  transform: translate(-50%, -50%);
+}
+.itc .itc-solar-orbit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border: 1px solid rgb(100 215 236 / .48);
+  border-radius: 50%;
+  animation: itc-solar-orbit 28s linear infinite;
+}
+.itc .itc-solar-orbit-1 { width: 24%; height: 22%; }
+.itc .itc-solar-orbit-2 { width: 42%; height: 34%; animation-duration: 36s; }
+.itc .itc-solar-orbit-3 { width: 62%; height: 48%; animation-duration: 48s; }
+.itc .itc-solar-orbit-4 { width: 82%; height: 62%; animation-duration: 62s; }
+.itc .itc-solar-orbit span {
+  position: absolute;
+  left: 50%;
+  top: -4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--itc-ciano);
+  box-shadow: 0 0 8px rgb(97 219 255 / .75);
+}
+@media (max-width: 767px) {
+  .itc #inicio > .itc-solar-fallback { width: min(56vw, 320px); height: 180px; top: 44%; right: .75rem; }
+}
+@keyframes itc-solar-orbit {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .itc:not([data-motion-enabled="true"]) .itc-earth-map-image,
+  .itc:not([data-motion-enabled="true"]) .itc-earth-fallback-map,
+  .itc:not([data-motion-enabled="true"]) .itc-solar-orbit { animation: none; }
 }

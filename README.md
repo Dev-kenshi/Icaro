@@ -6,7 +6,7 @@ O Ícaro aparece num palco holográfico, ouve perguntas por voz ou teclado, resp
 
 > **ÍCARO** = **I**nteligência, **C**iência de dados, **A**nálise de dados, **R**esultados e **O**perações.
 
-**No ar:** https://icaro-0q50.onrender.com (Render) · https://icaro-inteligencia-e-operacoes.replit.app (Replit)
+**No ar:** https://itcont-uefs.onrender.com (Render) · https://icaro-inteligencia-e-operacoes.replit.app (Replit)
 
 ---
 
@@ -104,7 +104,7 @@ Todas ficam **só no servidor**, nunca no frontend.
 
 ## Deploy
 
-- **Render:** o `render.yaml` cria um Web Service Node que builda frontend e API com `npx pnpm@10.18.0` (o `corepack` falha porque o `/usr/bin` do Render é somente leitura). Todo push no `main` gera deploy automático. A checagem de saúde é `GET /api/healthz`. No plano free, o serviço dorme após 15 minutos sem uso, e o primeiro acesso leva cerca de 50 s.
+- **Render:** `https://itcont-uefs.onrender.com` é o domínio canônico e publica o branch `main` automaticamente. O host legado redireciona com 301 preservando caminho e consulta, exceto por `GET /api/healthz`. O Blueprint `render.yaml` continua descrevendo o serviço já existente. Configure `CANONICAL_HOST` se o host público mudar. A checagem de saúde é `GET /api/healthz`. No plano free, o serviço dorme após 15 minutos sem uso, e o primeiro acesso leva cerca de 50 s.
 - **Replit:** o workspace `@emanuelph14/Icaro-Inteligencia-e-Operacoes` sincroniza com este repositório. Antes de editar pelo Replit, faça `git pull` para não sobrescrever commits feitos por aqui.
 
 ## Testes e validações

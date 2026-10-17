@@ -41,8 +41,14 @@ export default function Hero({ motionPrompt = false, onEnableMotion, earthBackdr
         <p className="itc-hero-audience">Uma imersão UEFS para estudantes, docentes, profissionais e comunidade.</p>
       </div>
       <Contagem />
-      {motionPrompt && <button type="button" className="itc-motion-enable" onClick={onEnableMotion} data-testid="button-enable-motion">
-        <Play size={16} aria-hidden="true" /> Ativar movimento
+      {motionPrompt && <button
+        type="button"
+        className="itc-motion-enable"
+        aria-label="Ativar rotação da Terra e movimento do sistema solar"
+        onClick={onEnableMotion}
+        data-testid="button-enable-motion"
+      >
+        <Play size={16} aria-hidden="true" /> Ativar movimento espacial
       </button>}
     </section>
   );

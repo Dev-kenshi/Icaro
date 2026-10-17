@@ -98,6 +98,76 @@ try {
     console.log(`${reportOnly ? "Report-Only" : "CSP efetiva"}: ITCONT, mapa e cartão sem violações ou erros de console`);
     await page.close();
   }
+
+  console.log("Validando o hero público em 1024×540 com movimento reduzido...");
+  const heroPage = await browser.newPage({
+    viewport: { width: 1024, height: 540 },
+    reducedMotion: "reduce",
+  });
+  const heroErrors: string[] = [];
+  heroPage.on("pageerror", (error) => heroErrors.push(error.message));
+  const heroResponse = await heroPage.goto(`${origin}/itcont`, { waitUntil: "domcontentloaded", timeout: 45_000 });
+  assert.equal(heroResponse?.status(), 200);
+  await heroPage.locator("#inicio").waitFor({ state: "visible", timeout: 20_000 });
+  await heroPage.waitForFunction(() => {
+    const root = document.querySelector(".itc");
+    const hero = document.querySelector("#inicio");
+    const logo = document.querySelector<HTMLImageElement>(".itc-itcont-logo");
+    return root?.getAttribute("data-css-ready") === "true"
+      && hero instanceof HTMLElement
+      && logo instanceof HTMLImageElement
+      && logo.naturalWidth > 0;
+  }, undefined, { timeout: 20_000 });
+  await heroPage.waitForTimeout(1_500);
+  const heroState = await heroPage.evaluate(() => {
+    const hero = document.querySelector<HTMLElement>("#inicio");
+    const counter = document.querySelector<HTMLElement>("#inicio .itc-counter");
+    const motionButton = document.querySelector<HTMLElement>('[data-testid="button-enable-motion"]');
+    const solarFallback = document.querySelector<HTMLElement>('[data-testid="background-solar-fallback"]');
+    const cosmosViewport = document.querySelector<HTMLElement>('[data-testid="background-cosmos"] .cosmos-viewport');
+    return {
+      heroHeight: hero?.getBoundingClientRect().height ?? Number.POSITIVE_INFINITY,
+      counterBottom: counter?.getBoundingClientRect().bottom ?? Number.POSITIVE_INFINITY,
+      buttonVisible: Boolean(motionButton && getComputedStyle(motionButton).display !== "none"
+        && motionButton.getBoundingClientRect().top >= 0
+        && motionButton.getBoundingClientRect().bottom <= window.innerHeight),
+      motionEnabled: document.querySelector(".itc")?.getAttribute("data-motion-enabled"),
+      earthMotion: document.querySelector<HTMLElement>('[data-testid="background-earth"]')?.getAttribute("data-motion") ?? null,
+      solarFallbackVisible: Boolean(solarFallback && getComputedStyle(solarFallback).display !== "none"),
+      solarFallbackAnimation: solarFallback
+        ? getComputedStyle(solarFallback.querySelector(".itc-solar-orbit")!).animationName
+        : "none",
+      cosmosMode: cosmosViewport?.getAttribute("data-render-mode"),
+      cosmosCanvasVisible: Boolean(cosmosViewport && getComputedStyle(cosmosViewport).display !== "none"
+        && cosmosViewport.getBoundingClientRect().width > 0),
+    };
+  });
+  assert.ok(heroState.heroHeight <= 542, `hero excedeu o viewport: ${heroState.heroHeight}px`);
+  assert.ok(heroState.counterBottom <= 540, `contagem ficou cortada: termina em ${heroState.counterBottom}px`);
+  assert.equal(heroState.buttonVisible, true, "controle de movimento deve aparecer no primeiro viewport");
+  assert.equal(heroState.motionEnabled, "false", "movimento reduzido deve começar pausado");
+  if (heroState.earthMotion !== null) {
+    assert.equal(heroState.earthMotion, "paused", "a Terra deve começar pausada com movimento reduzido");
+  }
+  assert.ok(heroState.solarFallbackVisible || heroState.cosmosCanvasVisible, "a cena solar deve estar visível no primeiro viewport");
+  await heroPage.getByTestId("button-enable-motion").click();
+  await heroPage.waitForFunction(() => document.querySelector(".itc")?.getAttribute("data-motion-enabled") === "true");
+  const enabledMotionState = await heroPage.evaluate(() => {
+    const orbit = document.querySelector<HTMLElement>(".itc-solar-orbit");
+    const earth = document.querySelector<HTMLElement>('[data-testid="background-earth"]');
+    return {
+      solarAnimation: orbit ? getComputedStyle(orbit).animationName : "not-rendered",
+      earthMotion: earth?.getAttribute("data-motion") ?? null,
+    };
+  });
+  if (heroState.earthMotion !== null) {
+    assert.equal(enabledMotionState.earthMotion, "on", "ativar movimento deve liberar a rotação da Terra");
+  }
+  if (heroState.solarFallbackVisible) {
+    assert.equal(enabledMotionState.solarAnimation, "itc-solar-orbit", "ativar movimento deve liberar a rotação do fallback solar");
+  }
+  assert.deepEqual(heroErrors, [], "hero do ITCONT registrou erros no navegador");
+  console.log("Hero compacto, cena solar e opt-in de movimento verificados.");
 } finally {
   await browser?.close();
   if (server.listening) {

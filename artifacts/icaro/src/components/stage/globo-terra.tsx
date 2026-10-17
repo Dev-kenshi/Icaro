@@ -94,7 +94,7 @@ export const GloboTerra = forwardRef<GloboApi, Props>(function GloboTerra({
             layers: [
               { id: 'fundo', type: 'background', paint: { 'background-color': '#04122a', 'background-opacity': decorativo ? 0 : 1 } },
               { id: 'sat', type: 'raster', source: 'sat', paint: { 'raster-saturation': 0.08, 'raster-fade-duration': 0 } },
-              { id: 'rot', type: 'raster', source: 'rot', minzoom: 2.2, paint: { 'raster-opacity': 0.92, 'raster-fade-duration': 0 } },
+              { id: 'rot', type: 'raster', source: 'rot', minzoom: 2.2, paint: { 'raster-opacity': decorativo ? 0 : 0.92, 'raster-fade-duration': 0 } },
             ],
           },
         });

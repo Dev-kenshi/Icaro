@@ -48,6 +48,10 @@ type Props = {
   transparentBackground?: boolean;
   /** Decorative background: no pointer interaction, keyboard controls, or navigation UI. */
   decorativo?: boolean;
+  /** Framing for a decorative solar system in the public ITCONT hero; stage framing stays unchanged. */
+  decorativeComposition?: 'default' | 'itcont-hero';
+  /** Use the shared 2D renderer instead of initializing WebGL. */
+  forceStatic?: boolean;
   feeds?: CosmosFeedsResponse;
   targetCity?: boolean;
   targetGeo?: { latitude: number; longitude: number; label: string } | null;
@@ -393,6 +397,8 @@ export function CosmosRenderer({
   isOverview = false,
   transparentBackground = false,
   decorativo = false,
+  decorativeComposition = 'default',
+  forceStatic = false,
   feeds,
   targetCity = false,
   targetGeo = null,
@@ -560,7 +566,7 @@ export function CosmosRenderer({
     // Reduced motion pauses automatic movement only; direct manipulation stays in full 3D.
     const motionPaused = () => !autoMotionRef.current;
     // The 2D canvas is only a fallback for devices without WebGL.
-    const staticMode = !webglAvailable();
+    const staticMode = forceStatic || !webglAvailable();
     setRenderMode(staticMode ? 'static' : 'pending');
     const trackTextureLoad = (delta: number) => {
       pendingTextureLoads = Math.max(0, pendingTextureLoads + delta);
@@ -789,30 +795,34 @@ export function CosmosRenderer({
         context.fillStyle = core;
         context.fillRect(0, 0, width, height);
       } else if (currentScene === 'system') {
-        const cx = width * .5, cy = height * .43;
+        const heroComposition = decorativeComposition === 'itcont-hero';
+        const cx = width * (heroComposition ? .68 : .5);
+        const cy = height * (heroComposition ? .30 : .43);
         const orbitRadii = [20, 30, 40, 51, 67, 82, 96, 111].map((value) => value * Math.min(width, height) / 550);
         const planetColors = ['#918b83', '#d6b38b', '#5badd2', '#be6e55', '#d7b579', '#bea47e', '#79b8cb', '#496b9a'];
         context.save();
         context.translate(cx, cy);
-        context.strokeStyle = 'rgba(100,215,236,.25)';
-        context.lineWidth = 1;
+        context.strokeStyle = heroComposition ? 'rgba(137,224,250,.48)' : 'rgba(100,215,236,.25)';
+        context.lineWidth = heroComposition ? 1.35 : 1;
         orbitRadii.forEach((radius) => { context.beginPath(); context.ellipse(0, 0, radius, radius * .42, -.16, 0, Math.PI * 2); context.stroke(); });
-        const sun = context.createRadialGradient(0, 0, 1, 0, 0, orbitRadii[0] * .5);
+        const sunRadius = orbitRadii[0] * (heroComposition ? .68 : .5);
+        const sun = context.createRadialGradient(0, 0, 1, 0, 0, sunRadius);
         sun.addColorStop(0, '#fff6cf');
         sun.addColorStop(.4, '#ffc768');
         sun.addColorStop(1, 'rgba(255,112,45,0)');
         context.fillStyle = sun;
-        context.beginPath(); context.arc(0, 0, orbitRadii[0] * .5, 0, Math.PI * 2); context.fill();
+        context.beginPath(); context.arc(0, 0, sunRadius, 0, Math.PI * 2); context.fill();
         orbitRadii.forEach((radius, index) => {
           const angle = index * 1.48 + .6 + motionTime * .00009 / (index + 1);
           const px = Math.cos(angle) * radius, py = Math.sin(angle) * radius * .42;
-          const planetGlow = context.createRadialGradient(px - 1, py - 1, .2, px, py, 2.8 + index * .45);
+          const planetScale = heroComposition ? 1.45 : 1;
+          const planetGlow = context.createRadialGradient(px - 1, py - 1, .2, px, py, (2.8 + index * .45) * planetScale);
           planetGlow.addColorStop(0, '#f5f0dc');
           planetGlow.addColorStop(.25, planetColors[index]);
           planetGlow.addColorStop(1, '#06101b');
           context.fillStyle = planetGlow;
           context.beginPath();
-          context.arc(px, py, 2 + index * .38, 0, Math.PI * 2);
+          context.arc(px, py, (2 + index * .38) * planetScale, 0, Math.PI * 2);
           context.fill();
            if (index === 5 && !decorativo) {
             context.strokeStyle = 'rgba(216,196,157,.62)';
@@ -1163,14 +1173,18 @@ export function CosmosRenderer({
         groupGalaxy.add(galaxyDisk);
         const groupSystem = new THREE.Group();
         if (decorativo) {
-          groupSystem.position.x = -6.8;
-          groupSystem.scale.setScalar(.72);
+          groupSystem.position.x = decorativeComposition === 'itcont-hero'
+            ? mobileViewport ? .35 : 2.4
+            : -6.8;
+          groupSystem.position.y = decorativeComposition === 'itcont-hero' ? 3 : 0;
+          groupSystem.scale.setScalar(decorativeComposition === 'itcont-hero' ? 1.08 : .72);
         }
         const groupEarth = new THREE.Group();
         world.add(groupGalaxy, groupSystem, groupEarth);
         const backgroundStars = createStarfield(THREE);
         world.add(backgroundStars);
         const neural = createNeuralSphere(THREE);
+        neural.group.visible = decorativeComposition !== 'itcont-hero';
         world.add(neural.group);
 
         const galaxy = proceduralGalaxy(THREE, 90_000);
@@ -1283,15 +1297,22 @@ export function CosmosRenderer({
           const orbitRadius = orbitRadii[index];
           const orbit = new THREE.Mesh(
             new THREE.RingGeometry(orbitRadius - .006, orbitRadius + .006, 112),
-            new THREE.MeshBasicMaterial({ color: 0xa7c4d6, transparent: true, opacity: .13, side: THREE.DoubleSide, depthWrite: false }),
+            new THREE.MeshBasicMaterial({
+              color: 0xa7c4d6,
+              transparent: true,
+              opacity: decorativeComposition === 'itcont-hero' ? .3 : .13,
+              side: THREE.DoubleSide,
+              depthWrite: false,
+            }),
           );
-          orbit.visible = !decorativo || index < 4;
+          orbit.visible = !decorativo || index < (decorativeComposition === 'itcont-hero' ? 6 : 4);
           orbit.rotation.x = Math.PI * .5;
           groupSystem.add(orbit);
           const fallback = createPlanetFallbackTexture(THREE, index);
           const material = new THREE.MeshStandardMaterial({ map: fallback, roughness: index > 3 ? .62 : .84, metalness: .02 });
           const mesh = new THREE.Mesh(new THREE.SphereGeometry(planetRadii[index], 28, 20), material);
-          mesh.visible = !decorativo || index < 4;
+          mesh.scale.setScalar(decorativeComposition === 'itcont-hero' ? 1.45 : 1);
+          mesh.visible = !decorativo || index < (decorativeComposition === 'itcont-hero' ? 6 : 4);
           groupSystem.add(mesh);
           let ring: InstanceType<typeof THREE.Mesh> | null = null;
            if (index === 5 && !decorativo) {
@@ -1888,7 +1909,7 @@ export function CosmosRenderer({
       renderer?.domElement.remove();
       host.replaceChildren();
     };
-  }, [visible, quality, mobileViewport]);
+  }, [visible, quality, mobileViewport, forceStatic]);
 
   useEffect(() => {
     // Only the 2D fallback needs an explicit redraw; WebGL redraws every frame.

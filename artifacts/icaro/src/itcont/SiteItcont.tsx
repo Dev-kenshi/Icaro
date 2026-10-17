@@ -105,7 +105,8 @@ export default function SiteItcont() {
   }, []);
   useEffect(() => {
     if (!sceneIdle) return;
-    if (window.matchMedia('(max-width: 767px)').matches) {
+    if (layout === 'celular' || layout === 'celular-deitado') {
+      setWebglPronto(true);
       setModoCosmos('static');
       return;
     }
@@ -117,7 +118,7 @@ export default function SiteItcont() {
     gl?.getExtension('WEBGL_lose_context')?.loseContext();
     setWebglPronto(Boolean(gl));
     setModoCosmos(gl ? 'pending' : 'static');
-  }, [sceneIdle]);
+  }, [sceneIdle, layout]);
   useEffect(() => {
     const earth = document.getElementById('itc-page-earth');
     const hero = siteRef.current?.querySelector<HTMLElement>('#inicio');
@@ -197,11 +198,12 @@ export default function SiteItcont() {
     const title = document.title;
     const nodes = new Map<string, { node: HTMLMetaElement | null; content: string | null }>();
     const themeColor = getComputedStyle(document.querySelector('.itc') ?? document.documentElement).getPropertyValue('--itc-fundo').trim();
+    const ogImage = document.head.querySelector<HTMLMetaElement>('meta[property="og:image"]')?.content || ITCONT.banner;
     const specs: Array<[string, string, string]> = [
       ['name', 'description', ITCONT.descricao],
       ['property', 'og:title', `${ITCONT.sigla} 2026 · ${ITCONT.titulo}`],
       ['property', 'og:description', ITCONT.resumo],
-      ['property', 'og:image', ITCONT.banner],
+      ['property', 'og:image', ogImage],
       ['name', 'theme-color', themeColor],
     ];
     specs.forEach(([key, value, content]) => {
@@ -306,7 +308,14 @@ export default function SiteItcont() {
 
   const earthBackdrop = cosmosVisivel && layout !== 'celular'
     ? modoCosmos === 'webgl' && !falhaGlobo
-      ? <div className="itc-earth-backdrop itc-earth-globo" aria-hidden="true" data-testid="background-earth" inert={true}>
+      ? <>
+        <div
+          className="itc-earth-backdrop itc-earth-globo"
+          aria-hidden="true"
+          data-testid="background-earth"
+          data-motion={reduzMovimento && !movimentoAtivado ? 'paused' : 'on'}
+          inert={true}
+        >
           <Suspense fallback={null}>
             <GloboTerraSite
               reduzido={reduzMovimento && !movimentoAtivado}
@@ -317,14 +326,15 @@ export default function SiteItcont() {
               onFalha={() => setFalhaGlobo(true)}
             />
           </Suspense>
-          <span className="itc-earth-credit">Imagens: Esri, Maxar, Earthstar Geographics · Rótulos: Esri</span>
         </div>
+        <span className="itc-earth-credit">Imagens: Esri, Maxar, Earthstar Geographics · Rótulos: Esri</span>
+      </>
       : <Suspense fallback={null}><TerraFundoSite /></Suspense>
     : null;
   const cosmicBackdrop = cenaSolicitada ? (
     <>
       <div className="itc-cosmos-backdrop" aria-hidden="true" data-testid="background-cosmos">
-        {webglPronto && modoCosmos !== 'static' && !falhaGlobo && <Suspense fallback={null}>
+        {webglPronto && !falhaGlobo && <Suspense fallback={null}>
           <CosmosRendererSite
             scene="system"
             quality={layout === 'celular' || layout === 'celular-deitado' ? 'low' : 'medium'}
@@ -337,10 +347,12 @@ export default function SiteItcont() {
             getAudioLevel={silencio}
             keyboardShortcuts={false}
             onRenderMode={setModoCosmos}
+            decorativeComposition="itcont-hero"
+            forceStatic={layout === 'celular' || layout === 'celular-deitado'}
           />
         </Suspense>}
       </div>
-      {cosmosVisivel && modoCosmos === 'static' && <div className="itc-solar-fallback" aria-hidden="true" data-testid="background-solar-fallback">
+      {cosmosVisivel && modoCosmos === 'static' && !webglPronto && <div className="itc-solar-fallback" aria-hidden="true" data-testid="background-solar-fallback">
         <span className="itc-solar-sun" />
         {[0, 1, 2, 3].map((orbit) => <div className={`itc-solar-orbit itc-solar-orbit-${orbit + 1}`} key={orbit}><span /></div>)}
       </div>}
@@ -348,7 +360,14 @@ export default function SiteItcont() {
   ) : null;
 
   return (
-    <div ref={siteRef} className="itc" data-layout={layout} data-css-ready="false" data-testid="page-itcont">
+    <div
+      ref={siteRef}
+      className="itc"
+      data-layout={layout}
+      data-motion-enabled={movimentoAtivado ? 'true' : 'false'}
+      data-css-ready="false"
+      data-testid="page-itcont"
+    >
       {(!webglPronto || modoCosmos === 'static' || falhaGlobo) && <div className="itc-sky-stars" aria-hidden="true" data-testid="background-sky-stars" />}
       <div className="itc-main-site">
         <Navegacao />
