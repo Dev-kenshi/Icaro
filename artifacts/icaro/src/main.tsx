@@ -1,6 +1,12 @@
 import { createRoot } from 'react-dom/client';
 import type { ComponentType } from 'react';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { applyRouteFavicon, faviconRouteForPath } from '@/lib/route-favicons';
+
+applyRouteFavicon(
+  faviconRouteForPath(window.location.pathname, import.meta.env.BASE_URL),
+  import.meta.env.BASE_URL,
+);
 
 const root = createRoot(document.getElementById('root')!, {
   // Keeps caught errors off reportError(), which would raise the dev overlay.

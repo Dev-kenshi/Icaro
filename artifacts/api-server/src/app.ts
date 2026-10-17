@@ -81,7 +81,35 @@ app.use("/api", (_req, res) => {
 const staticDir =
   process.env.STATIC_DIR ||
   path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../icaro/dist/public");
-if (fs.existsSync(path.join(staticDir, "index.html"))) {
+const indexHtmlPath = path.join(staticDir, "index.html");
+if (fs.existsSync(indexHtmlPath)) {
+  const indexHtmlTemplate = fs.readFileSync(indexHtmlPath, "utf8");
+  const configuredBasePath = (process.env.BASE_PATH ?? "").replace(/\/+$/, "");
+  const stripConfiguredBasePath = (pathname: string): string => {
+    if (!configuredBasePath) return pathname || "/";
+    if (pathname === configuredBasePath) return "/";
+    if (pathname.startsWith(`${configuredBasePath}/`)) return pathname.slice(configuredBasePath.length) || "/";
+    return pathname || "/";
+  };
+  const withRouteIcon = (html: string, id: string, route: "itcont" | "icaro", size: 16 | 32 | 48 | 180): string =>
+    html.replace(/<link\b[^>]*>/gi, (tag) => {
+      const linkId = tag.match(/\bid=["']([^"']+)["']/i)?.[1];
+      if (linkId !== id) return tag;
+      const href = tag.match(/\bhref=["']([^"']+)["']/i)?.[1];
+      if (!href) return tag;
+      const lastSlash = href.lastIndexOf("/");
+      const baseHref = lastSlash >= 0 ? href.slice(0, lastSlash + 1) : "/";
+      return tag.replace(/\bhref=["'][^"']+["']/i, `href="${baseHref}favicon-${route}-${size}.png"`);
+    });
+  const routeIndexHtml = (pathname: string): string => {
+    const appPath = stripConfiguredBasePath(pathname).replace(/\/+$/, "") || "/";
+    const route = appPath === "/" || /^\/itcont(?:\/|$)/.test(appPath) ? "itcont" : "icaro";
+    const withSmallFavicon = withRouteIcon(indexHtmlTemplate, "route-favicon-16", route, 16);
+    const withFavicon = withRouteIcon(withSmallFavicon, "route-favicon", route, 32);
+    const withLargeFavicon = withRouteIcon(withFavicon, "route-favicon-48", route, 48);
+    return withRouteIcon(withLargeFavicon, "route-apple-icon", route, 180);
+  };
+
   app.use(
     express.static(staticDir, {
       index: false,
@@ -93,9 +121,9 @@ if (fs.existsSync(path.join(staticDir, "index.html"))) {
       },
     }),
   );
-  app.get(/^\/(?!api(\/|$)).*/, (_req, res) => {
+  app.get(/^\/(?!api(\/|$)).*/, (req, res) => {
     res.setHeader("Cache-Control", "no-cache");
-    res.sendFile(path.join(staticDir, "index.html"));
+    res.type("html").send(routeIndexHtml(req.path));
   });
 }
 

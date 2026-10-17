@@ -302,14 +302,19 @@ check('logo e slogan oficiais aparecem no hero', () => {
   assert.match(sec('Hero'), /PRÁTICA/);
   assert.match(sec('Hero'), /CONEXÕES/);
 });
-check('favicon do ITCONT usa a logo sem alterar o favicon do Ícaro', () => {
+check('ITCONT e Ícaro declaram favicons separados para páginas e atalhos', () => {
   const indexHtml = ler(join(RAIZ, 'artifacts/icaro/index.html'));
   const routeInit = ler(join(RAIZ, 'artifacts/icaro/public/itcont-route-init.js'));
-  assert.match(indexHtml, /href="\/favicon\.svg"/);
+  assert.match(indexHtml, /id="route-favicon-16" rel="icon" type="image\/png" sizes="16x16" href="%BASE_URL%favicon-icaro-16\.png"/);
+  assert.match(indexHtml, /id="route-favicon" rel="icon" type="image\/png" sizes="32x32" href="%BASE_URL%favicon-icaro-32\.png"/);
+  assert.match(indexHtml, /id="route-favicon-48" rel="icon" type="image\/png" sizes="48x48" href="%BASE_URL%favicon-icaro-48\.png"/);
+  assert.match(indexHtml, /id="route-apple-icon" rel="apple-touch-icon" type="image\/png" sizes="180x180" href="%BASE_URL%favicon-icaro-180\.png"/);
+  assert.doesNotMatch(indexHtml, /favicon\.svg/);
   assert.match(indexHtml, /src="%BASE_URL%itcont-route-init\.js"/);
   assert.equal((indexHtml.match(/itcont-route-init\.js/g) ?? []).length, 1);
-  assert.match(routeInit, /pagePath === "\/" \|\| pagePath === "\/itcont"/);
-  assert.match(routeInit, /icon\.href = `\$\{basePath\}\/itcont-event-logo\.png`/);
+  assert.match(routeInit, /isItcontRoute = pagePath === "\/" \|\| \/\^\\\/itcont/);
+  assert.match(routeInit, /favicon-\$\{routeName\}-\$\{size\}\.png/);
+  assert.match(routeInit, /favicon-\$\{routeName\}-180\.png/);
   const logo = readFileSync(join(RAIZ, 'artifacts/icaro/public/itcont-event-logo.png'));
   assert.equal(logo.toString('hex', 0, 8), '89504e470d0a1a0a');
   assert.deepEqual([logo.readUInt32BE(16), logo.readUInt32BE(20)], [345, 166]);
@@ -704,12 +709,14 @@ check('rodapé cita a fonte oficial', () => assert.match(sec('Rodape'), /ITCONT\
 
 // ───────────── E. Integração ─────────────
 grupo = 'E. Integração';
-check('fotos do evento ficam como links; a logo institucional enviada é a exceção autorizada', () => {
+check('fotos do evento ficam como links; logos institucionais e favicons gerados são exceções explícitas', () => {
   const publicDir = resolve(RAIZ, 'artifacts/icaro/public');
   const pub = arquivos(publicDir).map((p) => relative(publicDir, p))
     .filter((p) => /itcont|even3/i.test(p) && /\.(png|jpe?g|webp|gif|avif)$/i.test(p));
   const approvedLogos = new Set(['itcont-logo.png', 'itcont-event-logo.png']);
-  assert.deepEqual(pub.filter((p) => !/itcont-earth-(?:static|small)\.webp$/.test(p) && !approvedLogos.has(p)), []);
+  const generatedFavicons = /^favicon-itcont-(?:16|32|48|180)\.png$/;
+  assert.deepEqual(pub.filter((p) => !/itcont-earth-(?:static|small)\.webp$/.test(p)
+    && !approvedLogos.has(p) && !generatedFavicons.test(p)), []);
   const earth = join(RAIZ, 'artifacts/icaro/public/itcont-earth-static.webp');
   const earthSmall = join(RAIZ, 'artifacts/icaro/public/itcont-earth-small.webp');
   assert.ok(existsSync(earth));

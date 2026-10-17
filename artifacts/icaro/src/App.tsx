@@ -1,4 +1,4 @@
-import { lazy, Suspense, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { AppShell } from '@/components/app-shell';
@@ -8,6 +8,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { LangProvider } from '@/lib/i18n';
 import { LoginGate, useAuthUser } from '@/components/login/login-gate';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
+import { applyRouteFavicon, isItcontRoute, stripBasePath } from '@/lib/route-favicons';
 
 const queryClient = new QueryClient();
 const SiteItcont = lazy(() => import('./itcont/SiteItcont'));
@@ -24,13 +25,14 @@ const Demos = lazy(() => import('@/pages/demos'));
 const Documentation = lazy(() => import('@/pages/documentation'));
 
 function ehRotaItcont() {
-  const base = import.meta.env.BASE_URL.replace(/\/$/, '');
-  const path = window.location.pathname.replace(base, '').replace(/\/$/, '') || '/';
-  return path === '/' || path === '/itcont';
+  return isItcontRoute(stripBasePath(window.location.pathname, import.meta.env.BASE_URL));
 }
 
 function Router() {
   const [location] = useLocation();
+  useEffect(() => {
+    applyRouteFavicon('icaro', import.meta.env.BASE_URL);
+  }, [location]);
   return (
     <ErrorBoundary resetKey={location}>
       <Suspense fallback={<div aria-busy="true" />}>

@@ -30,6 +30,8 @@
     "validate:itcont-site": "tsx ../artifacts/icaro/src/itcont/validate-itcont-site.ts && pnpm run validate:security-headers",
     "validate:security-headers": "tsx ../artifacts/api-server/src/validate-security-headers.ts",
     "validate:itcont-browser": "tsx ./validate-itcont-browser.ts",
+    "generate:route-favicons": "tsx ./src/generate-route-favicons.ts",
+    "validate:route-favicons": "tsx ./src/validate-route-favicons.ts",
     "validate:full-project": "tsx ./src/validate-full-project.ts",
     "audit:itcont-layout": "tsx ./audit-itcont-layout.ts",
     "validate:itcont-1000": "tsx ../artifacts/icaro/src/itcont/validate-itcont-1000.ts",
@@ -38,6 +40,7 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "playwright-core": "^1.63.0",
+    "sharp": "^0.35.5",
     "tsx": "catalog:"
   }
 }
