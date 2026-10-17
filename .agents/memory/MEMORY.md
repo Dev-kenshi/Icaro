@@ -8,6 +8,7 @@
 - [Avatar atlas reframing](avatar-atlas-reframing.md) — padding must translate positions, not rescale tile dimensions; preserve original face pixels for sprite registration.
 - [Groq model availability](groq-model-availability.md) — verify a real authenticated request; documentation and a configured key do not prove a model is usable.
 - [Local knowledge matching](knowledge-bank-matching.md) — rank subject specificity above question phrasing so generic local triggers do not swallow questions for the remote provider.
+- [Ícaro command test maze](icaro-command-test-maze.md) — preserve legacy/v5 routing coverage and run every check before the final OK/NOK result.
 - [Browser recognition diagnostics](speech-recognition-diagnostics.md) — ignore intentional aborts; expose unexpected aborts and back off until speech proves recovery.
 - [Gemini TTS authentication](gemini-tts-auth.md) — configured-key presence and cached audio do not prove live TTS works; probe with a fresh, uncached phrase.
 - [Patch application behavior](patch-application.md) — failed multi-file patches can leave other targets changed; inspect each file before retrying.
